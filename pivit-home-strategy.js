@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.3";
+const VERSION = "1.0.4";
 
 const DEFAULTS = {
   title: "Home",
@@ -39,7 +39,7 @@ const DEFAULTS = {
   security_classes: ["smoke", "carbon_monoxide", "gas", "moisture", "safety", "door", "garage_door", "window", "opening", "motion", "occupancy"], // binary sensor types on the Security page
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
-  nav_width: "760px",
+  nav_width: "auto", // "auto" sizes the bottom bar to the number of pages, or set e.g. "940px"
   background:
     "center / cover no-repeat fixed radial-gradient(circle at 20% 0%, #2a2f3a 0%, #121418 55%, #0b0c0f 100%)",
 };
@@ -223,7 +223,7 @@ function navCard(items, base, width) {
     type: "custom:bubble-card",
     card_type: "horizontal-buttons-stack",
     auto_order: false,
-    width_desktop: width,
+    width_desktop: width && width !== "auto" ? width : `${Math.max(540, items.length * 160)}px`,
   };
   items.forEach((it, i) => {
     card[`${i + 1}_name`] = it.name;

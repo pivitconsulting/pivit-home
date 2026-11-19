@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 — 2026-11-19
+
+- Bottom navigation bar now sizes itself to the number of pages (`nav_width: auto`, the new default) so extra pages don't get cut off.
+
 ## 1.0.3 — 2026-11-19
 
 - New **Security** page: alarm panels with arm/disarm buttons, plus door, window, motion, smoke and CO sensors grouped by room. Shown only when the home has an alarm panel or such sensors.

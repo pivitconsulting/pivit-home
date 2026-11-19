@@ -68,7 +68,7 @@ All options are optional and go under `strategy:`.
 | `alarm_modes` | armed_home, armed_away, disarmed | Buttons on each alarm panel |
 | `pages` | rooms, climate, security, cameras, media | Built-in pages to include, in order |
 | `extra_views` | `[]` | Full Lovelace view configs added after the built-in pages (they get the nav bar automatically) |
-| `nav_width` | `760px` | Width of the bottom navigation bar |
+| `nav_width` | `auto` | Width of the bottom navigation bar; `auto` sizes it to the number of pages (about 160px each) |
 | `background` | dark radial gradient | CSS background for every page |
 
 ### Example
