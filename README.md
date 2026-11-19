@@ -59,6 +59,7 @@ All options are optional and go under `strategy:`.
 | `all_lights_off` | `true` | Show the *All Lights Off* button |
 | `all_lights_confirm` | `true` | Ask before turning every light off |
 | `quick_actions` | `[]` | Extra entities for the *Home* row – an entity ID, or `{entity, name}` |
+| `max_quick_locks` | `4` | Locks get their own Home-row button up to this many; above it, one *Lock All Doors* button (with confirmation) replaces them |
 | `alerts` | `[]` | Red banners that appear only when a condition is met: `{entity, above, below, state, name, icon}` |
 | `pages` | rooms, climate, cameras, media | Built-in pages to include, in order |
 | `extra_views` | `[]` | Full Lovelace view configs added after the built-in pages (they get the nav bar automatically) |

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.0";
+const VERSION = "1.0.1";
 
 const DEFAULTS = {
   title: "Home",
@@ -31,6 +31,7 @@ const DEFAULTS = {
   all_lights_off: true,
   all_lights_confirm: true,
   quick_actions: [], // extra entity_ids for the "Home" row
+  max_quick_locks: 4, // above this many locks, show one "Lock All Doors" button instead of each lock
   alerts: [], // [{ entity, above, below, state, name, icon }]
   pages: ["rooms", "climate", "cameras", "media"],
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
@@ -326,10 +327,25 @@ function roomsView(cfg, ctx, nav) {
       ...action(tap),
     });
   }
+  const locks = Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "lock" && ctx.roomOf[id]);
+  const manyLocks = locks.length > cfg.max_quick_locks;
+  if (manyLocks) {
+    const tap = { action: "perform-action", perform_action: "lock.lock", target: { entity_id: locks }, confirmation: { text: `Lock all ${locks.length} doors?` } };
+    quick.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: "Lock All Doors",
+      icon: "mdi:lock",
+      card_layout: "large",
+      grid_options: { columns: 3 * SPAN },
+      ...action(tap),
+    });
+  }
   const autoQuick = [
     ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "cover" && /garage/i.test(id + (ctx.hass.states[id].attributes.device_class || ""))),
     ...ctx.climates.slice(0, 1),
-    ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "lock" && ctx.roomOf[id]),
+    ...(manyLocks ? [] : locks),
   ];
   const quickNames = {};
   const quickIds = cfg.quick_actions.map((q) => {

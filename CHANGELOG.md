@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1 — 2026-11-19
+
+- Homes with many locks: above `max_quick_locks` (default 4) the Home row shows one *Lock All Doors* button with confirmation instead of a button per lock.
+
 ## 1.0.0 — 2026-11-19
 
 - First release of the `custom:pivit-home` dashboard strategy.
