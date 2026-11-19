@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.2";
+const VERSION = "1.0.3";
 
 const DEFAULTS = {
   title: "Home",
@@ -35,7 +35,9 @@ const DEFAULTS = {
   main_thermostat: null, // climate entity for the Home row (first thermostat when not set)
   max_quick_locks: 4, // above this many locks, show one "Lock All Doors" button instead of each lock
   alerts: [], // [{ entity, above, below, state, name, icon }]
-  pages: ["rooms", "climate", "cameras", "media"],
+  pages: ["rooms", "climate", "security", "cameras", "media"],
+  security_classes: ["smoke", "carbon_monoxide", "gas", "moisture", "safety", "door", "garage_door", "window", "opening", "motion", "occupancy"], // binary sensor types on the Security page
+  alarm_modes: ["armed_home", "armed_away", "disarmed"],
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
   nav_width: "760px",
   background:
@@ -45,6 +47,7 @@ const DEFAULTS = {
 const PAGE_META = {
   rooms: { name: "Rooms", icon: "mdi:home-outline" },
   climate: { name: "Climate", icon: "mdi:thermostat" },
+  security: { name: "Security", icon: "mdi:shield-home" },
   cameras: { name: "Cameras", icon: "mdi:cctv" },
   media: { name: "Media", icon: "mdi:speaker-multiple" },
 };
@@ -62,6 +65,7 @@ class PivitHomeStrategy extends HTMLElement {
 
     const pages = cfg.pages.filter((p) => {
       if (p === "climate") return ctx.climates.length > 0;
+      if (p === "security") return ctx.alarms.length > 0 || ctx.securityByRoom.length > 0;
       if (p === "cameras") return ctx.cameras.length > 0;
       if (p === "media") return ctx.mediaByRoom.length > 0;
       return p === "rooms";
@@ -83,6 +87,7 @@ class PivitHomeStrategy extends HTMLElement {
     for (const p of pages) {
       if (p === "rooms") views.push(roomsView(cfg, ctx, nav));
       if (p === "climate") views.push(climateView(cfg, ctx, nav));
+      if (p === "security") views.push(securityView(cfg, ctx, nav));
       if (p === "cameras") views.push(camerasView(cfg, ctx, nav));
       if (p === "media") views.push(mediaView(cfg, ctx, nav));
     }
@@ -166,12 +171,37 @@ function buildContext(cfg, hass) {
 
   const lights = rooms.flatMap((r) => r.entities.filter((id) => domainOf(id) === "light"));
 
+  // Security: alarm panels and door/window/motion/smoke sensors, grouped by area.
+  const alarms = all.filter((e) => domainOf(e.entity_id) === "alarm_control_panel").map((e) => e.entity_id);
+  const classes = cfg.security_classes || [];
+  const secByArea = {};
+  for (const e of all) {
+    if (domainOf(e.entity_id) !== "binary_sensor") continue;
+    const dc = hass.states[e.entity_id].attributes.device_class;
+    if (!classes.includes(dc)) continue;
+    const a = areaOf(e) || "_none";
+    if (cfg.hide_areas.includes(a)) continue;
+    (secByArea[a] = secByArea[a] || []).push(e.entity_id);
+  }
+  const classRank = (id) => {
+    const i = classes.indexOf(hass.states[id].attributes.device_class);
+    return i < 0 ? 99 : i;
+  };
+  const areaName = (id) => (id === "_none" ? "Other" : cfg.room_names[id] || (hass.areas[id] || {}).name || id);
+  const roomIndex = (id) => {
+    const i = rooms.findIndex((r) => r.id === id);
+    return i < 0 ? 999 : i;
+  };
+  const securityByRoom = Object.entries(secByArea)
+    .map(([id, sensors]) => ({ id, name: areaName(id), sensors: sensors.sort((a, b) => classRank(a) - classRank(b) || a.localeCompare(b)) }))
+    .sort((a, b) => roomIndex(a.id) - roomIndex(b.id) || a.name.localeCompare(b.name));
+
   const weather =
     cfg.weather_entity || Object.keys(hass.states).find((id) => domainOf(id) === "weather") || null;
 
   const basePath = "/" + (window.location.pathname.split("/")[1] || "lovelace");
 
-  return { hass, rooms, roomOf, cameras, climates, mediaByRoom, lights, weather, basePath };
+  return { hass, rooms, roomOf, cameras, climates, mediaByRoom, lights, weather, basePath, alarms, securityByRoom };
 }
 
 function sortEntities(ids) {
@@ -367,6 +397,19 @@ function roomsView(cfg, ctx, nav) {
     ...(cfg.main_thermostat ? [cfg.main_thermostat] : ctx.climates.slice(0, 1)),
     ...(manyLocks ? [] : locks),
   ];
+  if (cfg.pages.includes("security"))
+    for (const id of ctx.alarms)
+      quick.push({
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "state",
+        entity: id,
+        name: NAMES[id] || "Alarm",
+        show_state: true,
+        card_layout: "large",
+        grid_options: { columns: 3 * SPAN },
+        ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
+      });
   const quickNames = {};
   const quickIds = cfg.quick_actions.map((q) => {
     if (typeof q === "string") return q;
@@ -436,6 +479,35 @@ function climateView(cfg, ctx, nav) {
     sections.push({ type: "grid", cards: [{ type: "heading", heading: "Fans", heading_style: "title" }, ...fans.map((id) => entityCard(ctx.hass, id))] });
   sections.push({ type: "grid", column_span: 3, cards: [nav] });
   return { title: "Climate", path: "climate", type: "sections", max_columns: 3, background: cfg.background, sections };
+}
+
+function securityView(cfg, ctx, nav) {
+  const sections = [];
+  if (ctx.alarms.length)
+    sections.push({
+      type: "grid",
+      column_span: 3,
+      cards: [
+        { type: "heading", heading: "Alarm", heading_style: "title" },
+        ...ctx.alarms.map((id) => ({
+          type: "tile",
+          entity: id,
+          ...(NAMES[id] ? { name: NAMES[id] } : {}),
+          features: [{ type: "alarm-modes", modes: cfg.alarm_modes }],
+          grid_options: { columns: "full" },
+        })),
+      ],
+    });
+  for (const room of ctx.securityByRoom)
+    sections.push({
+      type: "grid",
+      cards: [
+        { type: "heading", heading: room.name, heading_style: "title" },
+        ...room.sensors.map((id) => ({ type: "tile", entity: id, ...(NAMES[id] ? { name: NAMES[id] } : {}), grid_options: { columns: 6 } })),
+      ],
+    });
+  sections.push({ type: "grid", column_span: 3, cards: [nav] });
+  return { title: "Security", path: "security", type: "sections", max_columns: 3, background: cfg.background, sections };
 }
 
 function camerasView(cfg, ctx, nav) {

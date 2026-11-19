@@ -8,6 +8,7 @@ PivIT Home is a **dashboard strategy**: instead of a fixed list of cards, it bui
 
 - **Rooms** – a large clock, greeting and weather; a *Home* row (All Lights Off, garage door, thermostat, locks, plus any quick actions and alerts you add); and a tile for every room. Tapping a room opens a pop-up with that room's media players, climate, covers, dimmable lights (slide to dim), switches and fans, plus an *All Off* button.
 - **Climate** – every thermostat, grouped by room, plus ceiling fans.
+- **Security** – alarm panels (arm home / arm away / disarm) and every door, window, motion, smoke and CO sensor, grouped by room.
 - **Cameras** – every camera in a two-column grid.
 - **Media** – every TV and speaker, grouped by room.
 - A fixed navigation bar along the bottom, and any extra pages you add.
@@ -63,7 +64,9 @@ All options are optional and go under `strategy:`.
 | `main_thermostat` | first thermostat | Climate entity shown in the *Home* row |
 | `max_quick_locks` | `4` | Locks get their own Home-row button up to this many; above it, one *Lock All Doors* button (with confirmation) replaces them |
 | `alerts` | `[]` | Red banners that appear only when a condition is met: `{entity, above, below, state, name, icon}` |
-| `pages` | rooms, climate, cameras, media | Built-in pages to include, in order |
+| `security_classes` | smoke, CO, gas, moisture, safety, door, garage door, window, opening, motion, occupancy | Binary sensor types shown on the Security page |
+| `alarm_modes` | armed_home, armed_away, disarmed | Buttons on each alarm panel |
+| `pages` | rooms, climate, security, cameras, media | Built-in pages to include, in order |
 | `extra_views` | `[]` | Full Lovelace view configs added after the built-in pages (they get the nav bar automatically) |
 | `nav_width` | `760px` | Width of the bottom navigation bar |
 | `background` | dark radial gradient | CSS background for every page |

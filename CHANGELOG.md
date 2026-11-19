@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.3 — 2026-11-19
+
+- New **Security** page: alarm panels with arm/disarm buttons, plus door, window, motion, smoke and CO sensors grouped by room. Shown only when the home has an alarm panel or such sensors.
+- Home row gets an Alarm button (shows state, opens the Security page).
+- New options: `security_classes`, `alarm_modes`; `pages` default now includes `security`.
+
 ## 1.0.2 — 2026-11-19
 
 - New `extra_entities` option: put specific entities (e.g. UniFi Access door unlock buttons and door sensors) into their rooms even when their type or integration is normally excluded. Buttons press after a confirmation; sensors show their state.
