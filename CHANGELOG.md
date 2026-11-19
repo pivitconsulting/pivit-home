@@ -1,8 +1,9 @@
 # Changelog
 
-## 1.0.5 — 2026-11-19
+## 1.0.5 / 1.0.6 — 2026-11-19
 
 - The Alarm button moved from the Home row up into the header row, next to the outside weather.
+- Outside weather and Alarm buttons are the same width as the Home-row buttons below them.
 
 ## 1.0.4 — 2026-11-19
 

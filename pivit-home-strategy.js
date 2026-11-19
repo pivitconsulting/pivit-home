@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.5";
+const VERSION = "1.0.6";
 
 const DEFAULTS = {
   title: "Home",
@@ -358,7 +358,7 @@ function roomsView(cfg, ctx, nav) {
       show_attribute: true,
       attribute: "temperature",
       card_layout: "large",
-      grid_options: { columns: 4 * SPAN },
+      grid_options: { columns: 3 * SPAN },
       ...action({ action: "more-info" }),
     });
 
@@ -373,7 +373,7 @@ function roomsView(cfg, ctx, nav) {
         name: NAMES[id] || "Alarm",
         show_state: true,
         card_layout: "large",
-        grid_options: { columns: 4 * SPAN },
+        grid_options: { columns: 3 * SPAN },
         ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
       });
 
