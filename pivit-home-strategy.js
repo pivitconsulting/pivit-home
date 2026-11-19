@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.6";
+const VERSION = "1.0.7";
 
 const DEFAULTS = {
   title: "Home",
@@ -339,7 +339,7 @@ function roomsView(cfg, ctx, nav) {
   const header = {
     type: "markdown",
     text_only: true,
-    grid_options: { columns: 8 * SPAN },
+    grid_options: { columns: "full" },
     content:
       "<h1 style='font-weight:300;font-size:2.6em;margin:0'>{{ now().strftime('%-I:%M') }} <span style='font-size:.45em;opacity:.6'>{{ now().strftime('%p') }}</span></h1>\n" +
       "<div style='opacity:.7;font-size:1.1em'>{% set h=now().hour %}Good {{ 'morning' if h<12 else 'afternoon' if h<18 else 'evening' }}" +
@@ -362,9 +362,11 @@ function roomsView(cfg, ctx, nav) {
       ...action({ action: "more-info" }),
     });
 
-  // Alarm panels sit in the header row, next to the outside weather.
-  if (cfg.pages.includes("security"))
-    for (const id of ctx.alarms)
+  // Alarm panels sit in the header row, lined up with the third Home-row column.
+  const headerAlarms = cfg.pages.includes("security") ? ctx.alarms : [];
+  if (headerAlarms.length && ctx.weather)
+    top.push({ type: "custom:bubble-card", card_type: "empty-column", grid_options: { columns: 3 * SPAN } });
+  for (const id of headerAlarms)
       top.push({
         type: "custom:bubble-card",
         card_type: "button",
