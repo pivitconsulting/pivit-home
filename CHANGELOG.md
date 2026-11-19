@@ -2,6 +2,7 @@
 
 ## 1.0.1 — 2026-11-19
 
+- New `main_thermostat` option picks the thermostat shown in the Home row.
 - Thermostats on the Climate page use `entity_names`.
 - Homes with many locks: above `max_quick_locks` (default 4) the Home row shows one *Lock All Doors* button with confirmation instead of a button per lock.
 

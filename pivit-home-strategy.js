@@ -31,6 +31,7 @@ const DEFAULTS = {
   all_lights_off: true,
   all_lights_confirm: true,
   quick_actions: [], // extra entity_ids for the "Home" row
+  main_thermostat: null, // climate entity for the Home row (first thermostat when not set)
   max_quick_locks: 4, // above this many locks, show one "Lock All Doors" button instead of each lock
   alerts: [], // [{ entity, above, below, state, name, icon }]
   pages: ["rooms", "climate", "cameras", "media"],
@@ -344,7 +345,7 @@ function roomsView(cfg, ctx, nav) {
   }
   const autoQuick = [
     ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "cover" && /garage/i.test(id + (ctx.hass.states[id].attributes.device_class || ""))),
-    ...ctx.climates.slice(0, 1),
+    ...(cfg.main_thermostat ? [cfg.main_thermostat] : ctx.climates.slice(0, 1)),
     ...(manyLocks ? [] : locks),
   ];
   const quickNames = {};
