@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.5 — 2026-11-19
+
+- The Alarm button moved from the Home row up into the header row, next to the outside weather.
+
 ## 1.0.4 — 2026-11-19
 
 - Bottom navigation bar now sizes itself to the number of pages (`nav_width: auto`, the new default) so extra pages don't get cut off.

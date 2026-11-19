@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.4";
+const VERSION = "1.0.5";
 
 const DEFAULTS = {
   title: "Home",
@@ -362,6 +362,21 @@ function roomsView(cfg, ctx, nav) {
       ...action({ action: "more-info" }),
     });
 
+  // Alarm panels sit in the header row, next to the outside weather.
+  if (cfg.pages.includes("security"))
+    for (const id of ctx.alarms)
+      top.push({
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "state",
+        entity: id,
+        name: NAMES[id] || "Alarm",
+        show_state: true,
+        card_layout: "large",
+        grid_options: { columns: 4 * SPAN },
+        ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
+      });
+
   const quick = [];
   if (cfg.all_lights_off && ctx.lights.length) {
     const tap = { action: "perform-action", perform_action: "light.turn_off", target: { entity_id: ctx.lights } };
@@ -397,19 +412,6 @@ function roomsView(cfg, ctx, nav) {
     ...(cfg.main_thermostat ? [cfg.main_thermostat] : ctx.climates.slice(0, 1)),
     ...(manyLocks ? [] : locks),
   ];
-  if (cfg.pages.includes("security"))
-    for (const id of ctx.alarms)
-      quick.push({
-        type: "custom:bubble-card",
-        card_type: "button",
-        button_type: "state",
-        entity: id,
-        name: NAMES[id] || "Alarm",
-        show_state: true,
-        card_layout: "large",
-        grid_options: { columns: 3 * SPAN },
-        ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
-      });
   const quickNames = {};
   const quickIds = cfg.quick_actions.map((q) => {
     if (typeof q === "string") return q;

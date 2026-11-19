@@ -6,7 +6,7 @@ PivIT Home is a **dashboard strategy**: instead of a fixed list of cards, it bui
 
 ## What it builds
 
-- **Rooms** – a large clock, greeting and weather; a *Home* row (All Lights Off, garage door, thermostat, locks, plus any quick actions and alerts you add); and a tile for every room. Tapping a room opens a pop-up with that room's media players, climate, covers, dimmable lights (slide to dim), switches and fans, plus an *All Off* button.
+- **Rooms** – a large clock, greeting, weather and alarm status; a *Home* row (All Lights Off, garage door, thermostat, locks, plus any quick actions and alerts you add); and a tile for every room. Tapping a room opens a pop-up with that room's media players, climate, covers, dimmable lights (slide to dim), switches and fans, plus an *All Off* button.
 - **Climate** – every thermostat, grouped by room, plus ceiling fans.
 - **Security** – alarm panels (arm home / arm away / disarm) and every door, window, motion, smoke and CO sensor, grouped by room.
 - **Cameras** – every camera in a two-column grid.
