@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.1";
+const VERSION = "1.0.2";
 
 const DEFAULTS = {
   title: "Home",
@@ -24,6 +24,7 @@ const DEFAULTS = {
   room_icons: {}, // area_id -> mdi icon
   room_images: {}, // area_id -> image URL for the room tile background
   hide_entities: [], // entity_ids never shown
+  extra_entities: [], // entity_ids added to their room even if their type or integration is normally left out (e.g. door unlock buttons)
   entity_names: {}, // entity_id -> display name on the dashboard
   exclude_platforms: ["unifi", "unifiprotect", "synology_dsm", "hassio", "nut", "backup", "ibeacon", "mobile_app"],
   room_domains: ["climate", "media_player", "cover", "light", "fan", "switch", "lock", "vacuum"],
@@ -132,9 +133,13 @@ function buildContext(cfg, hass) {
   };
 
   const roomDomains = new Set(cfg.room_domains);
+  const extras = (cfg.extra_entities || []).filter((id) => hass.states[id] && !hidden.has(id));
+  const extraArea = {};
+  for (const id of extras) if (entities[id]) extraArea[id] = areaOf(entities[id]);
   const rooms = order(areas.filter((a) => !cfg.hide_areas.includes(a.area_id)))
     .map((a) => {
       const ents = (byArea[a.area_id] || []).filter((id) => roomDomains.has(domainOf(id)));
+      for (const id of extras) if (extraArea[id] === a.area_id && !ents.includes(id)) ents.push(id);
       return {
         id: a.area_id,
         name: cfg.room_names[a.area_id] || a.name,
@@ -170,7 +175,7 @@ function buildContext(cfg, hass) {
 }
 
 function sortEntities(ids) {
-  const rank = { climate: 0, media_player: 1, cover: 2, lock: 3, vacuum: 4, light: 5, fan: 6, switch: 7 };
+  const rank = { climate: 0, media_player: 1, cover: 2, lock: 3, binary_sensor: 3, button: 3, vacuum: 4, light: 5, fan: 6, switch: 7 };
   return [...ids].sort((a, b) => (rank[domainOf(a)] ?? 9) - (rank[domainOf(b)] ?? 9) || a.localeCompare(b));
 }
 
@@ -219,6 +224,20 @@ function baseEntityCard(hass, id, opts = {}) {
   if (d === "cover") return { type: "custom:bubble-card", card_type: "cover", entity: id, ...full };
   if (d === "vacuum" || d === "lock")
     return { type: "tile", entity: id, ...full };
+  if (d === "button") {
+    const label = NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
+    return {
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      entity: id,
+      show_state: false,
+      grid_options: { columns: opts.half ?? 6 },
+      ...action({ action: "perform-action", perform_action: "button.press", target: { entity_id: id }, confirmation: { text: `${label}?` } }),
+    };
+  }
+  if (d === "binary_sensor" || d === "sensor")
+    return { type: "custom:bubble-card", card_type: "button", button_type: "state", entity: id, show_state: true, grid_options: { columns: opts.half ?? 6 }, ...action({ action: "more-info" }) };
   if (isDimmable(hass, id))
     return { type: "custom:bubble-card", card_type: "button", button_type: "slider", entity: id, show_state: true, grid_options: { columns: opts.half ?? 6 } };
   return { type: "custom:bubble-card", card_type: "button", button_type: "switch", entity: id, show_state: true, grid_options: { columns: opts.half ?? 6 } };

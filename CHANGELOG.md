@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.2 — 2026-11-19
+
+- New `extra_entities` option: put specific entities (e.g. UniFi Access door unlock buttons and door sensors) into their rooms even when their type or integration is normally excluded. Buttons press after a confirmation; sensors show their state.
+
 ## 1.0.1 — 2026-11-19
 
 - New `main_thermostat` option picks the thermostat shown in the Home row.
