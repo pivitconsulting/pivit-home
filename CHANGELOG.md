@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.8 — 2026-11-19
+
+- Room tiles show door/window status: an open icon for each open door or window, or a closed-lock icon when everything in the room is shut. Tapping it opens the Security page. New `room_openings` option.
+
 ## 1.0.5 / 1.0.6 — 2026-11-19
 
 - The Alarm button moved from the Home row up into the header row, next to the outside weather.

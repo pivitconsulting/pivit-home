@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.7";
+const VERSION = "1.0.8";
 
 const DEFAULTS = {
   title: "Home",
@@ -38,6 +38,7 @@ const DEFAULTS = {
   pages: ["rooms", "climate", "security", "cameras", "media"],
   security_classes: ["smoke", "carbon_monoxide", "gas", "moisture", "safety", "door", "garage_door", "window", "opening", "motion", "occupancy"], // binary sensor types on the Security page
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
+  room_openings: ["door", "garage_door", "window", "opening"], // sensor types summarised on each room tile ([] to turn off)
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
   nav_width: "auto", // "auto" sizes the bottom bar to the number of pages, or set e.g. "940px"
   background:
@@ -273,10 +274,25 @@ function baseEntityCard(hass, id, opts = {}) {
   return { type: "custom:bubble-card", card_type: "button", button_type: "switch", entity: id, show_state: true, grid_options: { columns: opts.half ?? 6 } };
 }
 
-function roomTile(room, hass, span) {
+function roomTile(room, hass, span, openings = [], securityPath = null) {
   const hash = "#" + slug(room.name);
   const nav = { action: "navigate", navigation_path: hash };
   const subs = [];
+  if (openings.length) {
+    // Door/window status: each open sensor shows its own (open) icon; when everything is shut, one closed icon.
+    const toSec = securityPath ? { action: "navigate", navigation_path: securityPath } : nav;
+    for (const id of openings)
+      subs.push({ entity: id, show_icon: true, show_state: false, show_background: false, tap_action: toSec, visibility: [{ condition: "state", entity: id, state: "on" }] });
+    subs.push({
+      entity: openings[0],
+      icon: "mdi:door-closed-lock",
+      show_icon: true,
+      show_state: false,
+      show_background: false,
+      tap_action: toSec,
+      visibility: openings.map((id) => ({ condition: "state", entity: id, state_not: "on" })),
+    });
+  }
   const firstLight = room.entities.find((id) => /^(light|switch|fan)\./.test(id));
   const media = room.entities.find((id) => domainOf(id) === "media_player");
   const climate = room.entities.find((id) => domainOf(id) === "climate");
@@ -459,7 +475,11 @@ function roomsView(cfg, ctx, nav) {
   sections.push({
     type: "grid",
     column_span: SPAN,
-    cards: [{ type: "heading", heading: "Rooms", heading_style: "title" }, ...ctx.rooms.map((r) => roomTile(r, ctx.hass, SPAN))],
+    cards: [{ type: "heading", heading: "Rooms", heading_style: "title" }, ...ctx.rooms.map((r) => {
+      const sec = ctx.securityByRoom.find((x) => x.id === r.id);
+      const openings = sec ? sec.sensors.filter((id) => (cfg.room_openings || []).includes(ctx.hass.states[id].attributes.device_class)) : [];
+      return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null);
+    })],
   });
   sections.push({ type: "grid", cards: ctx.rooms.map((r) => roomPopup(r, ctx.hass)) });
   sections.push({ type: "grid", column_span: SPAN, cards: [nav] });
