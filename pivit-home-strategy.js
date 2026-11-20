@@ -372,7 +372,7 @@ function lightsOnPopup(ctx) {
       const label = NAMES[id] || (ctx.hass.states[id] && ctx.hass.states[id].attributes.friendly_name) || id;
       const card = entityCard(ctx.hass, id, { half: "full" });
       card.use_accent_color = true; // standard accent blue instead of each light's own colour
-      card.name = label.toLowerCase().startsWith(room.name.toLowerCase()) ? label : `${room.name} · ${label}`;
+      card.name = label.toLowerCase().includes(room.name.toLowerCase()) ? label : `${room.name} · ${label}`;
       cards.push({ type: "conditional", conditions: [{ condition: "state", entity: id, state: "on" }], card, grid_options: { columns: "full" } });
     }
   return {
@@ -416,7 +416,7 @@ function unlockedPopup(ctx, locks) {
         card_type: "button",
         button_type: "switch",
         entity: id,
-        name: label.toLowerCase().startsWith(room.name.toLowerCase()) ? label : `${room.name} · ${label}`,
+        name: label.toLowerCase().includes(room.name.toLowerCase()) ? label : `${room.name} · ${label}`,
         show_state: true,
         use_accent_color: true,
         grid_options: { columns: "full" },
