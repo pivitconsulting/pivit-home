@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.14";
+const VERSION = "1.0.15";
 
 const DEFAULTS = {
   title: "Home",
@@ -388,6 +388,54 @@ function lightsOnPopup(ctx) {
   };
 }
 
+const UNLOCKED_STATES = ["unlocked", "open", "opening", "unlocking", "jammed"];
+
+// JS expression (evaluated by Bubble Card in styles) counting locks that are not locked.
+function unlockedExpr(locks) {
+  return "(" + JSON.stringify(locks) + ".filter((e) => hass.states[e] && " + JSON.stringify(UNLOCKED_STATES) + ".includes(hass.states[e].state)).length)";
+}
+
+// Pop-up listing only the unlocked doors, each with its room, to lock one at a time.
+function unlockedPopup(ctx, locks) {
+  const cards = [
+    {
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: "Lock all",
+      icon: "mdi:lock",
+      grid_options: { columns: "full" },
+      ...action({ action: "perform-action", perform_action: "lock.lock", target: { entity_id: locks } }),
+    },
+  ];
+  for (const room of ctx.rooms)
+    for (const id of room.entities.filter((e) => locks.includes(e))) {
+      const label = NAMES[id] || (ctx.hass.states[id] && ctx.hass.states[id].attributes.friendly_name) || id;
+      const card = {
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "switch",
+        entity: id,
+        name: label.toLowerCase().startsWith(room.name.toLowerCase()) ? label : `${room.name} · ${label}`,
+        show_state: true,
+        use_accent_color: true,
+        grid_options: { columns: "full" },
+      };
+      cards.push({ type: "conditional", conditions: [{ condition: "state", entity: id, state: UNLOCKED_STATES }], card, grid_options: { columns: "full" } });
+    }
+  return {
+    type: "custom:bubble-card",
+    card_type: "pop-up",
+    hash: "#doors-unlocked",
+    name: "Unlocked Doors",
+    icon: "mdi:lock-open-variant-outline",
+    bg_opacity: "85",
+    bg_blur: "14",
+    close_by_clicking_outside: true,
+    cards,
+  };
+}
+
 function roomsView(cfg, ctx, nav) {
   const SPAN = 4;
   const greeting = cfg.name ? `, ${cfg.name}` : "";
@@ -454,6 +502,7 @@ function roomsView(cfg, ctx, nav) {
       ...action(tap),
     });
   }
+  const extraPopups = [];
   const locks = Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "lock" && ctx.roomOf[id]);
   const manyLocks = locks.length > cfg.max_quick_locks;
   if (manyLocks) {
@@ -466,8 +515,14 @@ function roomsView(cfg, ctx, nav) {
       icon: "mdi:lock",
       card_layout: "large",
       grid_options: { columns: 3 * SPAN },
+      // Live "N unlocked ›" count, right-aligned; it is a sub-button that opens the #doors-unlocked pop-up.
+      sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: "#doors-unlocked" } }],
+      styles:
+        ".bubble-sub-button-1 { display: ${" + unlockedExpr(locks) + " ? 'flex' : 'none'} !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
+        " .bubble-sub-button-1::before { content: \"${" + unlockedExpr(locks) + "} unlocked\"; font-size: 13px; font-weight: 600; margin-right: 2px; }",
       ...action(tap),
     });
+    extraPopups.push(unlockedPopup(ctx, locks));
   }
   const autoQuick = [
     ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "cover" && /garage/i.test(id + (ctx.hass.states[id].attributes.device_class || ""))),
@@ -525,7 +580,7 @@ function roomsView(cfg, ctx, nav) {
       return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null);
     })],
   });
-  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...cornerAlarms] });
+  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...extraPopups, ...cornerAlarms] });
   sections.push({ type: "grid", column_span: SPAN, cards: [nav] });
 
   return { title: "Rooms", path: "rooms", type: "sections", max_columns: SPAN, dense_section_placement: true, top_margin: true, background: cfg.background, sections };

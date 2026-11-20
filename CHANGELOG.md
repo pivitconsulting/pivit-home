@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.15 — 2026-11-19
+
+- Lock All Doors gets the same treatment as All Lights Off: a live "N unlocked ›" count that opens an *Unlocked Doors* pop-up listing only unlocked doors (with their room), each lockable on its own, plus *Lock all*.
+
 ## 1.0.14 — 2026-11-19
 
 - Lights On pop-up uses the standard accent blue for lights that are on, instead of each light's own colour.
