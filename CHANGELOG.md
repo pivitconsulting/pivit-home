@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.19 — 2026-11-20
+
+- Room tile "on" highlights (open door/window, lights on, speaker playing, TV on) use the theme accent colour (yellow-orange) instead of blue. Temperature colours unchanged.
+
 ## 1.0.18 — 2026-11-20
 
 - Room tiles: an open door/window icon is shown in the accent blue, the light icon turns accent blue while any light in the room is on, the audio icon turns accent blue while a speaker in the room is playing, and a separate TV icon (rooms with a TV) turns accent blue while the TV is on. The room temperature shows blue while the AC is cooling and orange while heating.
