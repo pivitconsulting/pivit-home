@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.40";
+const VERSION = "1.0.41";
 
 const DEFAULTS = {
   title: "Home",
@@ -38,6 +38,7 @@ const DEFAULTS = {
   pages: ["rooms", "climate", "security", "cameras", "media"],
   security_classes: ["smoke", "carbon_monoxide", "gas", "moisture", "safety", "door", "garage_door", "window", "opening", "motion", "occupancy"], // binary sensor types on the Security page
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
+  hide_room_tiles: [], // area ids whose tile is hidden on the Rooms page (their devices still count everywhere else)
   climate_zones: [], // climate entities summarised by the Rooms-page "Climate" button (opens all their controls)
   floor_thermostats: {}, // { <floor_id>: climate.x } — rooms on that floor without their own thermostat show its temperature
   room_thermostats: {}, // { <area_id>: climate.x | "none" } — per-room override of the temperature shown ("none" hides it)
@@ -1023,8 +1024,7 @@ function roomsView(cfg, ctx, nav) {
   sections.push({
     type: "grid",
     column_span: SPAN,
-    cards: [{ type: "heading", heading: "Rooms", heading_style: "title" }, ...ctx.rooms.map((r) => {
-      const sec = ctx.securityByRoom.find((x) => x.id === r.id);
+    cards: [{ type: "heading", heading: "Rooms", heading_style: "title" }, ...ctx.rooms.filter((r) => !(cfg.hide_room_tiles || []).includes(r.id)).map((r) => {
       const openings = openingsOf(r);
       return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null, (cfg.room_thermostats || {})[r.id] ?? (cfg.floor_thermostats || {})[r.floor]);
     })],

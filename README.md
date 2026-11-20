@@ -66,6 +66,7 @@ All options are optional and go under `strategy:`.
 | `alerts` | `[]` | Red banners that appear only when a condition is met: `{entity, above, below, state, name, icon}` |
 | `security_classes` | smoke, CO, gas, moisture, safety, door, garage door, window, opening, motion, occupancy | Binary sensor types shown on the Security page |
 | `room_openings` | door, garage door, window, opening | Sensor types summarised on each room tile: an open icon per open door/window, or a closed-lock icon when all are shut (`[]` turns it off) |
+| `hide_room_tiles` | none | Area ids whose room tile is hidden on the Rooms page; unlike `hide_areas`, their devices still appear in counts, pop-ups and other pages |
 | `climate_zones` | none | Climate entities for the Rooms-page **Climate** button (live "N cooling / heating" status; opens all their controls) |
 | `floor_thermostats` | none | Map of floor id → thermostat, e.g. `{ upstairs: climate.upstairs }`. Room tiles on that floor with no thermostat of their own show its temperature |
 | `room_thermostats` | none | Per-room override, e.g. `{ attic: none, den: climate.den }`. A thermostat id shows that temperature; `none` shows no temperature on that tile |

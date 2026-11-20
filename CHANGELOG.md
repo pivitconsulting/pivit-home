@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.41 — 2026-11-20
+
+- New `hide_room_tiles` option: hide a room's tile on the Rooms page while its devices still count in Lights/Locks, Security, etc. (unlike `hide_areas`).
+
 ## 1.0.40 — 2026-11-20
 
 - Rooms page Home row:
