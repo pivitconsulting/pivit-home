@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.10 — 2026-11-19
+
+- The "N on" count on All Lights Off is now its own button: tapping it opens a *Lights On* pop-up listing only the lights that are on (with their room), each controllable on its own, plus *Turn all off*.
+
 ## 1.0.9 — 2026-11-19
 
 - All Lights Off shows a live count of lights that are on (e.g. "3 on"), right-aligned in the button; hidden when none are on.
