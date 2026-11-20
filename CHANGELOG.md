@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.42 — 2026-11-20
+
+- Room tiles: ceiling-fan icon for rooms with fans (next to the lights icon; yellow while any fan is on). Tapping it opens *<Room> Fans* with speed and direction controls. The lights icon no longer stands in for fans.
+
 ## 1.0.41 — 2026-11-20
 
 - New `hide_room_tiles` option: hide a room's tile on the Rooms page while its devices still count in Lights/Locks, Security, etc. (unlike `hide_areas`).

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.41";
+const VERSION = "1.0.42";
 
 const DEFAULTS = {
   title: "Home",
@@ -314,7 +314,8 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
       visibility: openings.map((id) => ({ condition: "state", entity: id, state_not: "on" })),
     });
   }
-  const firstLight = room.entities.find((id) => /^(light|switch|fan)\./.test(id));
+  const firstLight = room.entities.find((id) => /^(light|switch)\./.test(id));
+  const fans = roomFans(room);
   const { tvs, audio } = roomMediaSplit(room, hass);
   const media = audio[0];
   const tv = tvs[0];
@@ -324,6 +325,11 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
   if (firstLight) {
     subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-lights" } });
     lightIdx = subs.length;
+  }
+  let fanIdx = 0;
+  if (fans.length) {
+    subs.push({ entity: fans[0], icon: "mdi:ceiling-fan", show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-fans" } });
+    fanIdx = subs.length;
   }
   if (media) {
     subs.push({ entity: media, show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-audio" } });
@@ -364,6 +370,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
     const roomLights = room.entities.filter((id) => domainOf(id) === "light");
     styles += live(lightIdx, roomLights.length ? roomLights : [firstLight], ["on"]);
   }
+  if (fanIdx) styles += live(fanIdx, fans, ["on"]);
   if (mediaIdx) styles += live(mediaIdx, audio, ["playing"]);
   if (climateIdx) {
     // Temperature text: blue while cooling, orange while heating, normal otherwise.
@@ -380,7 +387,8 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
       " direction: rtl; align-content: end !important; justify-content: start !important; align-items: end !important; gap: 4px !important;" +
       " padding: 0 12px 10px 12px !important; margin: 0 !important; width: auto !important; height: auto !important; pointer-events: none; }" +
       " .bubble-sub-button { pointer-events: auto; direction: ltr; grid-row: 1 !important; grid-column: auto !important; } ";
-    if (lightIdx) styles += `.bubble-sub-button-${lightIdx} { order: -1; } `;
+    if (lightIdx) styles += `.bubble-sub-button-${lightIdx} { order: -2; } `;
+    if (fanIdx) styles += `.bubble-sub-button-${fanIdx} { order: -1; } `;
     if (climateIdx)
       styles += `.bubble-sub-button.bubble-sub-button-${climateIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important; top: 10px !important; right: 12px !important; bottom: auto !important; left: auto !important; } `;
   }
@@ -394,7 +402,25 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
 // The lights in one room: light.* entities, or (if the room has none) its switches/fans.
 function roomLights(room) {
   const lights = room.entities.filter((id) => domainOf(id) === "light");
-  return lights.length ? lights : room.entities.filter((id) => /^(switch|fan)\./.test(id));
+  return lights.length ? lights : room.entities.filter((id) => /^switch\./.test(id));
+}
+
+// The fans in one room.
+function roomFans(room) {
+  return room.entities.filter((id) => domainOf(id) === "fan");
+}
+
+// Pop-up with one room's fans: a tile per fan with speed and direction controls.
+function roomFansPopup(room, hass) {
+  const cards = roomFans(room).map((id) => ({
+    type: "tile",
+    entity: id,
+    name: shortLabel(room, hass, id),
+    icon: "mdi:ceiling-fan",
+    features: [{ type: "fan-speed" }, { type: "fan-direction" }],
+    grid_options: { columns: "full" },
+  }));
+  return popupShell("#" + slug(room.name) + "-fans", room.name + " Fans", "mdi:ceiling-fan", cards);
 }
 
 // Pop-up with only one room's lights, opened from the lights icon on that room's tile.
@@ -1030,6 +1056,7 @@ function roomsView(cfg, ctx, nav) {
     })],
   });
   sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...ctx.rooms.filter((r) => roomLights(r).length).map((r) => roomLightsPopup(r, ctx.hass)),
+    ...ctx.rooms.filter((r) => roomFans(r).length).map((r) => roomFansPopup(r, ctx.hass)),
     ...ctx.rooms.filter((r) => openingsOf(r).length).map((r) => roomDoorsPopup(r, ctx.hass, openingsOf(r))),
     ...[...new Set([
       ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "climate" && ctx.roomOf[id]),
