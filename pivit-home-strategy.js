@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.54";
+const VERSION = "1.0.55";
 
 const DEFAULTS = {
   title: "Home",
@@ -597,7 +597,7 @@ function audioCards(room, hass, id, multi = false, massive = false) {
 
 // Audio pop-up: the speaker cards for each speaker in the room.
 function roomAudioPopup(room, hass, audio) {
-  return popupShell("#" + slug(room.name) + "-audio", room.name + " Audio", "mdi:speaker", audio.flatMap((id) => audioCards(room, hass, id, audio.length > 1, true)));
+  return popupShell("#" + slug(room.name) + "-audio", room.name + " Audio", "mdi:speaker", audio.flatMap((id) => audioCards(room, hass, id, audio.length > 1)));
 }
 
 // Remote entity for a TV: one on the same device, else the only/first remote.* in the same room.

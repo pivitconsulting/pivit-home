@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.55 — 2026-11-20
+
+- Audio pop-ups back to the standard Mediocre card (the Massive card was too large). The `massive` parameter stays available in code but is unused.
+
 ## 1.0.54 — 2026-11-20
 
 - With `audio_card: mediocre`, the room Audio pop-ups (speaker icon) use the Mediocre **Massive** card, which always shows the volume slider; room pop-ups keep the standard card.
