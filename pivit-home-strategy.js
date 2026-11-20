@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.39";
+const VERSION = "1.0.40";
 
 const DEFAULTS = {
   title: "Home",
@@ -38,6 +38,7 @@ const DEFAULTS = {
   pages: ["rooms", "climate", "security", "cameras", "media"],
   security_classes: ["smoke", "carbon_monoxide", "gas", "moisture", "safety", "door", "garage_door", "window", "opening", "motion", "occupancy"], // binary sensor types on the Security page
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
+  climate_zones: [], // climate entities summarised by the Rooms-page "Climate" button (opens all their controls)
   floor_thermostats: {}, // { <floor_id>: climate.x } — rooms on that floor without their own thermostat show its temperature
   room_thermostats: {}, // { <area_id>: climate.x | "none" } — per-room override of the temperature shown ("none" hides it)
   room_openings: ["door", "garage_door", "window", "opening"], // sensor types summarised on each room tile ([] to turn off)
@@ -909,51 +910,59 @@ function roomsView(cfg, ctx, nav) {
     return sec ? sec.sensors.filter((id) => (cfg.room_openings || []).includes(ctx.hass.states[id].attributes.device_class)) : [];
   };
   const quick = [];
+  // Rooms-page summary buttons: tapping opens a pop-up; a live status reads on the right.
+  const summaryButton = (name, icon, hash, statusExpr) => ({
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    name,
+    icon,
+    card_layout: "large",
+    grid_options: { columns: 3 * SPAN },
+    sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: hash } }],
+    styles:
+      ".bubble-sub-button-1 { display: flex !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
+      " .bubble-sub-button-1::before { content: \"${" + statusExpr + "}\"; font-size: 13px; font-weight: 600; margin-right: 2px; }",
+    ...action({ action: "navigate", navigation_path: hash }),
+  });
   if (cfg.all_lights_off && ctx.lights.length) {
-    const bulk = liveBulk(ctx.lights, ["on"], "light.turn_off", { confirm: cfg.all_lights_confirm, verb: "Turn off", one: "light", many: "lights" });
-    quick.push({
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: "All Lights Off",
-      icon: "mdi:lightbulb-group-off-outline",
-      card_layout: "large",
-      grid_options: { columns: 3 * SPAN },
-      // Live "N on ›" count, right-aligned; it is a sub-button that opens the #lights-on pop-up.
-      sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: "#lights-on" } }],
-      styles:
-        ".bubble-sub-button-1 { display: ${" + lightsOnExpr(ctx.lights) + " ? 'flex' : 'none'} !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
-        " .bubble-sub-button-1::before { content: \"${" + lightsOnExpr(ctx.lights) + "} on\"; font-size: 13px; font-weight: 600; margin-right: 2px; }" +
-        bulk.hook,
-      ...bulk.actions,
-    });
+    const n = lightsOnExpr(ctx.lights);
+    quick.push(summaryButton(cfg.lights_button_name || "Lights", "mdi:lightbulb-group", "#lights-on", "(" + n + " ? " + n + " + ' on' : 'All off')"));
   }
   const extraPopups = [];
   const locks = Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "lock" && ctx.roomOf[id]);
   const manyLocks = locks.length > cfg.max_quick_locks;
   if (manyLocks) {
-    const bulk = liveBulk(locks, UNLOCKED_STATES, "lock.lock", { verb: "Lock", one: "door", many: "doors" });
-    quick.push({
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: "Lock All Doors",
-      icon: "mdi:lock",
-      card_layout: "large",
-      grid_options: { columns: 3 * SPAN },
-      // Live "N unlocked ›" count, right-aligned; it is a sub-button that opens the #doors-unlocked pop-up.
-      sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: "#doors-unlocked" } }],
-      styles:
-        ".bubble-sub-button-1 { display: ${" + unlockedExpr(locks) + " ? 'flex' : 'none'} !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
-        " .bubble-sub-button-1::before { content: \"${" + unlockedExpr(locks) + "} unlocked\"; font-size: 13px; font-weight: 600; margin-right: 2px; }" +
-        bulk.hook,
-      ...bulk.actions,
-    });
+    const n = unlockedExpr(locks);
+    quick.push(summaryButton(cfg.locks_button_name || "Locks", "mdi:lock", "#doors-unlocked", "(" + n + " ? " + n + " + ' unlocked' : 'All locked')"));
     extraPopups.push(unlockedPopup(ctx, locks));
+  }
+  // Climate: one button for all zones with a live "2 cooling" style status; opens a pop-up with every zone's controls.
+  const climateZones = (cfg.climate_zones && cfg.climate_zones.length ? cfg.climate_zones : []).filter((id) => ctx.hass.states[id]);
+  if (climateZones.length) {
+    const status =
+      "(() => { const a = " + JSON.stringify(climateZones) + ".map((e) => hass.states[e] && hass.states[e].attributes.hvac_action);" +
+      " const h = a.filter((x) => x === 'heating').length, c = a.filter((x) => x === 'cooling').length, p = [];" +
+      " if (h) p.push(h + ' heating'); if (c) p.push(c + ' cooling'); return p.length ? p.join(' · ') : 'Idle'; })()";
+    quick.push(summaryButton(cfg.climate_button_name || "Climate", "mdi:thermostat", "#climate-zones", status));
+    extraPopups.push(
+      popupShell(
+        "#climate-zones",
+        cfg.climate_button_name || "Climate",
+        "mdi:thermostat",
+        climateZones.map((id) => ({
+          type: "thermostat",
+          entity: id,
+          ...(NAMES[id] ? { name: NAMES[id] } : {}),
+          features: [{ type: "climate-hvac-modes" }],
+          grid_options: { columns: climateZones.length > 1 ? 6 : "full" },
+        }))
+      )
+    );
   }
   const autoQuick = [
     ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "cover" && /garage/i.test(id + (ctx.hass.states[id].attributes.device_class || ""))),
-    ...(cfg.main_thermostat ? [cfg.main_thermostat] : ctx.climates.slice(0, 1)),
+    ...(climateZones.length ? [] : cfg.main_thermostat ? [cfg.main_thermostat] : ctx.climates.slice(0, 1)),
     ...(manyLocks ? [] : locks),
   ];
   const quickNames = {};
@@ -962,7 +971,7 @@ function roomsView(cfg, ctx, nav) {
     if (q.name) quickNames[q.entity] = q.name;
     return q.entity;
   });
-  for (const id of [...new Set([...autoQuick, ...quickIds])]) {
+  for (const id of [...new Set([...autoQuick, ...quickIds])].filter((id) => !climateZones.includes(id))) {
     if (!ctx.hass.states[id]) continue;
     const d = domainOf(id);
     quick.push({

@@ -66,6 +66,7 @@ All options are optional and go under `strategy:`.
 | `alerts` | `[]` | Red banners that appear only when a condition is met: `{entity, above, below, state, name, icon}` |
 | `security_classes` | smoke, CO, gas, moisture, safety, door, garage door, window, opening, motion, occupancy | Binary sensor types shown on the Security page |
 | `room_openings` | door, garage door, window, opening | Sensor types summarised on each room tile: an open icon per open door/window, or a closed-lock icon when all are shut (`[]` turns it off) |
+| `climate_zones` | none | Climate entities for the Rooms-page **Climate** button (live "N cooling / heating" status; opens all their controls) |
 | `floor_thermostats` | none | Map of floor id → thermostat, e.g. `{ upstairs: climate.upstairs }`. Room tiles on that floor with no thermostat of their own show its temperature |
 | `room_thermostats` | none | Per-room override, e.g. `{ attic: none, den: climate.den }`. A thermostat id shows that temperature; `none` shows no temperature on that tile |
 | `intercoms` | none | Gate/door intercoms: `[{ name, camera, unlock, unlock_name, speaker, tts, messages: [...], message_entity, say_script, ring_entity, lock_rule, lock_rule_sensor }]`. Adds a pop-up (live video, unlock, spoken messages) on every page and a button on Rooms; `ring_entity` turning on opens it automatically; `lock_rule` (a select such as UniFi Access lock rule) adds Hold Open / Close Gate; `hold_until_entity` + `hold_until_script` add Hold open until <time>; `status_sensor` shows Open/Closed |

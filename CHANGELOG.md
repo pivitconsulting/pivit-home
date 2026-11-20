@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.40 — 2026-11-20
+
+- Rooms page Home row:
+  - *All Lights Off* → **Lights** with a live "N on" / "All off" status; tapping opens the Lights On pop-up.
+  - *Lock All Doors* → **Locks** with "N unlocked" / "All locked"; tapping opens the Unlocked Doors pop-up.
+  - New `climate_zones` option → **Climate** button with a live status ("2 cooling", "1 heating · 1 cooling", "Idle"); tapping opens a pop-up with every zone's thermostat controls. Those zones are no longer listed as separate quick buttons.
+
 ## 1.0.39 — 2026-11-20
 
 - Room pop-ups show speakers the same way as the Audio pop-up (album-art player, volume slider, Play TV Audio).
