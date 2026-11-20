@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.58 — 2026-11-20
+
+- Media page uses the Mediocre cards too when `audio_card: mediocre` (speakers with grouping/browse/Play TV Audio; TVs as plain Mediocre cards).
+
 ## 1.0.57 — 2026-11-20
 
 - Floating corner alarm button removed by default (`corner_alarm: true` brings it back).

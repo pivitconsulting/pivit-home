@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.57";
+const VERSION = "1.0.58";
 
 const DEFAULTS = {
   title: "Home",
@@ -1250,7 +1250,16 @@ function camerasView(cfg, ctx, nav) {
 function mediaView(cfg, ctx, nav) {
   const sections = ctx.mediaByRoom.map(({ room, players }) => ({
     type: "grid",
-    cards: [{ type: "heading", heading: room.name, heading_style: "title", icon: room.icon }, ...players.map((id) => entityCard(ctx.hass, id))],
+    cards: [
+      { type: "heading", heading: room.name, heading_style: "title", icon: room.icon },
+      ...players.flatMap((id) => {
+        if (AUDIO_CARD !== "mediocre") return [entityCard(ctx.hass, id)];
+        // Same Mediocre cards as the pop-ups: speakers get grouping/browse/Play TV Audio; TVs a plain Mediocre card.
+        const { tvs } = roomMediaSplit(room, ctx.hass);
+        if (!tvs.includes(id)) return audioCards(room, ctx.hass, id, players.length > 1);
+        return [{ type: "custom:mediocre-media-player-card", entity_id: id, use_art_colors: true, tap_opens_popup: false, options: { show_volume_step_buttons: true }, grid_options: { columns: "full" } }];
+      }),
+    ],
   }));
   sections.push({ type: "grid", column_span: 3, cards: [nav] });
   return { title: "Media", path: "media", type: "sections", max_columns: 3, background: cfg.background, sections };
