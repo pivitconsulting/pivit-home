@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.26 — 2026-11-20
+
+- Room tile icons each open their own pop-up:
+  - **Doors/windows** → *<Room> Doors & Windows* (that room's door/window sensors and locks).
+  - **Audio** → *<Room> Audio* (a media-player card per speaker).
+  - **TV** → *<Room> TV* remote: Power, the TV's media card, and — when a `remote.*` entity exists for the TV (same device, or same room) — a d-pad with OK, Back, Home and volume −/mute/+. Power uses the remote when there is one, otherwise the media player. Remote command names adapt to Android TV Remote, Apple TV, Roku, LG webOS and Samsung.
+
 ## 1.0.25 — 2026-11-20
 
 - Tapping the lights icon on a room tile opens a pop-up with just that room's lights (plus *All Off* when there are several) instead of the whole room pop-up.

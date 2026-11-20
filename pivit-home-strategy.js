@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.25";
+const VERSION = "1.0.26";
 
 const DEFAULTS = {
   title: "Home",
@@ -289,7 +289,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
   const subs = [];
   if (openings.length) {
     // Door/window status: each open sensor shows its own (open) icon; when everything is shut, one closed icon.
-    const toSec = securityPath ? { action: "navigate", navigation_path: securityPath } : nav;
+    const toSec = { action: "navigate", navigation_path: hash + "-doors" };
     for (const id of openings)
       subs.push({ entity: id, show_icon: true, show_state: false, show_background: false, tap_action: toSec, visibility: [{ condition: "state", entity: id, state: "on" }] });
     subs.push({
@@ -303,10 +303,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
     });
   }
   const firstLight = room.entities.find((id) => /^(light|switch|fan)\./.test(id));
-  const isTv = (id) => hass.states[id] && (hass.states[id].attributes.device_class === "tv" || /\btv\b|television/i.test(id + " " + (hass.states[id].attributes.friendly_name || "")));
-  const roomMedia = room.entities.filter((id) => domainOf(id) === "media_player");
-  const tvs = roomMedia.filter(isTv);
-  const audio = roomMedia.filter((id) => !isTv(id));
+  const { tvs, audio } = roomMediaSplit(room, hass);
   const media = audio[0];
   const tv = tvs[0];
   const climate =
@@ -317,12 +314,12 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
     lightIdx = subs.length;
   }
   if (media) {
-    subs.push({ entity: media, show_icon: true, show_state: false, show_background: false, tap_action: nav });
+    subs.push({ entity: media, show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-audio" } });
     mediaIdx = subs.length;
   }
   let tvIdx = 0;
   if (tv) {
-    subs.push({ entity: tv, icon: "mdi:television", show_icon: true, show_state: false, show_background: false, tap_action: nav });
+    subs.push({ entity: tv, icon: "mdi:television", show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-tv" } });
     tvIdx = subs.length;
   }
   let climateIdx = 0;
@@ -423,6 +420,102 @@ function roomLightsPopup(room, hass) {
     close_by_clicking_outside: true,
     cards,
   };
+}
+
+// A room's media players split into TVs and audio players.
+function roomMediaSplit(room, hass) {
+  const isTv = (id) => hass.states[id] && (hass.states[id].attributes.device_class === "tv" || /\btv\b|television/i.test(id + " " + (hass.states[id].attributes.friendly_name || "")));
+  const media = room.entities.filter((id) => domainOf(id) === "media_player");
+  return { tvs: media.filter(isTv), audio: media.filter((id) => !isTv(id)) };
+}
+
+function popupShell(hash, name, icon, cards) {
+  return { type: "custom:bubble-card", card_type: "pop-up", hash, name, icon, bg_opacity: "85", bg_blur: "14", close_by_clicking_outside: true, cards };
+}
+
+// Strip a redundant "<Room> " prefix from a card's label.
+function shortLabel(room, hass, id) {
+  const label = NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
+  return !NAMES[id] && label.toLowerCase().startsWith(room.name.toLowerCase() + " ") ? label.slice(room.name.length + 1) : label;
+}
+
+// Doors & windows pop-up: the room's door/window sensors plus its locks.
+function roomDoorsPopup(room, hass, openings) {
+  const cards = [];
+  for (const id of [...openings, ...room.entities.filter((e) => domainOf(e) === "lock")]) {
+    const card = entityCard(hass, id, { half: "full" });
+    if (card.type === "custom:bubble-card") card.name = shortLabel(room, hass, id);
+    cards.push(card);
+  }
+  return popupShell("#" + slug(room.name) + "-doors", room.name + " Doors & Windows", "mdi:door", cards);
+}
+
+// Audio pop-up: a media-player card for each speaker in the room.
+function roomAudioPopup(room, hass, audio) {
+  return popupShell(
+    "#" + slug(room.name) + "-audio",
+    room.name + " Audio",
+    "mdi:speaker",
+    audio.map((id) => ({ type: "custom:bubble-card", card_type: "media-player", entity: id, name: shortLabel(room, hass, id), grid_options: { columns: "full" } }))
+  );
+}
+
+// Remote entity for a TV: one on the same device, else the only/first remote.* in the same room.
+function tvRemote(hass, tv, roomId) {
+  const ents = hass.entities || {};
+  const areaOfEnt = (id) => { const e = ents[id]; if (!e) return null; return e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id || null; };
+  const remotes = Object.keys(hass.states).filter((id) => domainOf(id) === "remote");
+  const dev = ents[tv] && ents[tv].device_id;
+  return remotes.find((r) => dev && ents[r] && ents[r].device_id === dev) || remotes.find((r) => areaOfEnt(r) === roomId) || null;
+}
+
+// Remote command names per integration (Android/Google TV remote is the default).
+const REMOTE_COMMANDS = {
+  androidtv_remote: { up: "DPAD_UP", down: "DPAD_DOWN", left: "DPAD_LEFT", right: "DPAD_RIGHT", ok: "DPAD_CENTER", back: "BACK", home: "HOME" },
+  apple_tv: { up: "up", down: "down", left: "left", right: "right", ok: "select", back: "menu", home: "home" },
+  roku: { up: "up", down: "down", left: "left", right: "right", ok: "select", back: "back", home: "home" },
+  webostv: { up: "UP", down: "DOWN", left: "LEFT", right: "RIGHT", ok: "ENTER", back: "BACK", home: "HOME" },
+  samsungtv: { up: "KEY_UP", down: "KEY_DOWN", left: "KEY_LEFT", right: "KEY_RIGHT", ok: "KEY_ENTER", back: "KEY_RETURN", home: "KEY_HOME" },
+};
+
+// TV remote pop-up: power, the TV's media card, and (when a remote entity exists) a d-pad + back/home + volume.
+function roomTvPopup(room, hass, tvs) {
+  const cards = [];
+  for (const tv of tvs) {
+    const remote = tvRemote(hass, tv, room.id);
+    const label = shortLabel(room, hass, tv);
+    const btn = (icon, tap, cols = 4, name = "") => ({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name,
+      icon,
+      show_name: !!name,
+      grid_options: { columns: cols },
+      styles: name ? "" : ".bubble-button-card-container { justify-content: center; } .bubble-content-container { justify-content: center; } .bubble-name-container { display: none !important; }",
+      ...action(tap),
+    });
+    const power = remote
+      ? { action: "perform-action", perform_action: "remote.toggle", target: { entity_id: remote } }
+      : { action: "perform-action", perform_action: "media_player.toggle", target: { entity_id: tv } };
+    cards.push(btn("mdi:power", power, 12, tvs.length > 1 ? `${label} Power` : "Power"));
+    cards.push({ type: "custom:bubble-card", card_type: "media-player", entity: tv, name: label, grid_options: { columns: "full" } });
+    if (remote) {
+      const platform = (hass.entities[remote] || {}).platform;
+      const c = REMOTE_COMMANDS[platform] || REMOTE_COMMANDS.androidtv_remote;
+      const send = (cmd) => ({ action: "perform-action", perform_action: "remote.send_command", target: { entity_id: remote }, data: { command: cmd } });
+      const blank = { type: "custom:bubble-card", card_type: "empty-column", grid_options: { columns: 4 } };
+      cards.push(
+        btn("mdi:arrow-left-circle-outline", send(c.back)), btn("mdi:chevron-up", send(c.up)), btn("mdi:home-outline", send(c.home)),
+        btn("mdi:chevron-left", send(c.left)), btn("mdi:circle-outline", send(c.ok)), btn("mdi:chevron-right", send(c.right)),
+        blank, btn("mdi:chevron-down", send(c.down)), blank,
+        btn("mdi:volume-minus", { action: "perform-action", perform_action: "media_player.volume_down", target: { entity_id: tv } }),
+        btn("mdi:volume-mute", { action: "perform-action", perform_action: "media_player.volume_mute", target: { entity_id: tv }, data: { is_volume_muted: true } }),
+        btn("mdi:volume-plus", { action: "perform-action", perform_action: "media_player.volume_up", target: { entity_id: tv } })
+      );
+    }
+  }
+  return popupShell("#" + slug(room.name) + "-tv", room.name + " TV", "mdi:television", cards);
 }
 
 function roomPopup(room, hass) {
@@ -615,6 +708,10 @@ function roomsView(cfg, ctx, nav) {
     ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
   }));
 
+  const openingsOf = (r) => {
+    const sec = ctx.securityByRoom.find((x) => x.id === r.id);
+    return sec ? sec.sensors.filter((id) => (cfg.room_openings || []).includes(ctx.hass.states[id].attributes.device_class)) : [];
+  };
   const quick = [];
   if (cfg.all_lights_off && ctx.lights.length) {
     const bulk = liveBulk(ctx.lights, ["on"], "light.turn_off", { confirm: cfg.all_lights_confirm, verb: "Turn off", one: "light", many: "lights" });
@@ -710,11 +807,14 @@ function roomsView(cfg, ctx, nav) {
     column_span: SPAN,
     cards: [{ type: "heading", heading: "Rooms", heading_style: "title" }, ...ctx.rooms.map((r) => {
       const sec = ctx.securityByRoom.find((x) => x.id === r.id);
-      const openings = sec ? sec.sensors.filter((id) => (cfg.room_openings || []).includes(ctx.hass.states[id].attributes.device_class)) : [];
+      const openings = openingsOf(r);
       return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null, (cfg.room_thermostats || {})[r.id] ?? (cfg.floor_thermostats || {})[r.floor]);
     })],
   });
-  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...ctx.rooms.filter((r) => roomLights(r).length).map((r) => roomLightsPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...extraPopups, ...cornerAlarms] });
+  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...ctx.rooms.filter((r) => roomLights(r).length).map((r) => roomLightsPopup(r, ctx.hass)),
+    ...ctx.rooms.filter((r) => openingsOf(r).length).map((r) => roomDoorsPopup(r, ctx.hass, openingsOf(r))),
+    ...ctx.rooms.map((r) => [r, roomMediaSplit(r, ctx.hass)]).filter(([, m]) => m.audio.length).map(([r, m]) => roomAudioPopup(r, ctx.hass, m.audio)),
+    ...ctx.rooms.map((r) => [r, roomMediaSplit(r, ctx.hass)]).filter(([, m]) => m.tvs.length).map(([r, m]) => roomTvPopup(r, ctx.hass, m.tvs)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...extraPopups, ...cornerAlarms] });
   sections.push({ type: "grid", column_span: SPAN, cards: [nav] });
 
   return { title: "Rooms", path: "rooms", type: "sections", max_columns: SPAN, dense_section_placement: true, top_margin: true, background: cfg.background, sections };
