@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.47";
+const VERSION = "1.0.48";
 
 const DEFAULTS = {
   title: "Home",
@@ -242,6 +242,12 @@ function navCard(items, base, width) {
     card_type: "horizontal-buttons-stack",
     auto_order: false,
     width_desktop: width && width !== "auto" ? width : `${Math.max(540, items.length * 160)}px`,
+    // Phones: icons only, centred, so every page button fits on screen.
+    styles:
+      "@media (max-width: 600px) { .bubble-name { display: none !important; }" +
+      " .horizontal-buttons-stack-container { display: flex !important; justify-content: center !important; gap: 8px !important; }" +
+      " .bubble-button { position: relative !important; transform: none !important; left: auto !important; width: 52px !important; min-width: 52px !important;" +
+      " padding: 0 !important; justify-content: center !important; } .bubble-icon { margin: 0 !important; } }",
   };
   items.forEach((it, i) => {
     card[`${i + 1}_name`] = it.name;

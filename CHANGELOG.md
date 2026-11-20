@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.48 — 2026-11-20
+
+- Bottom page menu shows icons only on phone-width screens (≤ 600 px) so all pages fit.
+
 ## 1.0.47 — 2026-11-20
 
 - Room pop-ups: climate and locks sit above *All Off* (which only turns off lights, switches and fans); below it the order is lights, fans, shades, TV, audio, then anything else.
