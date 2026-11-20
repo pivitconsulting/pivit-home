@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.23 — 2026-11-20
+
+- Room tile layout: temperature in the top-right corner; the other icons in one row along the bottom, starting bottom-right and running left, with the lights icon furthest right.
+
 ## 1.0.22 — 2026-11-20
 
 - New `room_thermostats` option: per-room override of the tile temperature (a climate id, or `none` to hide it), e.g. to leave the attic out of the upstairs temperature.

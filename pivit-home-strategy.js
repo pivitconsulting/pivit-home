@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.22";
+const VERSION = "1.0.23";
 
 const DEFAULTS = {
   title: "Home",
@@ -362,6 +362,19 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
     styles += `.bubble-sub-button-${climateIdx}, .bubble-sub-button-${climateIdx} * { color: \${${a} === 'cooling' ? 'var(--state-climate-cool-color, #2b9af9)' : ${a} === 'heating' ? 'var(--state-climate-heat-color, #ff8100)' : 'var(--primary-text-color)'} !important; } `;
   }
   if (tvIdx) styles += live(tvIdx, tvs, ["on", "playing", "paused", "idle", "buffering"]);
+  // Layout: temperature pinned to the top-right corner; all other icons in one row along the bottom,
+  // starting at the bottom-right and running left, with the lights icon furthest right.
+  if (subs.length) {
+    styles +=
+      ".bubble-sub-button-container { position: absolute !important; inset: 0 !important; display: grid !important; grid-template-columns: none !important;" +
+      " grid-template-rows: none !important; grid-template-areas: none !important; grid-auto-flow: column !important; grid-auto-columns: max-content !important;" +
+      " direction: rtl; align-content: end !important; justify-content: start !important; align-items: end !important; gap: 4px !important;" +
+      " padding: 0 12px 10px 12px !important; margin: 0 !important; width: auto !important; height: auto !important; pointer-events: none; }" +
+      " .bubble-sub-button { pointer-events: auto; direction: ltr; grid-row: 1 !important; grid-column: auto !important; } ";
+    if (lightIdx) styles += `.bubble-sub-button-${lightIdx} { order: -1; } `;
+    if (climateIdx)
+      styles += `.bubble-sub-button-${climateIdx} { position: absolute !important; top: 10px !important; right: 12px !important; bottom: auto !important; left: auto !important; } `;
+  }
   if (room.image) {
     styles += `.bubble-button-card-container { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)), url('${room.image}') center / cover no-repeat !important; }`;
   }
