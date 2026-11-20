@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.49";
+const VERSION = "1.0.50";
 
 const DEFAULTS = {
   title: "Home",
@@ -368,6 +368,18 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
     subs.push({ entity: media, icon: "mdi:speaker", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-audio") });
     mediaIdx = subs.length;
   }
+  // Motion/occupancy: a yellow person icon under the room name while anything detects.
+  const MOTION = ["motion", "occupancy", "presence"];
+  const motionIds = statusSensors.filter((id) => MOTION.includes((hass.states[id] && hass.states[id].attributes.device_class) || ""));
+  const openIds = statusSensors.filter((id) => !motionIds.includes(id));
+  let motionIdx = 0;
+  if (motionIds.length) {
+    subs.push({
+      entity: motionIds[0], icon: "mdi:motion-sensor", show_icon: true, show_state: false, show_background: false, tap_action: nav,
+      visibility: [{ condition: "or", conditions: motionIds.map((id) => ({ condition: "state", entity: id, state: "on" })) }],
+    });
+    motionIdx = subs.length;
+  }
   if (climate) {
     subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: go(thermostatHash(climate)) });
     climateIdx = subs.length;
@@ -416,18 +428,23 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
       styles += `.bubble-sub-button.bubble-sub-button-${climateIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important; top: 10px !important; right: 12px !important; bottom: auto !important; left: auto !important; } `;
   }
   // Under the room name: whatever is open / detecting motion, in yellow; nothing when all is quiet.
-  if (statusSensors.length) {
+  if (motionIdx)
+    styles +=
+      `.bubble-sub-button.bubble-sub-button-${motionIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important;` +
+      " left: 54px !important; top: 60px !important; right: auto !important; bottom: auto !important; height: 20px !important; min-width: 20px !important; padding: 0 !important; }" +
+      ` ${iconSel(motionIdx)} { color: var(--accent-color) !important; --mdc-icon-size: 18px; } `;
+  if (openIds.length) {
     const list = JSON.stringify(
-      statusSensors.map((id) => {
-        const dc = (hass.states[id] && hass.states[id].attributes.device_class) || "";
-        const label = shortLabel(room, hass, id).replace(/^[-–·\s]+/, "").replace(/["\\]/g, "'");
-        return [id, ["motion", "occupancy", "presence"].includes(dc) ? label : label + " open"];
-      })
+      openIds.map((id) => [id, shortLabel(room, hass, id).replace(/^[-–·\s]+/, "").replace(/["\\]/g, "'") + " open"])
     );
     const t = "(" + list + ".filter((x) => hass.states[x[0]] && hass.states[x[0]].state === 'on').map((x) => x[1]).join(' · '))";
     styles +=
       ".bubble-name-container::after { content: \"${" + t + "}\"; display: ${" + t + " ? 'block' : 'none'}; color: var(--accent-color);" +
-      " font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; } ";
+      " font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;" +
+      (motionIds.length
+        ? " padding-left: ${" + JSON.stringify(motionIds) + ".some((e) => hass.states[e] && hass.states[e].state === 'on') ? '22px' : '0'};"
+        : "") +
+      " } ";
   }
   // Now playing: scrolls along the bottom, left of the icons.
   const players = [...audio, ...tvs];
@@ -626,15 +643,18 @@ function intercomHash(ic) {
   return "#" + slug(ic.name || "intercom");
 }
 // Gate open/closed indicator (a sub-button showing the status sensor's state with an open/closed icon).
-function intercomStatusSub(ic) {
-  return { entity: ic.status_sensor, show_state: true, show_icon: true, show_background: false, tap_action: { action: "more-info" } };
+// Gate open/closed indicator: two sub-buttons (closed gate / open gate icon) shown by state, with the state text.
+function intercomStatusSubs(ic, tap) {
+  const base = { entity: ic.status_sensor, show_state: true, show_icon: true, show_background: false, tap_action: tap || { action: "more-info" } };
+  return [
+    { ...base, icon: "mdi:gate", visibility: [{ condition: "state", entity: ic.status_sensor, state_not: "on" }] },
+    { ...base, icon: "mdi:gate-open", visibility: [{ condition: "state", entity: ic.status_sensor, state: "on" }] },
+  ];
 }
+// Yellow while open (the open sub-button is the second of the pair starting at `idx`).
 function intercomStatusStyles(ic, idx) {
-  const open = "hass.states['" + ic.status_sensor + "'] && hass.states['" + ic.status_sensor + "'].state === 'on'";
-  return (
-    `.bubble-sub-button-${idx} { color: \${${open} ? 'var(--accent-color)' : 'var(--primary-text-color)'} !important; }` +
-    ` .bubble-sub-button-${idx} ha-icon, .bubble-sub-button-${idx} ha-state-icon { color: \${${open} ? 'var(--accent-color)' : 'var(--primary-text-color)'} !important; }`
-  );
+  const o = idx + 1;
+  return `.bubble-sub-button-${o}, .bubble-sub-button-${o} ha-icon, .bubble-sub-button-${o} ha-state-icon { color: var(--accent-color) !important; }`;
 }
 function intercomPopup(ic) {
   const cards = [];
@@ -754,7 +774,7 @@ function intercomPopup(ic) {
   const popup = popupShell(intercomHash(ic), ic.name || "Intercom", ic.icon || "mdi:doorbell-video", cards);
   // Open/closed indicator in the pop-up header (yellow while open).
   if (ic.status_sensor) {
-    popup.sub_button = [intercomStatusSub(ic)];
+    popup.sub_button = intercomStatusSubs(ic);
     popup.styles = intercomStatusStyles(ic, 1);
   }
   if (ic.ring_entity) Object.assign(popup, { trigger_entity: ic.ring_entity, trigger_state: "on", trigger_close: true });
@@ -781,8 +801,15 @@ function roomPopup(room, hass) {
   const card = (id) => (audio.includes(id) ? audioCards(room, hass, id, audio.length > 1) : [entityCard(hass, id)]);
   for (const id of ordered) cards.push(...card(id));
   const popup = popupShell("#" + slug(room.name), room.name, room.icon, cards);
-  // All Off in the title bar: turns off only the lights/switches/fans that are on (never climate, locks, shades or media).
-  return switchable.length > 1 ? withHeaderAction(popup, "All Off", "mdi:power", switchable, ["on"], "homeassistant.turn_off", { confirm: false }) : popup;
+  // All Off in the title bar: lights/switches/fans that are on, TVs that are on, speakers that are playing (never climate, locks or shades).
+  // All Off also turns off TVs that are on and pauses speakers that are playing.
+  const extra = [
+    ...(tvs.length ? [{ ids: tvs, states: ["on", "playing", "paused", "idle", "buffering"], service: "media_player.turn_off" }] : []),
+    ...(audio.length ? [{ ids: audio, states: ["playing"], service: "media_player.media_pause" }] : []),
+  ];
+  return switchable.length + tvs.length + audio.length > 1
+    ? withHeaderAction(popup, "All Off", "mdi:power", switchable, ["on"], "homeassistant.turn_off", { confirm: false, extra })
+    : popup;
 }
 
 /* ------------------------------------------------------------------ */
@@ -807,6 +834,14 @@ function liveBulk(ids, states, service, opts = {}) {
       ? " if (!ev.composedPath().some(function (n) { return n.classList && n.classList.contains('bubble-sub-button-" + opts.sub + "'); })) return;"
       : " if (ev.composedPath().some(function (n) { return n.classList && n.classList.contains('bubble-sub-button'); })) return;") +
     " var h = card.__pvH; var ids = " + JSON.stringify(ids) + ".filter(function (e) { return h.states[e] && " + JSON.stringify(states) + ".includes(h.states[e].state); });" +
+    (opts.extra || [])
+      .map(
+        (g) =>
+          " var x = " + JSON.stringify(g.ids) + ".filter(function (e) { return h.states[e] && " + JSON.stringify(g.states) + ".includes(h.states[e].state); });" +
+          " if (x.length) card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+          " { action: 'perform-action', perform_action: " + JSON.stringify(g.service) + ", target: { entity_id: x } } } } }));"
+      )
+      .join("") +
     " if (!ids.length) return;" +
     " var t = { action: 'perform-action', perform_action: " + JSON.stringify(service) + ", target: { entity_id: ids } };" +
     (confirm
@@ -863,8 +898,11 @@ function locksPopup(hass, hash, title, entries) {
     entity: id,
     name: label,
     show_state: true,
-    use_accent_color: true,
-    styles: ICON_FILL,
+    // No fill: just the lock icon, red when unlocked and green when locked.
+    styles:
+      ".bubble-button-background { opacity: 0 !important; }" +
+      " .bubble-main-icon-container { background-color: var(--card-background-color, #1c1c1c) !important; }" +
+      " .bubble-icon { color: ${" + JSON.stringify(UNLOCKED_STATES) + ".includes(state) ? 'var(--red-color, #f44336)' : 'var(--green-color, #4caf50)'} !important; }",
     grid_options: { columns: "full" },
     ...action(tap),
   });
@@ -1048,7 +1086,7 @@ function roomsView(cfg, ctx, nav) {
       icon: ic.icon || "mdi:doorbell-video",
       card_layout: "large",
       grid_options: { columns: 3 * SPAN },
-      ...(ic.status_sensor ? { sub_button: [{ ...intercomStatusSub(ic), tap_action: { action: "navigate", navigation_path: intercomHash(ic) } }], styles: intercomStatusStyles(ic, 1) } : {}),
+      ...(ic.status_sensor ? { sub_button: intercomStatusSubs(ic, { action: "navigate", navigation_path: intercomHash(ic) }), styles: intercomStatusStyles(ic, 1) } : {}),
       ...action({ action: "navigate", navigation_path: intercomHash(ic) }),
     });
   for (const a of cfg.alerts) {

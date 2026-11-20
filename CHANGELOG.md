@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.50 — 2026-11-20
+
+- Room *All Off* also turns off TVs that are on and pauses speakers that are playing.
+- Lock cards: no fill; the lock icon is red when unlocked and green when locked.
+- Intercom status: closed-gate / open-gate icons with the Closed/Open text (yellow while open).
+- Room tiles: motion/occupancy shows as a yellow person (motion-sensor) icon under the room name instead of text; open doors/windows stay as text next to it.
+
 ## 1.0.49 — 2026-11-20
 
 - *All Off* / *Lock All* moved into the pop-up title bar (Lights On, room pop-ups, room lights pop-ups, Locks). They still act only on what is on/unlocked at the moment of the tap; Lights On and Locks still confirm.
