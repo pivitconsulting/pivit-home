@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.54 — 2026-11-20
+
+- With `audio_card: mediocre`, the room Audio pop-ups (speaker icon) use the Mediocre **Massive** card, which always shows the volume slider; room pop-ups keep the standard card.
+
 ## 1.0.53 — 2026-11-20
 
 - New `audio_card: mediocre` option: speakers in the Audio and room pop-ups use the [Mediocre Media Player Card](https://github.com/antontanderup/mediocre-hass-media-player-cards) (art colours, tap for the big player, grouping with every room speaker, media browser, volume steps, *Play TV Audio* as a custom button). Requires that card to be installed.

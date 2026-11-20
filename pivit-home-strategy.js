@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.53";
+const VERSION = "1.0.54";
 
 const DEFAULTS = {
   title: "Home",
@@ -546,16 +546,17 @@ function roomDoorsPopup(room, hass, openings) {
 }
 
 // Cards for one speaker: album-art media-control card, volume slider, and (if it has a TV input) Play TV Audio.
-function audioCards(room, hass, id, multi = false) {
+function audioCards(room, hass, id, multi = false, massive = false) {
   if (AUDIO_CARD === "mediocre") {
     // Mediocre Media Player Card (HACS: antontanderup/mediocre-hass-media-player-cards): album art, grouping, browse, volume.
     const tvSource = ((hass.states[id] && hass.states[id].attributes.source_list) || []).includes("TV");
     return [
       {
-        type: "custom:mediocre-media-player-card",
+        // Massive card (Audio pop-ups): big art and the volume slider always visible. Standard card elsewhere.
+        type: massive ? "custom:mediocre-massive-media-player-card" : "custom:mediocre-media-player-card",
         entity_id: id,
         use_art_colors: true,
-        tap_opens_popup: true,
+        ...(massive ? { mode: "card" } : { tap_opens_popup: true }),
         speaker_group: { entity_id: id, entities: SPEAKERS.filter((e) => e !== id) },
         media_browser: [{ entity_id: id, name: shortLabel(room, hass, id) }],
         options: { show_volume_step_buttons: true },
@@ -596,7 +597,7 @@ function audioCards(room, hass, id, multi = false) {
 
 // Audio pop-up: the speaker cards for each speaker in the room.
 function roomAudioPopup(room, hass, audio) {
-  return popupShell("#" + slug(room.name) + "-audio", room.name + " Audio", "mdi:speaker", audio.flatMap((id) => audioCards(room, hass, id, audio.length > 1)));
+  return popupShell("#" + slug(room.name) + "-audio", room.name + " Audio", "mdi:speaker", audio.flatMap((id) => audioCards(room, hass, id, audio.length > 1, true)));
 }
 
 // Remote entity for a TV: one on the same device, else the only/first remote.* in the same room.
