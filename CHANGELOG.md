@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.25 — 2026-11-20
+
+- Tapping the lights icon on a room tile opens a pop-up with just that room's lights (plus *All Off* when there are several) instead of the whole room pop-up.
+
 ## 1.0.24 — 2026-11-20
 
 - Fix: room tile temperature now actually sits in the top-right corner (it was being positioned inside the bottom icon row).

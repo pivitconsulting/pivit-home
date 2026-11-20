@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.24";
+const VERSION = "1.0.25";
 
 const DEFAULTS = {
   title: "Home",
@@ -313,7 +313,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
     floorClimate === "none" ? null : room.entities.find((id) => domainOf(id) === "climate") || (floorClimate && hass.states[floorClimate] ? floorClimate : null);
   let lightIdx = 0, mediaIdx = 0;
   if (firstLight) {
-    subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: nav });
+    subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-lights" } });
     lightIdx = subs.length;
   }
   if (media) {
@@ -380,6 +380,49 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
   }
   if (styles) card.styles = styles.trim();
   return card;
+}
+
+// The lights in one room: light.* entities, or (if the room has none) its switches/fans.
+function roomLights(room) {
+  const lights = room.entities.filter((id) => domainOf(id) === "light");
+  return lights.length ? lights : room.entities.filter((id) => /^(switch|fan)\./.test(id));
+}
+
+// Pop-up with only one room's lights, opened from the lights icon on that room's tile.
+function roomLightsPopup(room, hass) {
+  const ids = roomLights(room);
+  const cards = [];
+  if (ids.length > 1) {
+    const bulk = liveBulk(ids, ["on"], "homeassistant.turn_off", { confirm: false });
+    cards.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: "All Off",
+      icon: "mdi:lightbulb-group-off-outline",
+      grid_options: { columns: "full" },
+      styles: bulk.hook,
+      ...bulk.actions,
+    });
+  }
+  for (const id of ids) {
+    const card = entityCard(hass, id, { half: "full" });
+    const label = NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
+    if (card.type === "custom:bubble-card" && !NAMES[id] && label.toLowerCase().startsWith(room.name.toLowerCase() + " "))
+      card.name = label.slice(room.name.length + 1);
+    cards.push(card);
+  }
+  return {
+    type: "custom:bubble-card",
+    card_type: "pop-up",
+    hash: "#" + slug(room.name) + "-lights",
+    name: room.name + " Lights",
+    icon: "mdi:lightbulb-group",
+    bg_opacity: "85",
+    bg_blur: "14",
+    close_by_clicking_outside: true,
+    cards,
+  };
 }
 
 function roomPopup(room, hass) {
@@ -671,7 +714,7 @@ function roomsView(cfg, ctx, nav) {
       return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null, (cfg.room_thermostats || {})[r.id] ?? (cfg.floor_thermostats || {})[r.floor]);
     })],
   });
-  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...extraPopups, ...cornerAlarms] });
+  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...ctx.rooms.filter((r) => roomLights(r).length).map((r) => roomLightsPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...extraPopups, ...cornerAlarms] });
   sections.push({ type: "grid", column_span: SPAN, cards: [nav] });
 
   return { title: "Rooms", path: "rooms", type: "sections", max_columns: SPAN, dense_section_placement: true, top_margin: true, background: cfg.background, sections };
