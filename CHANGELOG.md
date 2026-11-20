@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.56 — 2026-11-20
+
+- Mediocre speaker card: tapping it no longer opens the big player (`tap_opens_popup: false`). Album-art colours stay on.
+
 ## 1.0.55 — 2026-11-20
 
 - Audio pop-ups back to the standard Mediocre card (the Massive card was too large). The `massive` parameter stays available in code but is unused.

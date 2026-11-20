@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.55";
+const VERSION = "1.0.56";
 
 const DEFAULTS = {
   title: "Home",
@@ -556,7 +556,7 @@ function audioCards(room, hass, id, multi = false, massive = false) {
         type: massive ? "custom:mediocre-massive-media-player-card" : "custom:mediocre-media-player-card",
         entity_id: id,
         use_art_colors: true,
-        ...(massive ? { mode: "card" } : { tap_opens_popup: true }),
+        ...(massive ? { mode: "card" } : { tap_opens_popup: false }), // tapping does not open the big (massive) player
         speaker_group: { entity_id: id, entities: SPEAKERS.filter((e) => e !== id) },
         media_browser: [{ entity_id: id, name: shortLabel(room, hass, id) }],
         options: { show_volume_step_buttons: true },
