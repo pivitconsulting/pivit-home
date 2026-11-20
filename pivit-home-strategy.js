@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.13";
+const VERSION = "1.0.14";
 
 const DEFAULTS = {
   title: "Home",
@@ -371,6 +371,7 @@ function lightsOnPopup(ctx) {
     for (const id of room.entities.filter((e) => domainOf(e) === "light")) {
       const label = NAMES[id] || (ctx.hass.states[id] && ctx.hass.states[id].attributes.friendly_name) || id;
       const card = entityCard(ctx.hass, id, { half: "full" });
+      card.use_accent_color = true; // standard accent blue instead of each light's own colour
       card.name = label.toLowerCase().startsWith(room.name.toLowerCase()) ? label : `${room.name} · ${label}`;
       cards.push({ type: "conditional", conditions: [{ condition: "state", entity: id, state: "on" }], card, grid_options: { columns: "full" } });
     }

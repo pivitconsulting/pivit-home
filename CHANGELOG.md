@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.14 — 2026-11-19
+
+- Lights On pop-up uses the standard accent blue for lights that are on, instead of each light's own colour.
+
 ## 1.0.13 — 2026-11-19
 
 - Alarm corner icon is centered in its circle.
