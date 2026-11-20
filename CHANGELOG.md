@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.20 — 2026-11-20
+
+- Lights that are on show in the standard light yellow in all pop-ups (Lights On and room pop-ups) instead of blue / each bulb's own colour.
+
 ## 1.0.19 — 2026-11-20
 
 - Room tile "on" highlights (open door/window, lights on, speaker playing, TV on) use the theme accent colour (yellow-orange) instead of blue. Temperature colours unchanged.

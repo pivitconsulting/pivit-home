@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.19";
+const VERSION = "1.0.20";
 
 const DEFAULTS = {
   title: "Home",
@@ -241,9 +241,15 @@ function action(tap) {
 
 let NAMES = {};
 
+// Lights that are on show in the standard light yellow (HA's --state-light-active-color), not each bulb's own colour.
+const LIGHT_ON_STYLES =
+  ".bubble-button-background { background-color: ${state === 'on' ? 'var(--state-light-active-color, #ffc107)' : ''} !important; }" +
+  " .bubble-icon { color: ${state === 'on' ? 'var(--state-light-active-color, #ffc107)' : ''} !important; }";
+
 function entityCard(hass, id, opts = {}) {
   const card = baseEntityCard(hass, id, opts);
   if (NAMES[id]) card.name = NAMES[id];
+  if (domainOf(id) === "light" && card.type === "custom:bubble-card") card.styles = ((card.styles || "") + " " + LIGHT_ON_STYLES).trim();
   return card;
 }
 
@@ -435,7 +441,6 @@ function lightsOnPopup(ctx) {
     for (const id of room.entities.filter((e) => domainOf(e) === "light")) {
       const label = NAMES[id] || (ctx.hass.states[id] && ctx.hass.states[id].attributes.friendly_name) || id;
       const card = entityCard(ctx.hass, id, { half: "full" });
-      card.use_accent_color = true; // standard accent blue instead of each light's own colour
       card.name = label.toLowerCase().includes(room.name.toLowerCase()) ? label : `${room.name} · ${label}`;
       cards.push({ type: "conditional", conditions: [{ condition: "state", entity: id, state: "on" }], card, grid_options: { columns: "full" } });
     }
