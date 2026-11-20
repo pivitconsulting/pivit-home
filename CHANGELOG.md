@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.24 — 2026-11-20
+
+- Fix: room tile temperature now actually sits in the top-right corner (it was being positioned inside the bottom icon row).
+
 ## 1.0.23 — 2026-11-20
 
 - Room tile layout: temperature in the top-right corner; the other icons in one row along the bottom, starting bottom-right and running left, with the lights icon furthest right.

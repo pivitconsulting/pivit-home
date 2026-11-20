@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.23";
+const VERSION = "1.0.24";
 
 const DEFAULTS = {
   title: "Home",
@@ -373,7 +373,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
       " .bubble-sub-button { pointer-events: auto; direction: ltr; grid-row: 1 !important; grid-column: auto !important; } ";
     if (lightIdx) styles += `.bubble-sub-button-${lightIdx} { order: -1; } `;
     if (climateIdx)
-      styles += `.bubble-sub-button-${climateIdx} { position: absolute !important; top: 10px !important; right: 12px !important; bottom: auto !important; left: auto !important; } `;
+      styles += `.bubble-sub-button.bubble-sub-button-${climateIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important; top: 10px !important; right: 12px !important; bottom: auto !important; left: auto !important; } `;
   }
   if (room.image) {
     styles += `.bubble-button-card-container { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)), url('${room.image}') center / cover no-repeat !important; }`;
