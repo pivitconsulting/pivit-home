@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.10";
+const VERSION = "1.0.11";
 
 const DEFAULTS = {
   title: "Home",
@@ -448,7 +448,7 @@ function roomsView(cfg, ctx, nav) {
       // Live "N on ›" count, right-aligned; it is a sub-button that opens the #lights-on pop-up.
       sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: "#lights-on" } }],
       styles:
-        ".bubble-sub-button-1 { display: ${" + lightsOnExpr(ctx.lights) + " ? 'flex' : 'none'} !important; width: auto !important; padding: 0 8px 0 12px; }" +
+        ".bubble-sub-button-1 { display: ${" + lightsOnExpr(ctx.lights) + " ? 'flex' : 'none'} !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
         " .bubble-sub-button-1::before { content: \"${" + lightsOnExpr(ctx.lights) + "} on\"; font-size: 13px; font-weight: 600; margin-right: 2px; }",
       ...action(tap),
     });
