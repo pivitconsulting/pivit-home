@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.29";
+const VERSION = "1.0.30";
 
 const DEFAULTS = {
   title: "Home",
@@ -558,7 +558,17 @@ function intercomHash(ic) {
 function intercomPopup(ic) {
   const cards = [];
   if (ic.camera)
-    cards.push({ type: "picture-entity", entity: ic.camera, camera_view: "live", show_name: false, show_state: false, tap_action: { action: "more-info" }, grid_options: { columns: "full" } });
+    cards.push({
+      type: "picture-entity",
+      entity: ic.camera,
+      camera_view: "live",
+      aspect_ratio: ic.aspect_ratio || "4:3", // intercom cameras are often portrait; crop so the buttons stay on screen
+      fit_mode: "cover",
+      show_name: false,
+      show_state: false,
+      tap_action: { action: "more-info" },
+      grid_options: { columns: "full" },
+    });
   if (ic.unlock)
     cards.push({
       type: "custom:bubble-card",
