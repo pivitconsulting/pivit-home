@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.48";
+const VERSION = "1.0.49";
 
 const DEFAULTS = {
   title: "Home",
@@ -477,19 +477,6 @@ function roomFansPopup(room, hass) {
 function roomLightsPopup(room, hass) {
   const ids = roomLights(room);
   const cards = [];
-  if (ids.length > 1) {
-    const bulk = liveBulk(ids, ["on"], "homeassistant.turn_off", { confirm: false });
-    cards.push({
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: "All Off",
-      icon: "mdi:lightbulb-group-off-outline",
-      grid_options: { columns: "full" },
-      styles: bulk.hook,
-      ...bulk.actions,
-    });
-  }
   for (const id of ids) {
     const card = entityCard(hass, id, { half: "full" });
     const label = NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
@@ -497,17 +484,8 @@ function roomLightsPopup(room, hass) {
       card.name = label.slice(room.name.length + 1);
     cards.push(card);
   }
-  return {
-    type: "custom:bubble-card",
-    card_type: "pop-up",
-    hash: "#" + slug(room.name) + "-lights",
-    name: room.name + " Lights",
-    icon: "mdi:lightbulb-group",
-    bg_opacity: "85",
-    bg_blur: "14",
-    close_by_clicking_outside: true,
-    cards,
-  };
+  const popup = popupShell("#" + slug(room.name) + "-lights", room.name + " Lights", "mdi:lightbulb-group", cards);
+  return ids.length > 1 ? withHeaderAction(popup, "All Off", "mdi:power", ids, ["on"], "homeassistant.turn_off", { confirm: false }) : popup;
 }
 
 // A room's media players split into TVs and audio players.
@@ -786,16 +764,6 @@ function intercomPopup(ic) {
 function roomPopup(room, hass) {
   const switchable = room.entities.filter((id) => /^(light|switch|fan)\./.test(id));
   const cards = [];
-  if (switchable.length > 1)
-    cards.push({
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: "All Off",
-      icon: "mdi:power",
-      grid_options: { columns: "full" },
-      ...action({ action: "perform-action", perform_action: "homeassistant.turn_off", target: { entity_id: switchable } }),
-    });
   const { audio, tvs } = roomMediaSplit(room, hass);
   // Order: climate and locks above All Off; then lights, fans, shades, TV, audio; then anything else.
   const group = (id) => {
@@ -810,22 +778,11 @@ function roomPopup(room, hass) {
     return 8;
   };
   const ordered = room.entities.map((id, i) => [id, i]).sort((a, b) => group(a[0]) - group(b[0]) || a[1] - b[1]).map(([id]) => id);
-  const allOff = cards.splice(0); // All Off (if any) goes after climate/locks
   const card = (id) => (audio.includes(id) ? audioCards(room, hass, id, audio.length > 1) : [entityCard(hass, id)]);
-  for (const id of ordered.filter((id) => group(id) < 2)) cards.push(...card(id));
-  cards.push(...allOff);
-  for (const id of ordered.filter((id) => group(id) >= 2)) cards.push(...card(id));
-  return {
-    type: "custom:bubble-card",
-    card_type: "pop-up",
-    hash: "#" + slug(room.name),
-    name: room.name,
-    icon: room.icon,
-    bg_opacity: "85",
-    bg_blur: "14",
-    close_by_clicking_outside: true,
-    cards,
-  };
+  for (const id of ordered) cards.push(...card(id));
+  const popup = popupShell("#" + slug(room.name), room.name, room.icon, cards);
+  // All Off in the title bar: turns off only the lights/switches/fans that are on (never climate, locks, shades or media).
+  return switchable.length > 1 ? withHeaderAction(popup, "All Off", "mdi:power", switchable, ["on"], "homeassistant.turn_off", { confirm: false }) : popup;
 }
 
 /* ------------------------------------------------------------------ */
@@ -845,8 +802,10 @@ function lightsOnExpr(lights) {
 function liveBulk(ids, states, service, opts = {}) {
   const confirm = opts.confirm !== false;
   const hook =
-    "${(card.__pvH = hass, card.__pv || (card.__pv = 1, card.addEventListener('click', function (ev) {" +
-    " if (ev.composedPath().some(function (n) { return n.classList && n.classList.contains('bubble-sub-button'); })) return;" +
+    "${(card.__pvH = hass, card.__pv" + (opts.sub || "") + " || (card.__pv" + (opts.sub || "") + " = 1, card.addEventListener('click', function (ev) {" +
+    (opts.sub
+      ? " if (!ev.composedPath().some(function (n) { return n.classList && n.classList.contains('bubble-sub-button-" + opts.sub + "'); })) return;"
+      : " if (ev.composedPath().some(function (n) { return n.classList && n.classList.contains('bubble-sub-button'); })) return;") +
     " var h = card.__pvH; var ids = " + JSON.stringify(ids) + ".filter(function (e) { return h.states[e] && " + JSON.stringify(states) + ".includes(h.states[e].state); });" +
     " if (!ids.length) return;" +
     " var t = { action: 'perform-action', perform_action: " + JSON.stringify(service) + ", target: { entity_id: ids } };" +
@@ -859,20 +818,18 @@ function liveBulk(ids, states, service, opts = {}) {
 }
 
 // Pop-up listing only the lights that are on, each with its room, to turn off one at a time.
+// Put a bulk action ("All Off", "Lock All") in a pop-up's title bar as a labelled sub-button.
+// It acts only on entities currently in `states` (see liveBulk); nothing happens if none are.
+function withHeaderAction(popup, label, icon, ids, states, service, opts = {}) {
+  const idx = (popup.sub_button || []).length + 1;
+  const bulk = liveBulk(ids, states, service, { ...opts, sub: idx });
+  popup.sub_button = [...(popup.sub_button || []), { name: label, icon, show_name: true, show_icon: true, show_background: true, tap_action: { action: "none" } }];
+  popup.styles = ((popup.styles || "") + " " + bulk.hook).trim();
+  return popup;
+}
+
 function lightsOnPopup(ctx) {
-  const lightsBulk = liveBulk(ctx.lights, ["on"], "light.turn_off", { verb: "Turn off", one: "light", many: "lights" });
-  const cards = [
-    {
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: "Turn all off",
-      icon: "mdi:lightbulb-group-off-outline",
-      grid_options: { columns: "full" },
-      styles: lightsBulk.hook,
-      ...lightsBulk.actions,
-    },
-  ];
+  const cards = [];
   for (const room of ctx.rooms)
     for (const id of room.entities.filter((e) => domainOf(e) === "light")) {
       const label = NAMES[id] || (ctx.hass.states[id] && ctx.hass.states[id].attributes.friendly_name) || id;
@@ -880,17 +837,10 @@ function lightsOnPopup(ctx) {
       card.name = label.toLowerCase().includes(room.name.toLowerCase()) ? label : `${room.name} · ${label}`;
       cards.push({ type: "conditional", conditions: [{ condition: "state", entity: id, state: "on" }], card, grid_options: { columns: "full" } });
     }
-  return {
-    type: "custom:bubble-card",
-    card_type: "pop-up",
-    hash: "#lights-on",
-    name: "Lights On",
-    icon: "mdi:lightbulb-on-outline",
-    bg_opacity: "85",
-    bg_blur: "14",
-    close_by_clicking_outside: true,
-    cards,
-  };
+  return withHeaderAction(
+    popupShell("#lights-on", "Lights On", "mdi:lightbulb-on-outline", cards),
+    "All Off", "mdi:power", ctx.lights, ["on"], "light.turn_off", { verb: "Turn off", one: "light", many: "lights" }
+  );
 }
 
 const UNLOCKED_STATES = ["unlocked", "open", "opening", "unlocking", "jammed"];
@@ -906,19 +856,6 @@ function unlockedExpr(locks) {
 function locksPopup(hass, hash, title, entries) {
   // entries: [{ id, label }]
   const cards = [];
-  if (entries.length > 1) {
-    const bulk = liveBulk(entries.map((e) => e.id), UNLOCKED_STATES, "lock.lock", { verb: "Lock", one: "door", many: "doors" });
-    cards.push({
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: "Lock All Unlocked",
-      icon: "mdi:lock",
-      grid_options: { columns: "full" },
-      styles: bulk.hook,
-      ...bulk.actions,
-    });
-  }
   const lockCard = (id, label, tap) => ({
     type: "custom:bubble-card",
     card_type: "button",
@@ -945,7 +882,10 @@ function locksPopup(hass, hash, title, entries) {
       card: lockCard(id, label, { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label}?` } }),
       grid_options: { columns: "full" },
     });
-  return popupShell(hash, title, "mdi:lock", cards);
+  const popup = popupShell(hash, title, "mdi:lock", cards);
+  return entries.length > 1
+    ? withHeaderAction(popup, "Lock All", "mdi:lock", entries.map((e) => e.id), UNLOCKED_STATES, "lock.lock", { verb: "Lock", one: "door", many: "doors" })
+    : popup;
 }
 
 // House-wide Locks pop-up (opened from the Rooms-page Locks button).

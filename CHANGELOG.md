@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.49 — 2026-11-20
+
+- *All Off* / *Lock All* moved into the pop-up title bar (Lights On, room pop-ups, room lights pop-ups, Locks). They still act only on what is on/unlocked at the moment of the tap; Lights On and Locks still confirm.
+
 ## 1.0.48 — 2026-11-20
 
 - Bottom page menu shows icons only on phone-width screens (≤ 600 px) so all pages fit.
