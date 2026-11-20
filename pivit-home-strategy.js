@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.50";
+const VERSION = "1.0.51";
 
 const DEFAULTS = {
   title: "Home",
@@ -433,18 +433,15 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
       `.bubble-sub-button.bubble-sub-button-${motionIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important;` +
       " left: 54px !important; top: 60px !important; right: auto !important; bottom: auto !important; height: 20px !important; min-width: 20px !important; padding: 0 !important; }" +
       ` ${iconSel(motionIdx)} { color: var(--accent-color) !important; --mdc-icon-size: 18px; } `;
-  if (openIds.length) {
-    const list = JSON.stringify(
-      openIds.map((id) => [id, shortLabel(room, hass, id).replace(/^[-–·\s]+/, "").replace(/["\\]/g, "'") + " open"])
-    );
+  // Status line under the name: open doors/windows as text; space is kept for the motion icon when it shows.
+  if (openIds.length || motionIds.length) {
+    const list = JSON.stringify(openIds.map((id) => [id, shortLabel(room, hass, id).replace(/^[-–·\s]+/, "").replace(/["\\]/g, "'") + " open"]));
     const t = "(" + list + ".filter((x) => hass.states[x[0]] && hass.states[x[0]].state === 'on').map((x) => x[1]).join(' · '))";
+    const m = "(" + JSON.stringify(motionIds) + ".some((e) => hass.states[e] && hass.states[e].state === 'on'))";
     styles +=
-      ".bubble-name-container::after { content: \"${" + t + "}\"; display: ${" + t + " ? 'block' : 'none'}; color: var(--accent-color);" +
-      " font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px;" +
-      (motionIds.length
-        ? " padding-left: ${" + JSON.stringify(motionIds) + ".some((e) => hass.states[e] && hass.states[e].state === 'on') ? '22px' : '0'};"
-        : "") +
-      " } ";
+      ".bubble-name-container::after { content: \"${" + t + " || '\\\\00a0'}\"; display: ${" + t + " || " + m + " ? 'block' : 'none'}; color: var(--accent-color);" +
+      " font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; min-height: 16px;" +
+      " padding-left: ${" + m + " ? '22px' : '0'}; } ";
   }
   // Now playing: scrolls along the bottom, left of the icons.
   const players = [...audio, ...tvs];

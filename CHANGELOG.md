@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.51 — 2026-11-20
+
+- Room tiles: the motion icon no longer overlaps the room name when no door/window is open.
+
 ## 1.0.50 — 2026-11-20
 
 - Room *All Off* also turns off TVs that are on and pauses speakers that are playing.
