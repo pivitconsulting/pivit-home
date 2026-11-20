@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.12 — 2026-11-19
+
+- Alarm is now an icon-only round button pinned to the top-right corner of the Rooms page (icon reflects armed/disarmed; tap opens Security) instead of a card in the header row.
+
 ## 1.0.11 — 2026-11-19
 
 - Lights-on count reads "5 on ›" (count before the arrow).

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.11";
+const VERSION = "1.0.12";
 
 const DEFAULTS = {
   title: "Home",
@@ -416,22 +416,22 @@ function roomsView(cfg, ctx, nav) {
       ...action({ action: "more-info" }),
     });
 
-  // Alarm panels sit in the header row, lined up with the third Home-row column.
-  const headerAlarms = cfg.pages.includes("security") ? ctx.alarms : [];
-  if (headerAlarms.length && ctx.weather)
-    top.push({ type: "custom:bubble-card", card_type: "empty-column", grid_options: { columns: 3 * SPAN } });
-  for (const id of headerAlarms)
-      top.push({
-        type: "custom:bubble-card",
-        card_type: "button",
-        button_type: "state",
-        entity: id,
-        name: NAMES[id] || "Alarm",
-        show_state: true,
-        card_layout: "large",
-        grid_options: { columns: 3 * SPAN },
-        ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
-      });
+  // Alarm panels: icon-only buttons pinned to the top-right corner of the Rooms page.
+  const cornerAlarms = (cfg.pages.includes("security") ? ctx.alarms : []).map((id, i) => ({
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "state",
+    entity: id,
+    name: NAMES[id] || "Alarm",
+    show_name: false,
+    show_state: false,
+    show_icon: true,
+    grid_options: { columns: 1, rows: 1 },
+    styles:
+      `.bubble-button-card-container { position: fixed !important; top: calc(var(--header-height, 56px) + 12px); right: ${20 + i * 64}px; width: 56px !important; height: 56px !important; border-radius: 50% !important; z-index: 5; }` +
+      " .bubble-content-container { justify-content: center; } .bubble-name-container { display: none !important; } .bubble-icon-container { margin: 0 !important; }",
+    ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
+  }));
 
   const quick = [];
   if (cfg.all_lights_off && ctx.lights.length) {
@@ -524,7 +524,7 @@ function roomsView(cfg, ctx, nav) {
       return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null);
     })],
   });
-  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : [])] });
+  sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...cornerAlarms] });
   sections.push({ type: "grid", column_span: SPAN, cards: [nav] });
 
   return { title: "Rooms", path: "rooms", type: "sections", max_columns: SPAN, dense_section_placement: true, top_margin: true, background: cfg.background, sections };
