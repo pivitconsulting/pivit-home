@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.13 — 2026-11-19
+
+- Alarm corner icon is centered in its circle.
+
 ## 1.0.12 — 2026-11-19
 
 - Alarm is now an icon-only round button pinned to the top-right corner of the Rooms page (icon reflects armed/disarmed; tap opens Security) instead of a card in the header row.

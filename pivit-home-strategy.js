@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.12";
+const VERSION = "1.0.13";
 
 const DEFAULTS = {
   title: "Home",
@@ -429,7 +429,7 @@ function roomsView(cfg, ctx, nav) {
     grid_options: { columns: 1, rows: 1 },
     styles:
       `.bubble-button-card-container { position: fixed !important; top: calc(var(--header-height, 56px) + 12px); right: ${20 + i * 64}px; width: 56px !important; height: 56px !important; border-radius: 50% !important; z-index: 5; }` +
-      " .bubble-content-container { justify-content: center; } .bubble-name-container { display: none !important; } .bubble-icon-container { margin: 0 !important; }",
+      " .bubble-content-container { justify-content: center; } .bubble-name-container { display: none !important; } .bubble-main-icon-container { position: absolute !important; left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); margin: 0 !important; }",
     ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
   }));
 
