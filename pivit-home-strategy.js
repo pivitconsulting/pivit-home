@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.38";
+const VERSION = "1.0.39";
 
 const DEFAULTS = {
   title: "Home",
@@ -460,13 +460,9 @@ function roomDoorsPopup(room, hass, openings) {
   return popupShell("#" + slug(room.name) + "-doors", room.name + " Doors & Windows", "mdi:door", cards);
 }
 
-// Audio pop-up: a media-player card for each speaker in the room.
-function roomAudioPopup(room, hass, audio) {
-  return popupShell(
-    "#" + slug(room.name) + "-audio",
-    room.name + " Audio",
-    "mdi:speaker",
-    audio.flatMap((id) => [
+// Cards for one speaker: album-art media-control card, volume slider, and (if it has a TV input) Play TV Audio.
+function audioCards(room, hass, id, multi = false) {
+  return [
       // HA media-control card: full album art with title/artist and transport controls.
       { type: "media-control", entity: id, grid_options: { columns: "full" } },
       // Volume slider underneath.
@@ -475,7 +471,7 @@ function roomAudioPopup(room, hass, audio) {
         card_type: "button",
         button_type: "slider",
         entity: id,
-        name: audio.length > 1 ? shortLabel(room, hass, id) + " Volume" : "Volume",
+        name: multi ? shortLabel(room, hass, id) + " Volume" : "Volume",
         icon: "mdi:volume-high",
         show_state: true,
         grid_options: { columns: "full" },
@@ -494,8 +490,12 @@ function roomAudioPopup(room, hass, audio) {
           " .bubble-icon { color: ${hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV' ? 'var(--accent-color)' : ''} !important; }",
         ...action({ action: "perform-action", perform_action: "media_player.select_source", target: { entity_id: id }, data: { source: src } }),
       })),
-    ])
-  );
+  ];
+}
+
+// Audio pop-up: the speaker cards for each speaker in the room.
+function roomAudioPopup(room, hass, audio) {
+  return popupShell("#" + slug(room.name) + "-audio", room.name + " Audio", "mdi:speaker", audio.flatMap((id) => audioCards(room, hass, id, audio.length > 1)));
 }
 
 // Remote entity for a TV: one on the same device, else the only/first remote.* in the same room.
@@ -723,7 +723,11 @@ function roomPopup(room, hass) {
       grid_options: { columns: "full" },
       ...action({ action: "perform-action", perform_action: "homeassistant.turn_off", target: { entity_id: switchable } }),
     });
-  for (const id of room.entities) cards.push(entityCard(hass, id));
+  const { audio } = roomMediaSplit(room, hass);
+  for (const id of room.entities) {
+    if (audio.includes(id)) cards.push(...audioCards(room, hass, id, audio.length > 1));
+    else cards.push(entityCard(hass, id));
+  }
   return {
     type: "custom:bubble-card",
     card_type: "pop-up",

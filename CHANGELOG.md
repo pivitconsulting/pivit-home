@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.39 — 2026-11-20
+
+- Room pop-ups show speakers the same way as the Audio pop-up (album-art player, volume slider, Play TV Audio).
+
 ## 1.0.38 — 2026-11-20
 
 - Room Audio pop-up: speakers with a "TV" input (e.g. Sonos soundbars) get a *Play TV Audio* button under the volume slider that switches the source to TV; it turns yellow while TV is the source.
