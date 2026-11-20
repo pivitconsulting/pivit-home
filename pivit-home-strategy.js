@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.20";
+const VERSION = "1.0.21";
 
 const DEFAULTS = {
   title: "Home",
@@ -38,6 +38,7 @@ const DEFAULTS = {
   pages: ["rooms", "climate", "security", "cameras", "media"],
   security_classes: ["smoke", "carbon_monoxide", "gas", "moisture", "safety", "door", "garage_door", "window", "opening", "motion", "occupancy"], // binary sensor types on the Security page
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
+  floor_thermostats: {}, // { <floor_id>: climate.x } — rooms on that floor without their own thermostat show its temperature
   room_openings: ["door", "garage_door", "window", "opening"], // sensor types summarised on each room tile ([] to turn off)
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
   nav_width: "auto", // "auto" sizes the bottom bar to the number of pages, or set e.g. "940px"
@@ -151,6 +152,7 @@ function buildContext(cfg, hass) {
         name: cfg.room_names[a.area_id] || a.name,
         icon: cfg.room_icons[a.area_id] || a.icon || "mdi:home",
         image: cfg.room_images[a.area_id] || a.picture || null,
+        floor: a.floor_id || null,
         entities: sortEntities(ents),
       };
     })
@@ -280,7 +282,7 @@ function baseEntityCard(hass, id, opts = {}) {
   return { type: "custom:bubble-card", card_type: "button", button_type: "switch", entity: id, show_state: true, grid_options: { columns: opts.half ?? 6 } };
 }
 
-function roomTile(room, hass, span, openings = [], securityPath = null) {
+function roomTile(room, hass, span, openings = [], securityPath = null, floorClimate = null) {
   const hash = "#" + slug(room.name);
   const nav = { action: "navigate", navigation_path: hash };
   const subs = [];
@@ -306,7 +308,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null) {
   const audio = roomMedia.filter((id) => !isTv(id));
   const media = audio[0];
   const tv = tvs[0];
-  const climate = room.entities.find((id) => domainOf(id) === "climate");
+  const climate = room.entities.find((id) => domainOf(id) === "climate") || (floorClimate && hass.states[floorClimate] ? floorClimate : null);
   let lightIdx = 0, mediaIdx = 0;
   if (firstLight) {
     subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: nav });
@@ -651,7 +653,7 @@ function roomsView(cfg, ctx, nav) {
     cards: [{ type: "heading", heading: "Rooms", heading_style: "title" }, ...ctx.rooms.map((r) => {
       const sec = ctx.securityByRoom.find((x) => x.id === r.id);
       const openings = sec ? sec.sensors.filter((id) => (cfg.room_openings || []).includes(ctx.hass.states[id].attributes.device_class)) : [];
-      return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null);
+      return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null, (cfg.floor_thermostats || {})[r.floor]);
     })],
   });
   sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...extraPopups, ...cornerAlarms] });

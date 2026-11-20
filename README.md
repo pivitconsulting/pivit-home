@@ -66,6 +66,7 @@ All options are optional and go under `strategy:`.
 | `alerts` | `[]` | Red banners that appear only when a condition is met: `{entity, above, below, state, name, icon}` |
 | `security_classes` | smoke, CO, gas, moisture, safety, door, garage door, window, opening, motion, occupancy | Binary sensor types shown on the Security page |
 | `room_openings` | door, garage door, window, opening | Sensor types summarised on each room tile: an open icon per open door/window, or a closed-lock icon when all are shut (`[]` turns it off) |
+| `floor_thermostats` | none | Map of floor id → thermostat, e.g. `{ upstairs: climate.upstairs }`. Room tiles on that floor with no thermostat of their own show its temperature |
 | `alarm_modes` | armed_home, armed_away, disarmed | Buttons on each alarm panel |
 | `pages` | rooms, climate, security, cameras, media | Built-in pages to include, in order |
 | `extra_views` | `[]` | Full Lovelace view configs added after the built-in pages (they get the nav bar automatically) |

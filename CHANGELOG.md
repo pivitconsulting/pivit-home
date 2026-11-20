@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.21 — 2026-11-20
+
+- New `floor_thermostats` option (`{ <floor_id>: climate.x }`): room tiles on that floor that have no thermostat of their own show that thermostat's temperature (with the cooling/heating colour).
+
 ## 1.0.20 — 2026-11-20
 
 - Lights that are on show in the standard light yellow in all pop-ups (Lights On and room pop-ups) instead of blue / each bulb's own colour.
