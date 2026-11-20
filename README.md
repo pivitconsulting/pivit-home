@@ -68,6 +68,7 @@ All options are optional and go under `strategy:`.
 | `room_openings` | door, garage door, window, opening | Sensor types summarised on each room tile: an open icon per open door/window, or a closed-lock icon when all are shut (`[]` turns it off) |
 | `room_status_classes` | door, garage door, window, opening, motion, occupancy, presence | Sensor types listed in yellow under the room name while open/detected |
 | `room_lock_platforms` | all | Lock integrations that drive the room-tile lock icon, e.g. `["schlage"]` |
+| `corner_alarm` | false | Pin a round alarm button to the top-right corner of the Rooms page |
 | `audio_card` | default | `mediocre` uses the Mediocre Media Player Card (install `antontanderup/mediocre-hass-media-player-cards` first) for speakers |
 | `hide_room_tiles` | none | Area ids whose room tile is hidden on the Rooms page; unlike `hide_areas`, their devices still appear in counts, pop-ups and other pages |
 | `climate_zones` | none | Climate entities (or `{ entity, name }`) for the Rooms-page **Climate** button (live "N cooling / heating" status; opens all their controls) |

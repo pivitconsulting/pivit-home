@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.57 — 2026-11-20
+
+- Floating corner alarm button removed by default (`corner_alarm: true` brings it back).
+- Room pop-ups: the door lock moves from the body into the title bar, before *All Off* — a green lock when all locked, red open lock when any is unlocked; tapping it opens the room's Locks pop-up.
+
 ## 1.0.56 — 2026-11-20
 
 - Mediocre speaker card: tapping it no longer opens the big player (`tap_opens_popup: false`). Album-art colours stay on.

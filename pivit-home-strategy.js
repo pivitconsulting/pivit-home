@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.56";
+const VERSION = "1.0.57";
 
 const DEFAULTS = {
   title: "Home",
@@ -40,6 +40,7 @@ const DEFAULTS = {
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
   room_status_classes: ["door", "garage_door", "window", "opening", "motion", "occupancy", "presence"], // shown under the room name while open/detected
   room_lock_platforms: null, // e.g. ["schlage"]: only these locks drive the room-tile lock icon (null = all locks)
+  corner_alarm: false, // true: round alarm button pinned to the top-right corner of the Rooms page
   audio_card: "default", // "mediocre" uses the Mediocre Media Player Card for speakers (install it from HACS/Marketplace first)
   hide_room_tiles: [], // area ids whose tile is hidden on the Rooms page (their devices still count everywhere else)
   climate_zones: [], // climate entities summarised by the Rooms-page "Climate" button (opens all their controls)
@@ -831,8 +832,23 @@ function roomPopup(room, hass) {
   };
   const ordered = room.entities.map((id, i) => [id, i]).sort((a, b) => group(a[0]) - group(b[0]) || a[1] - b[1]).map(([id]) => id);
   const card = (id) => (audio.includes(id) ? audioCards(room, hass, id, audio.length > 1) : [entityCard(hass, id)]);
-  for (const id of ordered) cards.push(...card(id));
+  const locks = room.entities.filter((id) => domainOf(id) === "lock");
+  for (const id of ordered.filter((id) => domainOf(id) !== "lock")) cards.push(...card(id));
   const popup = popupShell("#" + slug(room.name), room.name, room.icon, cards);
+  // Door lock status in the title bar, before All Off: green lock when all locked, red open lock when any is unlocked.
+  // Tapping it opens the room's Locks pop-up.
+  if (locks.length) {
+    const toLocks = { action: "navigate", navigation_path: "#" + slug(room.name) + "-locks" };
+    popup.sub_button = [
+      { entity: locks[0], icon: "mdi:lock", show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: toLocks,
+        visibility: locks.map((id) => ({ condition: "state", entity: id, state_not: UNLOCKED_STATES })) },
+      { entity: locks[0], icon: "mdi:lock-open-variant", show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: toLocks,
+        visibility: [{ condition: "or", conditions: locks.map((id) => ({ condition: "state", entity: id, state: UNLOCKED_STATES })) }] },
+    ];
+    popup.styles =
+      ".bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { color: var(--green-color, #4caf50) !important; }" +
+      " .bubble-sub-button-2 ha-icon, .bubble-sub-button-2 .bubble-sub-button-icon { color: var(--red-color, #f44336) !important; }";
+  }
   // All Off in the title bar: lights/switches/fans that are on, TVs that are on, speakers that are playing (never climate, locks or shades).
   // All Off also turns off TVs that are on and pauses speakers that are playing.
   const extra = [
@@ -999,7 +1015,7 @@ function roomsView(cfg, ctx, nav) {
     });
 
   // Alarm panels: icon-only buttons pinned to the top-right corner of the Rooms page.
-  const cornerAlarms = (cfg.pages.includes("security") ? ctx.alarms : []).map((id, i) => ({
+  const cornerAlarms = (cfg.corner_alarm && cfg.pages.includes("security") ? ctx.alarms : []).map((id, i) => ({
     type: "custom:bubble-card",
     card_type: "button",
     button_type: "state",
