@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.46";
+const VERSION = "1.0.47";
 
 const DEFAULTS = {
   title: "Home",
@@ -790,11 +790,25 @@ function roomPopup(room, hass) {
       grid_options: { columns: "full" },
       ...action({ action: "perform-action", perform_action: "homeassistant.turn_off", target: { entity_id: switchable } }),
     });
-  const { audio } = roomMediaSplit(room, hass);
-  for (const id of room.entities) {
-    if (audio.includes(id)) cards.push(...audioCards(room, hass, id, audio.length > 1));
-    else cards.push(entityCard(hass, id));
-  }
+  const { audio, tvs } = roomMediaSplit(room, hass);
+  // Order: climate and locks above All Off; then lights, fans, shades, TV, audio; then anything else.
+  const group = (id) => {
+    const d = domainOf(id);
+    if (d === "climate") return 0;
+    if (d === "lock") return 1;
+    if (d === "light" || d === "switch") return 3;
+    if (d === "fan") return 4;
+    if (d === "cover") return 5;
+    if (tvs.includes(id)) return 6;
+    if (audio.includes(id)) return 7;
+    return 8;
+  };
+  const ordered = room.entities.map((id, i) => [id, i]).sort((a, b) => group(a[0]) - group(b[0]) || a[1] - b[1]).map(([id]) => id);
+  const allOff = cards.splice(0); // All Off (if any) goes after climate/locks
+  const card = (id) => (audio.includes(id) ? audioCards(room, hass, id, audio.length > 1) : [entityCard(hass, id)]);
+  for (const id of ordered.filter((id) => group(id) < 2)) cards.push(...card(id));
+  cards.push(...allOff);
+  for (const id of ordered.filter((id) => group(id) >= 2)) cards.push(...card(id));
   return {
     type: "custom:bubble-card",
     card_type: "pop-up",

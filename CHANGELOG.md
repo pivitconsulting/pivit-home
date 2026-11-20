@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.47 — 2026-11-20
+
+- Room pop-ups: climate and locks sit above *All Off* (which only turns off lights, switches and fans); below it the order is lights, fans, shades, TV, audio, then anything else.
+
 ## 1.0.46 — 2026-11-20
 
 - Button fills: instead of colouring the whole button, only the round icon is filled, in the same colours as before (lights yellow, unlocked red / locked blue, Held Open and Play TV Audio yellow, other switches their usual state colour).
