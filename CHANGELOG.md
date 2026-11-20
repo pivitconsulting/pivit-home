@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.31 — 2026-11-20
+
+- Intercom pop-up: the unlock button now reads *Open <name>*; new `lock_rule` option adds *Hold Open* (e.g. UniFi Access `keep_unlock`, with confirmation; highlighted while held) and *Back to Normal* (`reset`).
+
 ## 1.0.30 — 2026-11-20
 
 - Intercom pop-up video is cropped to 4:3 (override with `aspect_ratio`) so portrait intercom cameras don't push the buttons off screen.

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.30";
+const VERSION = "1.0.31";
 
 const DEFAULTS = {
   title: "Home",
@@ -43,7 +43,8 @@ const DEFAULTS = {
   room_openings: ["door", "garage_door", "window", "opening"], // sensor types summarised on each room tile ([] to turn off)
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
   // Intercoms / gate stations. Each gets a pop-up (#<slug of name>) on every page: live video, unlock, spoken messages.
-  // { name, camera, unlock, speaker, tts, messages: [..], message_entity: input_text.x, say_script: script.x, ring_entity: input_boolean.x }
+  // { name, camera, unlock, unlock_name, speaker, tts, messages: [..], message_entity: input_text.x, say_script: script.x, ring_entity: input_boolean.x,
+  //   lock_rule: select.x (hold open), lock_rule_sensor, hold_option: "keep_unlock", normal_option: "reset" }
   // ring_entity: when it turns "on" the pop-up opens by itself (and closes when it turns off).
   intercoms: [],
   nav_width: "auto", // "auto" sizes the bottom bar to the number of pages, or set e.g. "940px"
@@ -574,16 +575,50 @@ function intercomPopup(ic) {
       type: "custom:bubble-card",
       card_type: "button",
       button_type: "name",
-      name: ic.unlock_name || "Unlock " + (ic.name || "Gate"),
-      icon: "mdi:lock-open-variant",
+      name: ic.unlock_name || "Open " + (ic.name || "Gate"),
+      icon: "mdi:gate-open",
       grid_options: { columns: "full" },
       ...action({
         action: "perform-action",
         perform_action: domainOf(ic.unlock) === "lock" ? "lock.unlock" : "button.press",
         target: { entity_id: ic.unlock },
-        confirmation: { text: `Unlock ${ic.name || "the gate"}?` },
+        confirmation: { text: `Open ${ic.name || "the gate"}?` },
       }),
     });
+  // Hold open / back to normal via a lock-rule select (e.g. UniFi Access: keep_unlock / reset).
+  if (ic.lock_rule) {
+    const rule = (option, confirmText) => ({
+      action: "perform-action",
+      perform_action: "select.select_option",
+      target: { entity_id: ic.lock_rule },
+      data: { option },
+      ...(confirmText ? { confirmation: { text: confirmText } } : {}),
+    });
+    const status = ic.lock_rule_sensor || ic.lock_rule;
+    const held = "hass.states['" + status + "'] && hass.states['" + status + "'].state === '" + (ic.hold_option || "keep_unlock") + "'";
+    cards.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: "Hold Open",
+      icon: "mdi:gate-open",
+      grid_options: { columns: 6 },
+      // Yellow while the gate is being held open.
+      styles:
+        ".bubble-button-background { background-color: ${" + held + " ? 'var(--accent-color)' : ''} !important; opacity: ${" + held + " ? '0.5' : ''} !important; }" +
+        " .bubble-icon { color: ${" + held + " ? 'var(--accent-color)' : ''} !important; }",
+      ...action(rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you set it back to normal?`)),
+    });
+    cards.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: "Back to Normal",
+      icon: "mdi:gate",
+      grid_options: { columns: 6 },
+      ...action(rule(ic.normal_option || "reset")),
+    });
+  }
   if (ic.speaker && ic.tts) {
     const say = (message) => ({
       action: "perform-action",
