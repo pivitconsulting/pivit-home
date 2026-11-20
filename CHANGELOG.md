@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.33 — 2026-11-20
+
+- Intercom pop-up: *Hold open until* a chosen time (`hold_until_entity` time picker + `hold_until_script`, with confirmation), and an *Open until* line (`hold_end_sensor`) while a timed hold is active. *Hold Open* is highlighted for both indefinite and timed holds.
+
 ## 1.0.32 — 2026-11-20
 
 - Intercom pop-up: *Back to Normal* renamed *Close Gate* (override with `normal_name`).

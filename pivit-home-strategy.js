@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.32";
+const VERSION = "1.0.33";
 
 const DEFAULTS = {
   title: "Home",
@@ -44,7 +44,8 @@ const DEFAULTS = {
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
   // Intercoms / gate stations. Each gets a pop-up (#<slug of name>) on every page: live video, unlock, spoken messages.
   // { name, camera, unlock, unlock_name, speaker, tts, messages: [..], message_entity: input_text.x, say_script: script.x, ring_entity: input_boolean.x,
-  //   lock_rule: select.x (hold open), lock_rule_sensor, hold_option: "keep_unlock", normal_option: "reset" }
+  //   lock_rule: select.x (hold open), lock_rule_sensor, hold_option: "keep_unlock", normal_option: "reset", normal_name,
+  //   hold_until_entity: input_datetime.x (time), hold_until_script: script.x, hold_end_sensor: sensor.x (timestamp) }
   // ring_entity: when it turns "on" the pop-up opens by itself (and closes when it turns off).
   intercoms: [],
   nav_width: "auto", // "auto" sizes the bottom bar to the number of pages, or set e.g. "940px"
@@ -595,7 +596,8 @@ function intercomPopup(ic) {
       ...(confirmText ? { confirmation: { text: confirmText } } : {}),
     });
     const status = ic.lock_rule_sensor || ic.lock_rule;
-    const held = "hass.states['" + status + "'] && hass.states['" + status + "'].state === '" + (ic.hold_option || "keep_unlock") + "'";
+    const heldStates = [ic.hold_option || "keep_unlock", "custom"];
+    const held = "hass.states['" + status + "'] && " + JSON.stringify(heldStates) + ".includes(hass.states['" + status + "'].state)";
     cards.push({
       type: "custom:bubble-card",
       card_type: "button",
@@ -618,6 +620,32 @@ function intercomPopup(ic) {
       grid_options: { columns: 6 },
       ...action(rule(ic.normal_option || "reset")),
     });
+    // Hold open until a chosen time (time picker + button that runs a script).
+    if (ic.hold_until_entity && ic.hold_until_script) {
+      cards.push({ type: "entities", entities: [{ entity: ic.hold_until_entity, name: "Hold open until" }], grid_options: { columns: 8 } });
+      cards.push({
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "name",
+        name: "Hold Until",
+        icon: "mdi:clock-end",
+        grid_options: { columns: 4 },
+        ...action({
+          action: "perform-action",
+          perform_action: "script.turn_on",
+          target: { entity_id: ic.hold_until_script },
+          confirmation: { text: `Hold ${ic.name || "the gate"} open until the chosen time?` },
+        }),
+      });
+    }
+    // While held open on a timer, show when it closes.
+    if (ic.hold_end_sensor && ic.lock_rule_sensor)
+      cards.push({
+        type: "conditional",
+        conditions: [{ condition: "state", entity: ic.lock_rule_sensor, state: "custom" }],
+        card: { type: "tile", entity: ic.hold_end_sensor, name: "Open until", icon: "mdi:timer-sand", vertical: false },
+        grid_options: { columns: "full" },
+      });
   }
   if (ic.speaker && ic.tts) {
     const say = (message) => ({
