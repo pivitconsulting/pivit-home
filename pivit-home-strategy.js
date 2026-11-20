@@ -315,8 +315,11 @@ function roomTile(room, hass, span, openings = [], securityPath = null) {
     subs.push({ entity: tv, icon: "mdi:television", show_icon: true, show_state: false, show_background: false, tap_action: nav });
     tvIdx = subs.length;
   }
-  if (climate)
+  let climateIdx = 0;
+  if (climate) {
     subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: nav });
+    climateIdx = subs.length;
+  }
 
   const card = {
     type: "custom:bubble-card",
@@ -343,6 +346,11 @@ function roomTile(room, hass, span, openings = [], securityPath = null) {
     styles += live(lightIdx, roomLights.length ? roomLights : [firstLight], ["on"]);
   }
   if (mediaIdx) styles += live(mediaIdx, audio, ["playing"]);
+  if (climateIdx) {
+    // Temperature text: blue while cooling, orange while heating, normal otherwise.
+    const a = "(hass.states['" + climate + "'] && hass.states['" + climate + "'].attributes.hvac_action)";
+    styles += `.bubble-sub-button-${climateIdx}, .bubble-sub-button-${climateIdx} * { color: \${${a} === 'cooling' ? 'var(--state-climate-cool-color, #2b9af9)' : ${a} === 'heating' ? 'var(--state-climate-heat-color, #ff8100)' : 'var(--primary-text-color)'} !important; } `;
+  }
   if (tvIdx) styles += live(tvIdx, tvs, ["on", "playing", "paused", "idle", "buffering"]);
   if (room.image) {
     styles += `.bubble-button-card-container { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)), url('${room.image}') center / cover no-repeat !important; }`;
