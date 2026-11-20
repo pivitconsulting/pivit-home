@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.27";
+const VERSION = "1.0.28";
 
 const DEFAULTS = {
   title: "Home",
@@ -456,7 +456,21 @@ function roomAudioPopup(room, hass, audio) {
     "#" + slug(room.name) + "-audio",
     room.name + " Audio",
     "mdi:speaker",
-    audio.map((id) => ({ type: "custom:bubble-card", card_type: "media-player", entity: id, name: shortLabel(room, hass, id), grid_options: { columns: "full" } }))
+    audio.flatMap((id) => [
+      // HA media-control card: full album art with title/artist and transport controls.
+      { type: "media-control", entity: id, grid_options: { columns: "full" } },
+      // Volume slider underneath.
+      {
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "slider",
+        entity: id,
+        name: audio.length > 1 ? shortLabel(room, hass, id) + " Volume" : "Volume",
+        icon: "mdi:volume-high",
+        show_state: true,
+        grid_options: { columns: "full" },
+      },
+    ])
   );
 }
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.28 — 2026-11-20
+
+- Room Audio pop-up: each speaker shows HA's media-control card (full album art, title/artist, transport controls) with a volume slider underneath.
+
 ## 1.0.27 — 2026-11-20
 
 - Tapping a temperature on a room tile (or the Thermostat quick button) opens that unit's thermostat controls in a pop-up: dial, HVAC modes, and fan modes when supported.
