@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.17 — 2026-11-20
+
+- *All Lights Off*, *Lock All Doors*, and the pop-ups' *Turn all off* / *Lock all* now act only on the lights that are on / doors that are unlocked at the moment of the tap, and the confirmation shows that live count (e.g. "Lock 7 doors?"). Nothing on/unlocked → the tap does nothing.
+
 ## 1.0.16 — 2026-11-20
 
 - *Turn all off* (Lights On pop-up) and *Lock all* (Unlocked Doors pop-up) now ask for confirmation before acting.

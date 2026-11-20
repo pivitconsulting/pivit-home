@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.16";
+const VERSION = "1.0.17";
 
 const DEFAULTS = {
   title: "Home",
@@ -354,8 +354,30 @@ function lightsOnExpr(lights) {
   return "(" + JSON.stringify(lights) + ".filter((e) => hass.states[e] && hass.states[e].state === 'on').length)";
 }
 
+// "Act on only what's on" buttons. A dashboard strategy is built once, so a normal action would target every
+// entity. Instead the button's own action is "none", and a tiny hook in Bubble Card's styles template (which has
+// `card` and live `hass`) listens for taps, picks the entities currently in one of `states`, and fires HA's
+// standard hass-action with that list (so HA's own confirmation dialog shows the live count).
+// Taps on sub-buttons (e.g. the "N on ›" count) are ignored by the hook.
+function liveBulk(ids, states, service, opts = {}) {
+  const confirm = opts.confirm !== false;
+  const hook =
+    "${(card.__pvH = hass, card.__pv || (card.__pv = 1, card.addEventListener('click', function (ev) {" +
+    " if (ev.composedPath().some(function (n) { return n.classList && n.classList.contains('bubble-sub-button'); })) return;" +
+    " var h = card.__pvH; var ids = " + JSON.stringify(ids) + ".filter(function (e) { return h.states[e] && " + JSON.stringify(states) + ".includes(h.states[e].state); });" +
+    " if (!ids.length) return;" +
+    " var t = { action: 'perform-action', perform_action: " + JSON.stringify(service) + ", target: { entity_id: ids } };" +
+    (confirm
+      ? " t.confirmation = { text: " + JSON.stringify(opts.verb || "") + " + ' ' + ids.length + ' ' + (ids.length === 1 ? " + JSON.stringify(opts.one) + " : " + JSON.stringify(opts.many) + ") + '?' };"
+      : "") +
+    " card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action: t } } }));" +
+    " })), '')}";
+  return { hook, actions: { tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } } } };
+}
+
 // Pop-up listing only the lights that are on, each with its room, to turn off one at a time.
 function lightsOnPopup(ctx) {
+  const lightsBulk = liveBulk(ctx.lights, ["on"], "light.turn_off", { verb: "Turn off", one: "light", many: "lights" });
   const cards = [
     {
       type: "custom:bubble-card",
@@ -364,7 +386,8 @@ function lightsOnPopup(ctx) {
       name: "Turn all off",
       icon: "mdi:lightbulb-group-off-outline",
       grid_options: { columns: "full" },
-      ...action({ action: "perform-action", perform_action: "light.turn_off", target: { entity_id: ctx.lights }, confirmation: { text: "Turn off every light in the house?" } }),
+      styles: lightsBulk.hook,
+      ...lightsBulk.actions,
     },
   ];
   for (const room of ctx.rooms)
@@ -397,6 +420,7 @@ function unlockedExpr(locks) {
 
 // Pop-up listing only the unlocked doors, each with its room, to lock one at a time.
 function unlockedPopup(ctx, locks) {
+  const locksBulk = liveBulk(locks, UNLOCKED_STATES, "lock.lock", { verb: "Lock", one: "door", many: "doors" });
   const cards = [
     {
       type: "custom:bubble-card",
@@ -405,7 +429,8 @@ function unlockedPopup(ctx, locks) {
       name: "Lock all",
       icon: "mdi:lock",
       grid_options: { columns: "full" },
-      ...action({ action: "perform-action", perform_action: "lock.lock", target: { entity_id: locks }, confirmation: { text: `Lock all ${locks.length} doors?` } }),
+      styles: locksBulk.hook,
+      ...locksBulk.actions,
     },
   ];
   for (const room of ctx.rooms)
@@ -486,8 +511,7 @@ function roomsView(cfg, ctx, nav) {
 
   const quick = [];
   if (cfg.all_lights_off && ctx.lights.length) {
-    const tap = { action: "perform-action", perform_action: "light.turn_off", target: { entity_id: ctx.lights } };
-    if (cfg.all_lights_confirm) tap.confirmation = { text: "Turn off every light in the house?" };
+    const bulk = liveBulk(ctx.lights, ["on"], "light.turn_off", { confirm: cfg.all_lights_confirm, verb: "Turn off", one: "light", many: "lights" });
     quick.push({
       type: "custom:bubble-card",
       card_type: "button",
@@ -500,15 +524,16 @@ function roomsView(cfg, ctx, nav) {
       sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: "#lights-on" } }],
       styles:
         ".bubble-sub-button-1 { display: ${" + lightsOnExpr(ctx.lights) + " ? 'flex' : 'none'} !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
-        " .bubble-sub-button-1::before { content: \"${" + lightsOnExpr(ctx.lights) + "} on\"; font-size: 13px; font-weight: 600; margin-right: 2px; }",
-      ...action(tap),
+        " .bubble-sub-button-1::before { content: \"${" + lightsOnExpr(ctx.lights) + "} on\"; font-size: 13px; font-weight: 600; margin-right: 2px; }" +
+        bulk.hook,
+      ...bulk.actions,
     });
   }
   const extraPopups = [];
   const locks = Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "lock" && ctx.roomOf[id]);
   const manyLocks = locks.length > cfg.max_quick_locks;
   if (manyLocks) {
-    const tap = { action: "perform-action", perform_action: "lock.lock", target: { entity_id: locks }, confirmation: { text: `Lock all ${locks.length} doors?` } };
+    const bulk = liveBulk(locks, UNLOCKED_STATES, "lock.lock", { verb: "Lock", one: "door", many: "doors" });
     quick.push({
       type: "custom:bubble-card",
       card_type: "button",
@@ -521,8 +546,9 @@ function roomsView(cfg, ctx, nav) {
       sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: "#doors-unlocked" } }],
       styles:
         ".bubble-sub-button-1 { display: ${" + unlockedExpr(locks) + " ? 'flex' : 'none'} !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
-        " .bubble-sub-button-1::before { content: \"${" + unlockedExpr(locks) + "} unlocked\"; font-size: 13px; font-weight: 600; margin-right: 2px; }",
-      ...action(tap),
+        " .bubble-sub-button-1::before { content: \"${" + unlockedExpr(locks) + "} unlocked\"; font-size: 13px; font-weight: 600; margin-right: 2px; }" +
+        bulk.hook,
+      ...bulk.actions,
     });
     extraPopups.push(unlockedPopup(ctx, locks));
   }
