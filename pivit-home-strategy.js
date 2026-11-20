@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.36";
+const VERSION = "1.0.37";
 
 const DEFAULTS = {
   title: "Home",
@@ -45,7 +45,8 @@ const DEFAULTS = {
   // Intercoms / gate stations. Each gets a pop-up (#<slug of name>) on every page: live video, unlock, spoken messages.
   // { name, camera, unlock, unlock_name, speaker, tts, messages: [..], message_entity: input_text.x, say_script: script.x, ring_entity: input_boolean.x,
   //   lock_rule: select.x (hold open), lock_rule_sensor, hold_option: "keep_unlock", normal_option: "reset", normal_name,
-  //   hold_until_entity: input_datetime.x (time), hold_until_script: script.x, hold_end_sensor: sensor.x (timestamp) }
+  //   hold_until_entity: input_datetime.x (time), hold_until_script: script.x, hold_end_sensor: sensor.x (timestamp),
+  //   status_sensor: binary_sensor.x (open/closed indicator) }
   // ring_entity: when it turns "on" the pop-up opens by itself (and closes when it turns off).
   intercoms: [],
   nav_width: "auto", // "auto" sizes the bottom bar to the number of pages, or set e.g. "940px"
@@ -557,6 +558,17 @@ function thermostatPopup(hass, id) {
 function intercomHash(ic) {
   return "#" + slug(ic.name || "intercom");
 }
+// Gate open/closed indicator (a sub-button showing the status sensor's state with an open/closed icon).
+function intercomStatusSub(ic) {
+  return { entity: ic.status_sensor, show_state: true, show_icon: true, show_background: false, tap_action: { action: "more-info" } };
+}
+function intercomStatusStyles(ic, idx) {
+  const open = "hass.states['" + ic.status_sensor + "'] && hass.states['" + ic.status_sensor + "'].state === 'on'";
+  return (
+    `.bubble-sub-button-${idx} { color: \${${open} ? 'var(--accent-color)' : 'var(--primary-text-color)'} !important; }` +
+    ` .bubble-sub-button-${idx} ha-icon, .bubble-sub-button-${idx} ha-state-icon { color: \${${open} ? 'var(--accent-color)' : 'var(--primary-text-color)'} !important; }`
+  );
+}
 function intercomPopup(ic) {
   const cards = [];
   if (ic.camera)
@@ -675,6 +687,11 @@ function intercomPopup(ic) {
     }
   }
   const popup = popupShell(intercomHash(ic), ic.name || "Intercom", ic.icon || "mdi:doorbell-video", cards);
+  // Open/closed indicator in the pop-up header (yellow while open).
+  if (ic.status_sensor) {
+    popup.sub_button = [intercomStatusSub(ic)];
+    popup.styles = intercomStatusStyles(ic, 1);
+  }
   if (ic.ring_entity) Object.assign(popup, { trigger_entity: ic.ring_entity, trigger_state: "on", trigger_close: true });
   return popup;
 }
@@ -954,6 +971,7 @@ function roomsView(cfg, ctx, nav) {
       icon: ic.icon || "mdi:doorbell-video",
       card_layout: "large",
       grid_options: { columns: 3 * SPAN },
+      ...(ic.status_sensor ? { sub_button: [{ ...intercomStatusSub(ic), tap_action: { action: "navigate", navigation_path: intercomHash(ic) } }], styles: intercomStatusStyles(ic, 1) } : {}),
       ...action({ action: "navigate", navigation_path: intercomHash(ic) }),
     });
   for (const a of cfg.alerts) {

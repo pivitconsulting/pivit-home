@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.37 — 2026-11-20
+
+- Intercom `status_sensor` option: an Open/Closed indicator (yellow while open) in the pop-up header and on the intercom button on the Rooms page.
+
 ## 1.0.36 — 2026-11-20
 
 - Intercom pop-up: *Open <name>* and *Hold Open* sit side by side on one row.
