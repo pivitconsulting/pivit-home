@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.33";
+const VERSION = "1.0.34";
 
 const DEFAULTS = {
   title: "Home",
@@ -622,7 +622,7 @@ function intercomPopup(ic) {
     });
     // Hold open until a chosen time (time picker + button that runs a script).
     if (ic.hold_until_entity && ic.hold_until_script) {
-      cards.push({ type: "entities", entities: [{ entity: ic.hold_until_entity, name: "Hold open until" }], grid_options: { columns: 8 } });
+      cards.push({ type: "entities", entities: [{ entity: ic.hold_until_entity, name: "Until" }], grid_options: { columns: 8 } });
       cards.push({
         type: "custom:bubble-card",
         card_type: "button",

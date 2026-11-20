@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.34 — 2026-11-20
+
+- Intercom pop-up: time-picker label shortened to "Until" so it isn't truncated.
+
 ## 1.0.33 — 2026-11-20
 
 - Intercom pop-up: *Hold open until* a chosen time (`hold_until_entity` time picker + `hold_until_script`, with confirmation), and an *Open until* line (`hold_end_sensor`) while a timed hold is active. *Hold Open* is highlighted for both indefinite and timed holds.
