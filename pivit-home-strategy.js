@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.17";
+const VERSION = "1.0.18";
 
 const DEFAULTS = {
   title: "Home",
@@ -294,10 +294,27 @@ function roomTile(room, hass, span, openings = [], securityPath = null) {
     });
   }
   const firstLight = room.entities.find((id) => /^(light|switch|fan)\./.test(id));
-  const media = room.entities.find((id) => domainOf(id) === "media_player");
+  const isTv = (id) => hass.states[id] && (hass.states[id].attributes.device_class === "tv" || /\btv\b|television/i.test(id + " " + (hass.states[id].attributes.friendly_name || "")));
+  const roomMedia = room.entities.filter((id) => domainOf(id) === "media_player");
+  const tvs = roomMedia.filter(isTv);
+  const audio = roomMedia.filter((id) => !isTv(id));
+  const media = audio[0];
+  const tv = tvs[0];
   const climate = room.entities.find((id) => domainOf(id) === "climate");
-  if (firstLight) subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: nav });
-  if (media) subs.push({ entity: media, show_icon: true, show_state: false, show_background: false, tap_action: nav });
+  let lightIdx = 0, mediaIdx = 0;
+  if (firstLight) {
+    subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: nav });
+    lightIdx = subs.length;
+  }
+  if (media) {
+    subs.push({ entity: media, show_icon: true, show_state: false, show_background: false, tap_action: nav });
+    mediaIdx = subs.length;
+  }
+  let tvIdx = 0;
+  if (tv) {
+    subs.push({ entity: tv, icon: "mdi:television", show_icon: true, show_state: false, show_background: false, tap_action: nav });
+    tvIdx = subs.length;
+  }
   if (climate)
     subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: nav });
 
@@ -312,9 +329,25 @@ function roomTile(room, hass, span, openings = [], securityPath = null) {
     grid_options: { columns: 3 * span, rows: 2 },
     ...action(nav),
   };
-  if (room.image) {
-    card.styles = `.bubble-button-card-container { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)), url('${room.image}') center / cover no-repeat !important; }`;
+  let styles = "";
+  // Open door/window icons (sub-buttons 1..N, only visible while open) use the accent blue.
+  for (let i = 1; i <= openings.length; i++)
+    styles += `.bubble-sub-button-${i} .bubble-sub-button-icon, .bubble-sub-button-${i} ha-icon, .bubble-sub-button-${i} ha-state-icon { color: var(--bubble-accent-color, var(--accent-color)) !important; } `;
+  // Light / audio / TV icons turn accent blue while any light in the room is on / any speaker is playing / any TV is on.
+  const live = (idx, ids, states) =>
+    `.bubble-sub-button-${idx} .bubble-sub-button-icon, .bubble-sub-button-${idx} ha-icon, .bubble-sub-button-${idx} ha-state-icon { color: \${` +
+    JSON.stringify(ids) + ".some((e) => hass.states[e] && " + JSON.stringify(states) + ".includes(hass.states[e].state))" +
+    ` ? 'var(--bubble-accent-color, var(--accent-color))' : 'var(--primary-text-color)'} !important; } `;
+  if (lightIdx) {
+    const roomLights = room.entities.filter((id) => domainOf(id) === "light");
+    styles += live(lightIdx, roomLights.length ? roomLights : [firstLight], ["on"]);
   }
+  if (mediaIdx) styles += live(mediaIdx, audio, ["playing"]);
+  if (tvIdx) styles += live(tvIdx, tvs, ["on", "playing", "paused", "idle", "buffering"]);
+  if (room.image) {
+    styles += `.bubble-button-card-container { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)), url('${room.image}') center / cover no-repeat !important; }`;
+  }
+  if (styles) card.styles = styles.trim();
   return card;
 }
 

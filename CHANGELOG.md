@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.18 — 2026-11-20
+
+- Room tiles: an open door/window icon is shown in the accent blue, the light icon turns accent blue while any light in the room is on, the audio icon turns accent blue while a speaker in the room is playing, and a separate TV icon (rooms with a TV) turns accent blue while the TV is on.
+
 ## 1.0.17 — 2026-11-20
 
 - *All Lights Off*, *Lock All Doors*, and the pop-ups' *Turn all off* / *Lock all* now act only on the lights that are on / doors that are unlocked at the moment of the tap, and the confirmation shows that live count (e.g. "Lock 7 doors?"). Nothing on/unlocked → the tap does nothing.
