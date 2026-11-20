@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.8";
+const VERSION = "1.0.9";
 
 const DEFAULTS = {
   title: "Home",
@@ -407,6 +407,11 @@ function roomsView(cfg, ctx, nav) {
       icon: "mdi:lightbulb-group-off-outline",
       card_layout: "large",
       grid_options: { columns: 3 * SPAN },
+      // Live "N on" count, right-aligned in the button (Bubble Card evaluates ${} in styles).
+      styles:
+        ".bubble-button-card-container::after { content: \"${(() => { const n = " +
+        JSON.stringify(ctx.lights) +
+        ".filter((e) => hass.states[e] && hass.states[e].state === 'on').length; return n ? n + ' on' : ''; })()}\"; position: absolute; right: 18px; top: 50%; transform: translateY(-50%); font-size: 13px; font-weight: 600; opacity: .85; pointer-events: none; }",
       ...action(tap),
     });
   }

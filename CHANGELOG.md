@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.9 — 2026-11-19
+
+- All Lights Off shows a live count of lights that are on (e.g. "3 on"), right-aligned in the button; hidden when none are on.
+
 ## 1.0.8 — 2026-11-19
 
 - Room tiles show door/window status: an open icon for each open door or window, or a closed-lock icon when everything in the room is shut. Tapping it opens the Security page. New `room_openings` option.
