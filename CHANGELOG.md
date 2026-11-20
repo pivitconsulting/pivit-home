@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.52 — 2026-11-20
+
+- Room tiles: motion and open door/window alerts are yellow icons in the top-left corner (in line with the temperature) instead of a line under the name. The motion icon shows only if motion/occupancy was detected in the last 5 minutes. Tapping any alert opens *<Room> Activity* (3-hour history of the room's motion and door/window sensors).
+- Larger room names (16 px) and temperatures (15 px).
+
 ## 1.0.51 — 2026-11-20
 
 - Room tiles: the motion icon no longer overlaps the room name when no door/window is open.

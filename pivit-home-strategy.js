@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.51";
+const VERSION = "1.0.52";
 
 const DEFAULTS = {
   title: "Home",
@@ -368,17 +368,23 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
     subs.push({ entity: media, icon: "mdi:speaker", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-audio") });
     mediaIdx = subs.length;
   }
-  // Motion/occupancy: a yellow person icon under the room name while anything detects.
+  // Top-left alert icons (in line with the temperature): a person icon when motion/occupancy was seen in the last
+  // 5 minutes, then an icon per open door/window. Each shows only while relevant; tapping opens the room's activity history.
   const MOTION = ["motion", "occupancy", "presence"];
   const motionIds = statusSensors.filter((id) => MOTION.includes((hass.states[id] && hass.states[id].attributes.device_class) || ""));
   const openIds = statusSensors.filter((id) => !motionIds.includes(id));
-  let motionIdx = 0;
+  const OPEN_ICON = { door: "mdi:door-open", window: "mdi:window-open-variant", garage_door: "mdi:garage-open", opening: "mdi:square-rounded-outline" };
+  const alerts = []; // [subIdx, showExpr]
+  const recentMotion =
+    "(" + JSON.stringify(motionIds) + ".some((e) => { const s = hass.states[e]; return s && (s.state === 'on' || Date.now() - new Date(s.last_changed).getTime() < 300000); }))";
   if (motionIds.length) {
-    subs.push({
-      entity: motionIds[0], icon: "mdi:motion-sensor", show_icon: true, show_state: false, show_background: false, tap_action: nav,
-      visibility: [{ condition: "or", conditions: motionIds.map((id) => ({ condition: "state", entity: id, state: "on" })) }],
-    });
-    motionIdx = subs.length;
+    subs.push({ entity: motionIds[0], icon: "mdi:motion-sensor", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-activity") });
+    alerts.push([subs.length, recentMotion]);
+  }
+  for (const id of openIds) {
+    const dc = (hass.states[id] && hass.states[id].attributes.device_class) || "opening";
+    subs.push({ entity: id, icon: OPEN_ICON[dc] || "mdi:door-open", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-activity") });
+    alerts.push([subs.length, "(hass.states['" + id + "'] && hass.states['" + id + "'].state === 'on')"]);
   }
   if (climate) {
     subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: go(thermostatHash(climate)) });
@@ -427,22 +433,19 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
     if (climateIdx)
       styles += `.bubble-sub-button.bubble-sub-button-${climateIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important; top: 10px !important; right: 12px !important; bottom: auto !important; left: auto !important; } `;
   }
-  // Under the room name: whatever is open / detecting motion, in yellow; nothing when all is quiet.
-  if (motionIdx)
+  // Top-left alerts: yellow, laid out left → right; each one's left offset counts the visible alerts before it.
+  alerts.forEach(([idx, show], i) => {
+    const before = alerts.slice(0, i).map((a) => a[1]);
+    const offset = before.length ? "[" + before.join(", ") + "].filter(Boolean).length" : "0";
     styles +=
-      `.bubble-sub-button.bubble-sub-button-${motionIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important;` +
-      " left: 54px !important; top: 60px !important; right: auto !important; bottom: auto !important; height: 20px !important; min-width: 20px !important; padding: 0 !important; }" +
-      ` ${iconSel(motionIdx)} { color: var(--accent-color) !important; --mdc-icon-size: 18px; } `;
-  // Status line under the name: open doors/windows as text; space is kept for the motion icon when it shows.
-  if (openIds.length || motionIds.length) {
-    const list = JSON.stringify(openIds.map((id) => [id, shortLabel(room, hass, id).replace(/^[-–·\s]+/, "").replace(/["\\]/g, "'") + " open"]));
-    const t = "(" + list + ".filter((x) => hass.states[x[0]] && hass.states[x[0]].state === 'on').map((x) => x[1]).join(' · '))";
-    const m = "(" + JSON.stringify(motionIds) + ".some((e) => hass.states[e] && hass.states[e].state === 'on'))";
-    styles +=
-      ".bubble-name-container::after { content: \"${" + t + " || '\\\\00a0'}\"; display: ${" + t + " || " + m + " ? 'block' : 'none'}; color: var(--accent-color);" +
-      " font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; min-height: 16px;" +
-      " padding-left: ${" + m + " ? '22px' : '0'}; } ";
-  }
+      `.bubble-sub-button.bubble-sub-button-${idx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important;` +
+      " top: 8px !important; right: auto !important; bottom: auto !important; height: 24px !important; min-width: 24px !important; padding: 0 !important;" +
+      " left: ${14 + (" + offset + ") * 26}px !important; display: ${" + show + " ? 'flex' : 'none'} !important; }" +
+      ` ${iconSel(idx)} { color: var(--accent-color) !important; --mdc-icon-size: 20px; } `;
+  });
+  // Larger room name and temperature.
+  styles += ".bubble-name { font-size: 16px !important; } ";
+  if (climateIdx) styles += `.bubble-sub-button-${climateIdx} .bubble-sub-button-name-container, .bubble-sub-button-${climateIdx} { font-size: 15px !important; } `;
   // Now playing: scrolls along the bottom, left of the icons.
   const players = [...audio, ...tvs];
   if (players.length) {
@@ -467,6 +470,13 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
 function roomLights(room) {
   const lights = room.entities.filter((id) => domainOf(id) === "light");
   return lights.length ? lights : room.entities.filter((id) => /^switch\./.test(id));
+}
+
+// Activity pop-up: recent history of a room's motion/occupancy and door/window sensors.
+function roomActivityPopup(room, hass, sensors) {
+  return popupShell("#" + slug(room.name) + "-activity", room.name + " Activity", "mdi:history", [
+    { type: "history-graph", hours_to_show: 3, entities: sensors.map((id) => ({ entity: id, name: shortLabel(room, hass, id) })), grid_options: { columns: "full" } },
+  ]);
 }
 
 // The fans in one room.
@@ -1114,6 +1124,7 @@ function roomsView(cfg, ctx, nav) {
   });
   sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...ctx.rooms.filter((r) => roomLights(r).length).map((r) => roomLightsPopup(r, ctx.hass)),
     ...ctx.rooms.filter((r) => roomFans(r).length).map((r) => roomFansPopup(r, ctx.hass)),
+    ...ctx.rooms.filter((r) => statusOf(r).length).map((r) => roomActivityPopup(r, ctx.hass, statusOf(r))),
     ...ctx.rooms.filter((r) => roomLocksOf(r).length).map((r) => locksPopup(ctx.hass, "#" + slug(r.name) + "-locks", r.name + " Locks", roomLocksOf(r).map((id) => ({ id, label: NAMES[id] || (ctx.hass.states[id] && ctx.hass.states[id].attributes.friendly_name) || id })))),
     ...[...new Set([
       ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "climate" && ctx.roomOf[id]),
