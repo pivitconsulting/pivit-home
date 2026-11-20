@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.45 — 2026-11-20
+
+- Room Locks pop-up keeps each lock's full name (e.g. "Office Door", not "Door").
+
 ## 1.0.44 — 2026-11-20
 
 - Lights / Locks / Climate buttons: the count is display-only (no separate clickable chevron); the whole button opens the pop-up.
