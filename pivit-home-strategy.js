@@ -420,6 +420,8 @@ function unlockedPopup(ctx, locks) {
         show_state: true,
         use_accent_color: true,
         grid_options: { columns: "full" },
+        // Only unlocked doors are listed, so a tap locks it (toggle isn't supported for locks).
+        ...action({ action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } }),
       };
       cards.push({ type: "conditional", conditions: [{ condition: "state", entity: id, state: UNLOCKED_STATES }], card, grid_options: { columns: "full" } });
     }
