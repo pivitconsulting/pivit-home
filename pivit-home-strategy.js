@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.58";
+const VERSION = "1.0.59";
 
 const DEFAULTS = {
   title: "Home",
@@ -40,6 +40,8 @@ const DEFAULTS = {
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
   room_status_classes: ["door", "garage_door", "window", "opening", "motion", "occupancy", "presence"], // shown under the room name while open/detected
   room_lock_platforms: null, // e.g. ["schlage"]: only these locks drive the room-tile lock icon (null = all locks)
+  // Extra Home-row summary buttons: [{ name, icon, hash, entities, on_states, on_word, off_text, cards, popups, spacer_before }]
+  summaries: [],
   corner_alarm: false, // true: round alarm button pinned to the top-right corner of the Rooms page
   audio_card: "default", // "mediocre" uses the Mediocre Media Player Card for speakers (install it from HACS/Marketplace first)
   hide_room_tiles: [], // area ids whose tile is hidden on the Rooms page (their devices still count everywhere else)
@@ -1137,6 +1139,17 @@ function roomsView(cfg, ctx, nav) {
       ...(ic.status_sensor ? { sub_button: intercomStatusSubs(ic, { action: "navigate", navigation_path: intercomHash(ic) }), styles: intercomStatusStyles(ic, 1) } : {}),
       ...action({ action: "navigate", navigation_path: intercomHash(ic) }),
     });
+  // Custom summary buttons (e.g. Sprinklers): live "N <on_word>" / off text, tap opens a pop-up with the given cards.
+  for (const sm of cfg.summaries || []) {
+    const ids = (sm.entities || []).filter((id) => ctx.hass.states[id]);
+    const onStates = sm.on_states || ["on"];
+    const n = "(" + JSON.stringify(ids) + ".filter((e) => hass.states[e] && " + JSON.stringify(onStates) + ".includes(hass.states[e].state)).length)";
+    const hash = sm.hash || "#" + slug(sm.name || "summary");
+    if (sm.spacer_before) quick.push({ type: "custom:bubble-card", card_type: "empty-column", grid_options: { columns: 3 * SPAN } });
+    quick.push(summaryButton(sm.name, sm.icon || "mdi:dots-grid", hash, "(" + n + " ? " + n + " + ' " + (sm.on_word || "on") + "' : '" + (sm.off_text || "All off") + "')"));
+    extraPopups.push(popupShell(hash, sm.name, sm.icon || "mdi:dots-grid", (sm.cards || []).map((c) => ({ grid_options: { columns: 6 }, ...c }))));
+    extraPopups.push(...(sm.popups || []));
+  }
   for (const a of cfg.alerts) {
     const cond = { condition: a.state !== undefined ? "state" : "numeric_state", entity: a.entity };
     if (a.state !== undefined) cond.state = a.state;
