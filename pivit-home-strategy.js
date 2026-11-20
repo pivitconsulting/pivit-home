@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.35";
+const VERSION = "1.0.36";
 
 const DEFAULTS = {
   title: "Home",
@@ -578,7 +578,7 @@ function intercomPopup(ic) {
       button_type: "name",
       name: ic.unlock_name || "Open " + (ic.name || "Gate"),
       icon: "mdi:gate-open",
-      grid_options: { columns: "full" },
+      grid_options: { columns: ic.lock_rule ? 6 : "full" },
       ...action({
         action: "perform-action",
         perform_action: domainOf(ic.unlock) === "lock" ? "lock.unlock" : "button.press",
@@ -604,7 +604,7 @@ function intercomPopup(ic) {
       button_type: "name",
       name,
       icon,
-      grid_options: { columns: "full" },
+      grid_options: { columns: 6 },
       ...extra,
       ...action(tap),
     });
@@ -612,7 +612,7 @@ function intercomPopup(ic) {
       type: "conditional",
       conditions: [{ condition: "state", entity: status, state_not: heldStates }],
       card: btn("Hold Open", "mdi:gate-open", rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you cancel it?`)),
-      grid_options: { columns: "full" },
+      grid_options: { columns: 6 },
     });
     cards.push({
       type: "conditional",
@@ -622,7 +622,7 @@ function intercomPopup(ic) {
           ".bubble-button-background { background-color: var(--accent-color) !important; opacity: 0.5 !important; }" +
           " .bubble-icon { color: var(--accent-color) !important; }",
       }),
-      grid_options: { columns: "full" },
+      grid_options: { columns: 6 },
     });
     if (ic.close_button)
       cards.push(btn(ic.normal_name || "Close Gate", "mdi:gate", rule(ic.normal_option || "reset")));
