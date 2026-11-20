@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.35 — 2026-11-20
+
+- Intercom pop-up: *Open <name>* no longer asks to confirm (set `unlock_confirm: true` to bring it back). *Hold Open* is full width and asks to confirm; while held it becomes a yellow *Held Open - Press to Cancel* button that ends the hold. The separate *Close Gate* button is now optional (`close_button: true`).
+
 ## 1.0.34 — 2026-11-20
 
 - Intercom pop-up: time-picker label shortened to "Until" so it isn't truncated.

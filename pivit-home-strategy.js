@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.34";
+const VERSION = "1.0.35";
 
 const DEFAULTS = {
   title: "Home",
@@ -583,10 +583,11 @@ function intercomPopup(ic) {
         action: "perform-action",
         perform_action: domainOf(ic.unlock) === "lock" ? "lock.unlock" : "button.press",
         target: { entity_id: ic.unlock },
-        confirmation: { text: `Open ${ic.name || "the gate"}?` },
+        ...(ic.unlock_confirm ? { confirmation: { text: `Open ${ic.name || "the gate"}?` } } : {}),
       }),
     });
-  // Hold open / back to normal via a lock-rule select (e.g. UniFi Access: keep_unlock / reset).
+  // Hold open via a lock-rule select (e.g. UniFi Access: keep_unlock / reset). One full-width button that swaps:
+  //   not held → "Hold Open" (asks to confirm);  held → yellow "Held Open - Press to Cancel" (resets, no confirm).
   if (ic.lock_rule) {
     const rule = (option, confirmText) => ({
       action: "perform-action",
@@ -597,30 +598,35 @@ function intercomPopup(ic) {
     });
     const status = ic.lock_rule_sensor || ic.lock_rule;
     const heldStates = [ic.hold_option || "keep_unlock", "custom"];
-    const held = "hass.states['" + status + "'] && " + JSON.stringify(heldStates) + ".includes(hass.states['" + status + "'].state)";
-    cards.push({
+    const btn = (name, icon, tap, extra = {}) => ({
       type: "custom:bubble-card",
       card_type: "button",
       button_type: "name",
-      name: "Hold Open",
-      icon: "mdi:gate-open",
-      grid_options: { columns: 6 },
-      // Yellow while the gate is being held open.
-      styles:
-        ".bubble-button-background { background-color: ${" + held + " ? 'var(--accent-color)' : ''} !important; opacity: ${" + held + " ? '0.5' : ''} !important; }" +
-        " .bubble-icon { color: ${" + held + " ? 'var(--accent-color)' : ''} !important; }",
-      ...action(rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you close it?`)),
+      name,
+      icon,
+      grid_options: { columns: "full" },
+      ...extra,
+      ...action(tap),
     });
     cards.push({
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: ic.normal_name || "Close Gate",
-      icon: "mdi:gate",
-      grid_options: { columns: 6 },
-      ...action(rule(ic.normal_option || "reset")),
+      type: "conditional",
+      conditions: [{ condition: "state", entity: status, state_not: heldStates }],
+      card: btn("Hold Open", "mdi:gate-open", rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you cancel it?`)),
+      grid_options: { columns: "full" },
     });
-    // Hold open until a chosen time (time picker + button that runs a script).
+    cards.push({
+      type: "conditional",
+      conditions: [{ condition: "state", entity: status, state: heldStates }],
+      card: btn(ic.held_name || "Held Open - Press to Cancel", "mdi:gate-open", rule(ic.normal_option || "reset"), {
+        styles:
+          ".bubble-button-background { background-color: var(--accent-color) !important; opacity: 0.5 !important; }" +
+          " .bubble-icon { color: var(--accent-color) !important; }",
+      }),
+      grid_options: { columns: "full" },
+    });
+    if (ic.close_button)
+      cards.push(btn(ic.normal_name || "Close Gate", "mdi:gate", rule(ic.normal_option || "reset")));
+    // Optional: hold open until a chosen time (time picker + script).
     if (ic.hold_until_entity && ic.hold_until_script) {
       cards.push({ type: "entities", entities: [{ entity: ic.hold_until_entity, name: "Until" }], grid_options: { columns: 8 } });
       cards.push({
@@ -638,7 +644,6 @@ function intercomPopup(ic) {
         }),
       });
     }
-    // While held open on a timer, show when it closes.
     if (ic.hold_end_sensor && ic.lock_rule_sensor)
       cards.push({
         type: "conditional",
