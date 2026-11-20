@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.52";
+const VERSION = "1.0.53";
 
 const DEFAULTS = {
   title: "Home",
@@ -40,6 +40,7 @@ const DEFAULTS = {
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
   room_status_classes: ["door", "garage_door", "window", "opening", "motion", "occupancy", "presence"], // shown under the room name while open/detected
   room_lock_platforms: null, // e.g. ["schlage"]: only these locks drive the room-tile lock icon (null = all locks)
+  audio_card: "default", // "mediocre" uses the Mediocre Media Player Card for speakers (install it from HACS/Marketplace first)
   hide_room_tiles: [], // area ids whose tile is hidden on the Rooms page (their devices still count everywhere else)
   climate_zones: [], // climate entities summarised by the Rooms-page "Climate" button (opens all their controls)
   floor_thermostats: {}, // { <floor_id>: climate.x } — rooms on that floor without their own thermostat show its temperature
@@ -75,7 +76,9 @@ class PivitHomeStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
     NAMES = cfg.entity_names || {};
+    AUDIO_CARD = cfg.audio_card || "default";
     const ctx = buildContext(cfg, hass);
+    SPEAKERS = ctx.rooms.flatMap((r) => roomMediaSplit(r, hass).audio);
 
     const pages = cfg.pages.filter((p) => {
       if (p === "climate") return ctx.climates.length > 0;
@@ -263,6 +266,8 @@ function action(tap) {
 }
 
 let NAMES = {};
+let AUDIO_CARD = "default"; // "default" (HA media-control + volume) or "mediocre" (Mediocre Media Player Card)
+let SPEAKERS = []; // every room speaker, for grouping in the Mediocre card
 
 // Fills: instead of colouring the whole button, only the round icon behind the symbol is filled.
 // ICON_FILL keeps Bubble Card's own state colour (e.g. red unlocked / blue locked): Bubble puts it in
@@ -542,6 +547,25 @@ function roomDoorsPopup(room, hass, openings) {
 
 // Cards for one speaker: album-art media-control card, volume slider, and (if it has a TV input) Play TV Audio.
 function audioCards(room, hass, id, multi = false) {
+  if (AUDIO_CARD === "mediocre") {
+    // Mediocre Media Player Card (HACS: antontanderup/mediocre-hass-media-player-cards): album art, grouping, browse, volume.
+    const tvSource = ((hass.states[id] && hass.states[id].attributes.source_list) || []).includes("TV");
+    return [
+      {
+        type: "custom:mediocre-media-player-card",
+        entity_id: id,
+        use_art_colors: true,
+        tap_opens_popup: true,
+        speaker_group: { entity_id: id, entities: SPEAKERS.filter((e) => e !== id) },
+        media_browser: [{ entity_id: id, name: shortLabel(room, hass, id) }],
+        options: { show_volume_step_buttons: true },
+        ...(tvSource
+          ? { custom_buttons: [{ name: "Play TV Audio", icon: "mdi:television-speaker", tap_action: { action: "perform-action", perform_action: "media_player.select_source", target: { entity_id: id }, data: { source: "TV" } } }] }
+          : {}),
+        grid_options: { columns: "full" },
+      },
+    ];
+  }
   return [
       // HA media-control card: full album art with title/artist and transport controls.
       { type: "media-control", entity: id, grid_options: { columns: "full" } },

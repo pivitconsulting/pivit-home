@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.53 — 2026-11-20
+
+- New `audio_card: mediocre` option: speakers in the Audio and room pop-ups use the [Mediocre Media Player Card](https://github.com/antontanderup/mediocre-hass-media-player-cards) (art colours, tap for the big player, grouping with every room speaker, media browser, volume steps, *Play TV Audio* as a custom button). Requires that card to be installed.
+
 ## 1.0.52 — 2026-11-20
 
 - Room tiles: motion and open door/window alerts are yellow icons in the top-left corner (in line with the temperature) instead of a line under the name. The motion icon shows only if motion/occupancy was detected in the last 5 minutes. Tapping any alert opens *<Room> Activity* (3-hour history of the room's motion and door/window sensors).
