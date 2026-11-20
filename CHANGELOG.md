@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.16 — 2026-11-20
+
+- *Turn all off* (Lights On pop-up) and *Lock all* (Unlocked Doors pop-up) now ask for confirmation before acting.
+
 ## 1.0.15 — 2026-11-19
 
 - Lock All Doors gets the same treatment as All Lights Off: a live "N unlocked ›" count that opens an *Unlocked Doors* pop-up listing only unlocked doors (with their room), each lockable on its own, plus *Lock all*.

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.15";
+const VERSION = "1.0.16";
 
 const DEFAULTS = {
   title: "Home",
@@ -364,7 +364,7 @@ function lightsOnPopup(ctx) {
       name: "Turn all off",
       icon: "mdi:lightbulb-group-off-outline",
       grid_options: { columns: "full" },
-      ...action({ action: "perform-action", perform_action: "light.turn_off", target: { entity_id: ctx.lights } }),
+      ...action({ action: "perform-action", perform_action: "light.turn_off", target: { entity_id: ctx.lights }, confirmation: { text: "Turn off every light in the house?" } }),
     },
   ];
   for (const room of ctx.rooms)
@@ -405,7 +405,7 @@ function unlockedPopup(ctx, locks) {
       name: "Lock all",
       icon: "mdi:lock",
       grid_options: { columns: "full" },
-      ...action({ action: "perform-action", perform_action: "lock.lock", target: { entity_id: locks } }),
+      ...action({ action: "perform-action", perform_action: "lock.lock", target: { entity_id: locks }, confirmation: { text: `Lock all ${locks.length} doors?` } }),
     },
   ];
   for (const room of ctx.rooms)
