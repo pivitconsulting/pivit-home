@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.46 — 2026-11-20
+
+- Button fills: instead of colouring the whole button, only the round icon is filled, in the same colours as before (lights yellow, unlocked red / locked blue, Held Open and Play TV Audio yellow, other switches their usual state colour).
+
 ## 1.0.45 — 2026-11-20
 
 - Room Locks pop-up keeps each lock's full name (e.g. "Office Door", not "Door").

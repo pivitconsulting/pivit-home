@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.45";
+const VERSION = "1.0.46";
 
 const DEFAULTS = {
   title: "Home",
@@ -258,15 +258,33 @@ function action(tap) {
 
 let NAMES = {};
 
-// Lights that are on show in the standard light yellow (HA's --state-light-active-color), not each bulb's own colour.
-const LIGHT_ON_STYLES =
-  ".bubble-button-background { background-color: ${state === 'on' ? 'var(--state-light-active-color, #ffc107)' : ''} !important; }" +
-  " .bubble-icon { color: ${state === 'on' ? 'var(--state-light-active-color, #ffc107)' : ''} !important; }";
+// Fills: instead of colouring the whole button, only the round icon behind the symbol is filled.
+// ICON_FILL keeps Bubble Card's own state colour (e.g. red unlocked / blue locked): Bubble puts it in
+// --bubble-button-background-color and fades in .bubble-button-background when "on"; we hide that layer and
+// paint the icon circle with the same colour whenever the layer would have been visible.
+const ICON_FILL =
+  ".bubble-button-background { opacity: 0 !important; }" +
+  " .bubble-button-background[style*='opacity']:not([style*='opacity: 0;']) ~ .bubble-content-container .bubble-main-icon-container" +
+  " { background-color: var(--bubble-button-background-color) !important; }" +
+  " .bubble-button-background[style*='opacity']:not([style*='opacity: 0;']) ~ .bubble-content-container .bubble-icon { color: #fff !important; }";
+
+// Fill only the icon circle with `color` while `cond` (a JS expression evaluated by Bubble) is true.
+function iconFillWhen(cond, color, iconColor = "#1c1c1c") {
+  return (
+    ".bubble-button-background { opacity: 0 !important; }" +
+    " .bubble-main-icon-container { background-color: ${" + cond + " ? '" + color + "' : ''} !important; }" +
+    " .bubble-icon { color: ${" + cond + " ? '" + iconColor + "' : ''} !important; }"
+  );
+}
+
+// Lights that are on: the icon circle is filled with HA's standard light yellow.
+const LIGHT_ON_STYLES = iconFillWhen("state === 'on'", "var(--state-light-active-color, #ffc107)");
 
 function entityCard(hass, id, opts = {}) {
   const card = baseEntityCard(hass, id, opts);
   if (NAMES[id]) card.name = NAMES[id];
-  if (domainOf(id) === "light" && card.type === "custom:bubble-card") card.styles = ((card.styles || "") + " " + LIGHT_ON_STYLES).trim();
+  if (card.type === "custom:bubble-card" && card.card_type === "button")
+    card.styles = ((card.styles || "") + " " + (domainOf(id) === "light" ? LIGHT_ON_STYLES : ICON_FILL)).trim();
   return card;
 }
 
@@ -538,10 +556,7 @@ function audioCards(room, hass, id, multi = false) {
         name: "Play TV Audio",
         icon: "mdi:television-speaker",
         grid_options: { columns: "full" },
-        styles:
-          ".bubble-button-background { background-color: ${hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV' ? 'var(--accent-color)' : ''} !important;" +
-          " opacity: ${hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV' ? '0.5' : ''} !important; }" +
-          " .bubble-icon { color: ${hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV' ? 'var(--accent-color)' : ''} !important; }",
+        styles: iconFillWhen("hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV'", "var(--accent-color)"),
         ...action({ action: "perform-action", perform_action: "media_player.select_source", target: { entity_id: id }, data: { source: src } }),
       })),
   ];
@@ -698,9 +713,7 @@ function intercomPopup(ic) {
       type: "conditional",
       conditions: [{ condition: "state", entity: status, state: heldStates }],
       card: btn(ic.held_name || "Held Open - Press to Cancel", "mdi:gate-open", rule(ic.normal_option || "reset"), {
-        styles:
-          ".bubble-button-background { background-color: var(--accent-color) !important; opacity: 0.5 !important; }" +
-          " .bubble-icon { color: var(--accent-color) !important; }",
+        styles: iconFillWhen("true", "var(--accent-color)"),
       }),
       grid_options: { columns: 6 },
     });
@@ -894,6 +907,7 @@ function locksPopup(hass, hash, title, entries) {
     name: label,
     show_state: true,
     use_accent_color: true,
+    styles: ICON_FILL,
     grid_options: { columns: "full" },
     ...action(tap),
   });
