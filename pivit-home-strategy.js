@@ -335,12 +335,12 @@ function roomTile(room, hass, span, openings = [], securityPath = null) {
   let styles = "";
   // Open door/window icons (sub-buttons 1..N, only visible while open) use the accent blue.
   for (let i = 1; i <= openings.length; i++)
-    styles += `.bubble-sub-button-${i} .bubble-sub-button-icon, .bubble-sub-button-${i} ha-icon, .bubble-sub-button-${i} ha-state-icon { color: var(--bubble-accent-color, var(--accent-color)) !important; } `;
+    styles += `.bubble-sub-button-${i} .bubble-sub-button-icon, .bubble-sub-button-${i} ha-icon, .bubble-sub-button-${i} ha-state-icon { color: var(--bubble-accent-color, var(--primary-color)) !important; } `;
   // Light / audio / TV icons turn accent blue while any light in the room is on / any speaker is playing / any TV is on.
   const live = (idx, ids, states) =>
     `.bubble-sub-button-${idx} .bubble-sub-button-icon, .bubble-sub-button-${idx} ha-icon, .bubble-sub-button-${idx} ha-state-icon { color: \${` +
     JSON.stringify(ids) + ".some((e) => hass.states[e] && " + JSON.stringify(states) + ".includes(hass.states[e].state))" +
-    ` ? 'var(--bubble-accent-color, var(--accent-color))' : 'var(--primary-text-color)'} !important; } `;
+    ` ? 'var(--bubble-accent-color, var(--primary-color))' : 'var(--primary-text-color)'} !important; } `;
   if (lightIdx) {
     const roomLights = room.entities.filter((id) => domainOf(id) === "light");
     styles += live(lightIdx, roomLights.length ? roomLights : [firstLight], ["on"]);
