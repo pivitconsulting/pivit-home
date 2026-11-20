@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.27 — 2026-11-20
+
+- Tapping a temperature on a room tile (or the Thermostat quick button) opens that unit's thermostat controls in a pop-up: dial, HVAC modes, and fan modes when supported.
+
 ## 1.0.26 — 2026-11-20
 
 - Room tile icons each open their own pop-up:

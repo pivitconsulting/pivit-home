@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.26";
+const VERSION = "1.0.27";
 
 const DEFAULTS = {
   title: "Home",
@@ -324,7 +324,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
   }
   let climateIdx = 0;
   if (climate) {
-    subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: nav });
+    subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: { action: "navigate", navigation_path: thermostatHash(climate) } });
     climateIdx = subs.length;
   }
 
@@ -516,6 +516,18 @@ function roomTvPopup(room, hass, tvs) {
     }
   }
   return popupShell("#" + slug(room.name) + "-tv", room.name + " TV", "mdi:television", cards);
+}
+
+// Thermostat controls pop-up for one climate entity (opened by tapping a temperature).
+function thermostatHash(id) {
+  return "#thermostat-" + id.split(".")[1].replace(/_/g, "-");
+}
+function thermostatPopup(hass, id) {
+  const st = hass.states[id];
+  const name = NAMES[id] || (st && st.attributes.friendly_name) || "Thermostat";
+  const card = { type: "thermostat", entity: id, ...(NAMES[id] ? { name: NAMES[id] } : {}), features: [{ type: "climate-hvac-modes" }] };
+  if (st && (st.attributes.fan_modes || []).length) card.features.push({ type: "climate-fan-modes", style: "dropdown" });
+  return popupShell(thermostatHash(id), name, "mdi:thermostat", [{ ...card, grid_options: { columns: "full" } }]);
 }
 
 function roomPopup(room, hass) {
@@ -780,7 +792,7 @@ function roomsView(cfg, ctx, nav) {
       attribute: d === "climate" ? "current_temperature" : undefined,
       card_layout: "large",
       grid_options: { columns: 3 * SPAN },
-      ...action(d === "climate" && cfg.pages.includes("climate") ? { action: "navigate", navigation_path: `${ctx.basePath}/climate` } : { action: "more-info" }),
+      ...action(d === "climate" ? { action: "navigate", navigation_path: thermostatHash(id) } : { action: "more-info" }),
     });
   }
   for (const a of cfg.alerts) {
@@ -813,6 +825,13 @@ function roomsView(cfg, ctx, nav) {
   });
   sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...ctx.rooms.filter((r) => roomLights(r).length).map((r) => roomLightsPopup(r, ctx.hass)),
     ...ctx.rooms.filter((r) => openingsOf(r).length).map((r) => roomDoorsPopup(r, ctx.hass, openingsOf(r))),
+    ...[...new Set([
+      ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "climate" && ctx.roomOf[id]),
+      ...Object.values(cfg.floor_thermostats || {}),
+      ...Object.values(cfg.room_thermostats || {}),
+      ...cfg.quick_actions.map((q) => (typeof q === "string" ? q : q.entity)),
+      ...(cfg.main_thermostat ? [cfg.main_thermostat] : []),
+    ])].filter((id) => domainOf(id) === "climate" && ctx.hass.states[id]).map((id) => thermostatPopup(ctx.hass, id)),
     ...ctx.rooms.map((r) => [r, roomMediaSplit(r, ctx.hass)]).filter(([, m]) => m.audio.length).map(([r, m]) => roomAudioPopup(r, ctx.hass, m.audio)),
     ...ctx.rooms.map((r) => [r, roomMediaSplit(r, ctx.hass)]).filter(([, m]) => m.tvs.length).map(([r, m]) => roomTvPopup(r, ctx.hass, m.tvs)), ...(cfg.all_lights_off && ctx.lights.length ? [lightsOnPopup(ctx)] : []), ...extraPopups, ...cornerAlarms] });
   sections.push({ type: "grid", column_span: SPAN, cards: [nav] });
