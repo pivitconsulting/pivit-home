@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.43 — 2026-11-20
+
+- Room tiles: the audio icon is always a speaker (it was showing the album art while playing).
+
 ## 1.0.42 — 2026-11-20
 
 - Room tiles: ceiling-fan icon for rooms with fans (next to the lights icon; yellow while any fan is on). Tapping it opens *<Room> Fans* with speed and direction controls. The lights icon no longer stands in for fans.

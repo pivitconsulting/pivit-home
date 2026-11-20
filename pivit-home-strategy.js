@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.42";
+const VERSION = "1.0.43";
 
 const DEFAULTS = {
   title: "Home",
@@ -332,7 +332,7 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
     fanIdx = subs.length;
   }
   if (media) {
-    subs.push({ entity: media, show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-audio" } });
+    subs.push({ entity: media, icon: "mdi:speaker", show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-audio" } });
     mediaIdx = subs.length;
   }
   let tvIdx = 0;
