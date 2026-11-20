@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.38 — 2026-11-20
+
+- Room Audio pop-up: speakers with a "TV" input (e.g. Sonos soundbars) get a *Play TV Audio* button under the volume slider that switches the source to TV; it turns yellow while TV is the source.
+
 ## 1.0.37 — 2026-11-20
 
 - Intercom `status_sensor` option: an Open/Closed indicator (yellow while open) in the pop-up header and on the intercom button on the Rooms page.

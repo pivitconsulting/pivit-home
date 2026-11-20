@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.37";
+const VERSION = "1.0.38";
 
 const DEFAULTS = {
   title: "Home",
@@ -480,6 +480,20 @@ function roomAudioPopup(room, hass, audio) {
         show_state: true,
         grid_options: { columns: "full" },
       },
+      // Speakers with a TV input (e.g. Sonos soundbars): switch to TV audio. Yellow while TV is the source.
+      ...((hass.states[id] && hass.states[id].attributes.source_list) || []).filter((src) => src === "TV").map((src) => ({
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "name",
+        name: "Play TV Audio",
+        icon: "mdi:television-speaker",
+        grid_options: { columns: "full" },
+        styles:
+          ".bubble-button-background { background-color: ${hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV' ? 'var(--accent-color)' : ''} !important;" +
+          " opacity: ${hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV' ? '0.5' : ''} !important; }" +
+          " .bubble-icon { color: ${hass.states['" + id + "'] && hass.states['" + id + "'].attributes.source === 'TV' ? 'var(--accent-color)' : ''} !important; }",
+        ...action({ action: "perform-action", perform_action: "media_player.select_source", target: { entity_id: id }, data: { source: src } }),
+      })),
     ])
   );
 }
