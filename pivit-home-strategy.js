@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.31";
+const VERSION = "1.0.32";
 
 const DEFAULTS = {
   title: "Home",
@@ -607,13 +607,13 @@ function intercomPopup(ic) {
       styles:
         ".bubble-button-background { background-color: ${" + held + " ? 'var(--accent-color)' : ''} !important; opacity: ${" + held + " ? '0.5' : ''} !important; }" +
         " .bubble-icon { color: ${" + held + " ? 'var(--accent-color)' : ''} !important; }",
-      ...action(rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you set it back to normal?`)),
+      ...action(rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you close it?`)),
     });
     cards.push({
       type: "custom:bubble-card",
       card_type: "button",
       button_type: "name",
-      name: "Back to Normal",
+      name: ic.normal_name || "Close Gate",
       icon: "mdi:gate",
       grid_options: { columns: 6 },
       ...action(rule(ic.normal_option || "reset")),

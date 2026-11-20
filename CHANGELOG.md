@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.32 — 2026-11-20
+
+- Intercom pop-up: *Back to Normal* renamed *Close Gate* (override with `normal_name`).
+
 ## 1.0.31 — 2026-11-20
 
 - Intercom pop-up: the unlock button now reads *Open <name>*; new `lock_rule` option adds *Hold Open* (e.g. UniFi Access `keep_unlock`, with confirmation; highlighted while held) and *Back to Normal* (`reset`).
