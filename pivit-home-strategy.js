@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.43";
+const VERSION = "1.0.44";
 
 const DEFAULTS = {
   title: "Home",
@@ -38,6 +38,8 @@ const DEFAULTS = {
   pages: ["rooms", "climate", "security", "cameras", "media"],
   security_classes: ["smoke", "carbon_monoxide", "gas", "moisture", "safety", "door", "garage_door", "window", "opening", "motion", "occupancy"], // binary sensor types on the Security page
   alarm_modes: ["armed_home", "armed_away", "disarmed"],
+  room_status_classes: ["door", "garage_door", "window", "opening", "motion", "occupancy", "presence"], // shown under the room name while open/detected
+  room_lock_platforms: null, // e.g. ["schlage"]: only these locks drive the room-tile lock icon (null = all locks)
   hide_room_tiles: [], // area ids whose tile is hidden on the Rooms page (their devices still count everywhere else)
   climate_zones: [], // climate entities summarised by the Rooms-page "Climate" button (opens all their controls)
   floor_thermostats: {}, // { <floor_id>: climate.x } — rooms on that floor without their own thermostat show its temperature
@@ -295,25 +297,14 @@ function baseEntityCard(hass, id, opts = {}) {
   return { type: "custom:bubble-card", card_type: "button", button_type: "switch", entity: id, show_state: true, grid_options: { columns: opts.half ?? 6 } };
 }
 
-function roomTile(room, hass, span, openings = [], securityPath = null, floorClimate = null) {
+// Strip characters that would break a CSS content string.
+const CSS_SAFE = ".replace(/[\"\\\\\\n]/g, \"'\")";
+
+function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate = null) {
   const hash = "#" + slug(room.name);
   const nav = { action: "navigate", navigation_path: hash };
   const subs = [];
-  if (openings.length) {
-    // Door/window status: each open sensor shows its own (open) icon; when everything is shut, one closed icon.
-    const toSec = { action: "navigate", navigation_path: hash + "-doors" };
-    for (const id of openings)
-      subs.push({ entity: id, show_icon: true, show_state: false, show_background: false, tap_action: toSec, visibility: [{ condition: "state", entity: id, state: "on" }] });
-    subs.push({
-      entity: openings[0],
-      icon: "mdi:door-closed-lock",
-      show_icon: true,
-      show_state: false,
-      show_background: false,
-      tap_action: toSec,
-      visibility: openings.map((id) => ({ condition: "state", entity: id, state_not: "on" })),
-    });
-  }
+  const go = (h) => ({ action: "navigate", navigation_path: h });
   const firstLight = room.entities.find((id) => /^(light|switch)\./.test(id));
   const fans = roomFans(room);
   const { tvs, audio } = roomMediaSplit(room, hass);
@@ -321,28 +312,40 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
   const tv = tvs[0];
   const climate =
     floorClimate === "none" ? null : room.entities.find((id) => domainOf(id) === "climate") || (floorClimate && hass.states[floorClimate] ? floorClimate : null);
-  let lightIdx = 0, mediaIdx = 0;
+
+  // Bottom row, built right → left: lights, fan, lock, TV, audio (audio furthest left).
+  let lightIdx = 0, fanIdx = 0, lockedIdx = 0, unlockedIdx = 0, tvIdx = 0, mediaIdx = 0, climateIdx = 0;
   if (firstLight) {
-    subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-lights" } });
+    subs.push({ entity: firstLight, icon: "mdi:lightbulb-group", show_state: false, show_background: false, tap_action: go(hash + "-lights") });
     lightIdx = subs.length;
   }
-  let fanIdx = 0;
   if (fans.length) {
-    subs.push({ entity: fans[0], icon: "mdi:ceiling-fan", show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-fans" } });
+    subs.push({ entity: fans[0], icon: "mdi:ceiling-fan", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-fans") });
     fanIdx = subs.length;
   }
-  if (media) {
-    subs.push({ entity: media, icon: "mdi:speaker", show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-audio" } });
-    mediaIdx = subs.length;
+  if (locks.length) {
+    // Locked: the closed-door-lock icon. Any unlocked: a yellow open-lock icon. Either opens the room's Locks pop-up.
+    subs.push({
+      entity: locks[0], icon: "mdi:door-closed-lock", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-locks"),
+      visibility: locks.map((id) => ({ condition: "state", entity: id, state_not: UNLOCKED_STATES })),
+    });
+    lockedIdx = subs.length;
+    subs.push({
+      entity: locks[0], icon: "mdi:lock-open-variant", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-locks"),
+      visibility: [{ condition: "or", conditions: locks.map((id) => ({ condition: "state", entity: id, state: UNLOCKED_STATES })) }],
+    });
+    unlockedIdx = subs.length;
   }
-  let tvIdx = 0;
   if (tv) {
-    subs.push({ entity: tv, icon: "mdi:television", show_icon: true, show_state: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash + "-tv" } });
+    subs.push({ entity: tv, icon: "mdi:television", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-tv") });
     tvIdx = subs.length;
   }
-  let climateIdx = 0;
+  if (media) {
+    subs.push({ entity: media, icon: "mdi:speaker", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-audio") });
+    mediaIdx = subs.length;
+  }
   if (climate) {
-    subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: { action: "navigate", navigation_path: thermostatHash(climate) } });
+    subs.push({ entity: climate, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: go(thermostatHash(climate)) });
     climateIdx = subs.length;
   }
 
@@ -357,29 +360,27 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
     grid_options: { columns: 3 * span, rows: 2 },
     ...action(nav),
   };
-  let styles = "";
-  // Open door/window icons (sub-buttons 1..N, only visible while open) use the accent colour (yellow-orange on the default theme).
-  for (let i = 1; i <= openings.length; i++)
-    styles += `.bubble-sub-button-${i} .bubble-sub-button-icon, .bubble-sub-button-${i} ha-icon, .bubble-sub-button-${i} ha-state-icon { color: var(--accent-color) !important; } `;
-  // Light / audio / TV icons turn the accent colour while any light in the room is on / any speaker is playing / any TV is on.
+  const iconSel = (i) => `.bubble-sub-button-${i} .bubble-sub-button-icon, .bubble-sub-button-${i} ha-icon, .bubble-sub-button-${i} ha-state-icon`;
+  // Icons turn the accent colour while any light is on / fan on / speaker playing / TV on.
   const live = (idx, ids, states) =>
-    `.bubble-sub-button-${idx} .bubble-sub-button-icon, .bubble-sub-button-${idx} ha-icon, .bubble-sub-button-${idx} ha-state-icon { color: \${` +
+    `${iconSel(idx)} { color: \${` +
     JSON.stringify(ids) + ".some((e) => hass.states[e] && " + JSON.stringify(states) + ".includes(hass.states[e].state))" +
     ` ? 'var(--accent-color)' : 'var(--primary-text-color)'} !important; } `;
+  let styles = "";
   if (lightIdx) {
-    const roomLights = room.entities.filter((id) => domainOf(id) === "light");
-    styles += live(lightIdx, roomLights.length ? roomLights : [firstLight], ["on"]);
+    const roomLightIds = room.entities.filter((id) => domainOf(id) === "light");
+    styles += live(lightIdx, roomLightIds.length ? roomLightIds : [firstLight], ["on"]);
   }
   if (fanIdx) styles += live(fanIdx, fans, ["on"]);
+  if (unlockedIdx) styles += `${iconSel(unlockedIdx)} { color: var(--accent-color) !important; } `;
   if (mediaIdx) styles += live(mediaIdx, audio, ["playing"]);
+  if (tvIdx) styles += live(tvIdx, tvs, ["on", "playing", "paused", "idle", "buffering"]);
   if (climateIdx) {
     // Temperature text: blue while cooling, orange while heating, normal otherwise.
     const a = "(hass.states['" + climate + "'] && hass.states['" + climate + "'].attributes.hvac_action)";
     styles += `.bubble-sub-button-${climateIdx}, .bubble-sub-button-${climateIdx} * { color: \${${a} === 'cooling' ? 'var(--state-climate-cool-color, #2b9af9)' : ${a} === 'heating' ? 'var(--state-climate-heat-color, #ff8100)' : 'var(--primary-text-color)'} !important; } `;
   }
-  if (tvIdx) styles += live(tvIdx, tvs, ["on", "playing", "paused", "idle", "buffering"]);
-  // Layout: temperature pinned to the top-right corner; all other icons in one row along the bottom,
-  // starting at the bottom-right and running left, with the lights icon furthest right.
+  // Layout: temperature pinned top-right; other icons in one row along the bottom from the right.
   if (subs.length) {
     styles +=
       ".bubble-sub-button-container { position: absolute !important; inset: 0 !important; display: grid !important; grid-template-columns: none !important;" +
@@ -387,10 +388,35 @@ function roomTile(room, hass, span, openings = [], securityPath = null, floorCli
       " direction: rtl; align-content: end !important; justify-content: start !important; align-items: end !important; gap: 4px !important;" +
       " padding: 0 12px 10px 12px !important; margin: 0 !important; width: auto !important; height: auto !important; pointer-events: none; }" +
       " .bubble-sub-button { pointer-events: auto; direction: ltr; grid-row: 1 !important; grid-column: auto !important; } ";
-    if (lightIdx) styles += `.bubble-sub-button-${lightIdx} { order: -2; } `;
-    if (fanIdx) styles += `.bubble-sub-button-${fanIdx} { order: -1; } `;
     if (climateIdx)
       styles += `.bubble-sub-button.bubble-sub-button-${climateIdx} { grid-row: auto !important; grid-column: auto !important; position: absolute !important; top: 10px !important; right: 12px !important; bottom: auto !important; left: auto !important; } `;
+  }
+  // Under the room name: whatever is open / detecting motion, in yellow; nothing when all is quiet.
+  if (statusSensors.length) {
+    const list = JSON.stringify(
+      statusSensors.map((id) => {
+        const dc = (hass.states[id] && hass.states[id].attributes.device_class) || "";
+        const label = shortLabel(room, hass, id).replace(/^[-–·\s]+/, "").replace(/["\\]/g, "'");
+        return [id, ["motion", "occupancy", "presence"].includes(dc) ? label : label + " open"];
+      })
+    );
+    const t = "(" + list + ".filter((x) => hass.states[x[0]] && hass.states[x[0]].state === 'on').map((x) => x[1]).join(' · '))";
+    styles +=
+      ".bubble-name-container::after { content: \"${" + t + "}\"; display: ${" + t + " ? 'block' : 'none'}; color: var(--accent-color);" +
+      " font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; } ";
+  }
+  // Now playing: scrolls along the bottom, left of the icons.
+  const players = [...audio, ...tvs];
+  if (players.length) {
+    const icons = [lightIdx, fanIdx, lockedIdx, tvIdx, mediaIdx].filter(Boolean).length;
+    const np =
+      "((() => { const p = " + JSON.stringify(players) + ".map((e) => hass.states[e]).find((s) => s && s.state === 'playing');" +
+      " if (!p) return ''; const a = p.attributes; return [a.media_title, a.media_artist || a.media_series_title || a.app_name].filter(Boolean).join(' — ')" + CSS_SAFE + "; })())";
+    styles +=
+      ".bubble-button-card-container::after { content: \"${" + np + "}\"; display: ${" + np + " ? 'block' : 'none'}; position: absolute; left: 16px; bottom: 14px;" +
+      ` right: ${icons * 36 + 20}px; white-space: nowrap; overflow: hidden; font-size: 12px; opacity: 0.85; pointer-events: none;` +
+      " animation: pivit-now-playing ${Math.max(8, " + np + ".length * 0.35)}s linear infinite; }" +
+      " @keyframes pivit-now-playing { from { text-indent: 100%; } to { text-indent: -${" + np + ".length}ch; } } ";
   }
   if (room.image) {
     styles += `.bubble-button-card-container { background: linear-gradient(rgba(0,0,0,.35), rgba(0,0,0,.55)), url('${room.image}') center / cover no-repeat !important; }`;
@@ -842,48 +868,61 @@ function unlockedExpr(locks) {
 }
 
 // Pop-up listing only the unlocked doors, each with its room, to lock one at a time.
-function unlockedPopup(ctx, locks) {
-  const locksBulk = liveBulk(locks, UNLOCKED_STATES, "lock.lock", { verb: "Lock", one: "door", many: "doors" });
-  const cards = [
-    {
+// Locks pop-up: every lock, unlocked ones first (conditional cards), with "Lock All Unlocked" when there are several.
+// Tapping an unlocked lock locks it; tapping a locked one unlocks it (with confirmation).
+function locksPopup(hass, hash, title, entries) {
+  // entries: [{ id, label }]
+  const cards = [];
+  if (entries.length > 1) {
+    const bulk = liveBulk(entries.map((e) => e.id), UNLOCKED_STATES, "lock.lock", { verb: "Lock", one: "door", many: "doors" });
+    cards.push({
       type: "custom:bubble-card",
       card_type: "button",
       button_type: "name",
-      name: "Lock all",
+      name: "Lock All Unlocked",
       icon: "mdi:lock",
       grid_options: { columns: "full" },
-      styles: locksBulk.hook,
-      ...locksBulk.actions,
-    },
-  ];
+      styles: bulk.hook,
+      ...bulk.actions,
+    });
+  }
+  const lockCard = (id, label, tap) => ({
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "switch",
+    entity: id,
+    name: label,
+    show_state: true,
+    use_accent_color: true,
+    grid_options: { columns: "full" },
+    ...action(tap),
+  });
+  for (const { id, label } of entries)
+    cards.push({
+      type: "conditional",
+      conditions: [{ condition: "state", entity: id, state: UNLOCKED_STATES }],
+      card: lockCard(id, label, { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } }),
+      grid_options: { columns: "full" },
+    });
+  for (const { id, label } of entries)
+    cards.push({
+      type: "conditional",
+      conditions: [{ condition: "state", entity: id, state_not: UNLOCKED_STATES }],
+      card: lockCard(id, label, { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label}?` } }),
+      grid_options: { columns: "full" },
+    });
+  return popupShell(hash, title, "mdi:lock", cards);
+}
+
+// House-wide Locks pop-up (opened from the Rooms-page Locks button).
+function unlockedPopup(ctx, locks) {
+  const entries = [];
   for (const room of ctx.rooms)
     for (const id of room.entities.filter((e) => locks.includes(e))) {
       const label = NAMES[id] || (ctx.hass.states[id] && ctx.hass.states[id].attributes.friendly_name) || id;
-      const card = {
-        type: "custom:bubble-card",
-        card_type: "button",
-        button_type: "switch",
-        entity: id,
-        name: label.toLowerCase().includes(room.name.toLowerCase()) ? label : `${room.name} · ${label}`,
-        show_state: true,
-        use_accent_color: true,
-        grid_options: { columns: "full" },
-        // Only unlocked doors are listed, so a tap locks it (toggle isn't supported for locks).
-        ...action({ action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } }),
-      };
-      cards.push({ type: "conditional", conditions: [{ condition: "state", entity: id, state: UNLOCKED_STATES }], card, grid_options: { columns: "full" } });
+      entries.push({ id, label: label.toLowerCase().includes(room.name.toLowerCase()) ? label : `${room.name} · ${label}` });
     }
-  return {
-    type: "custom:bubble-card",
-    card_type: "pop-up",
-    hash: "#doors-unlocked",
-    name: "Unlocked Doors",
-    icon: "mdi:lock-open-variant-outline",
-    bg_opacity: "85",
-    bg_blur: "14",
-    close_by_clicking_outside: true,
-    cards,
-  };
+  return locksPopup(ctx.hass, "#doors-unlocked", "Locks", entries);
 }
 
 function roomsView(cfg, ctx, nav) {
@@ -932,6 +971,12 @@ function roomsView(cfg, ctx, nav) {
     ...action({ action: "navigate", navigation_path: `${ctx.basePath}/security` }),
   }));
 
+  const roomLocksOf = (r) =>
+    r.entities.filter((id) => domainOf(id) === "lock" && (!cfg.room_lock_platforms || cfg.room_lock_platforms.includes(((ctx.hass.entities || {})[id] || {}).platform)));
+  const statusOf = (r) => {
+    const sec = ctx.securityByRoom.find((x) => x.id === r.id);
+    return sec ? sec.sensors.filter((id) => (cfg.room_status_classes || []).includes(ctx.hass.states[id].attributes.device_class)) : [];
+  };
   const openingsOf = (r) => {
     const sec = ctx.securityByRoom.find((x) => x.id === r.id);
     return sec ? sec.sensors.filter((id) => (cfg.room_openings || []).includes(ctx.hass.states[id].attributes.device_class)) : [];
@@ -946,10 +991,12 @@ function roomsView(cfg, ctx, nav) {
     icon,
     card_layout: "large",
     grid_options: { columns: 3 * SPAN },
-    sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: { action: "navigate", navigation_path: hash } }],
+    // The count is display-only (the whole button opens the pop-up).
+    sub_button: [{ icon: "mdi:circle-small", show_icon: false, show_background: false, tap_action: { action: "navigate", navigation_path: hash } }],
     styles:
-      ".bubble-sub-button-1 { display: flex !important; flex-direction: row !important; width: auto !important; padding: 0 8px 0 12px; }" +
-      " .bubble-sub-button-1::before { content: \"${" + statusExpr + "}\"; font-size: 13px; font-weight: 600; margin-right: 2px; }",
+      ".bubble-sub-button-1 { display: flex !important; flex-direction: row !important; width: auto !important; padding: 0 12px; pointer-events: none !important; }" +
+      " .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { display: none !important; }" +
+      " .bubble-sub-button-1::before { content: \"${" + statusExpr + "}\"; font-size: 13px; font-weight: 600; }",
     ...action({ action: "navigate", navigation_path: hash }),
   });
   if (cfg.all_lights_off && ctx.lights.length) {
@@ -965,7 +1012,9 @@ function roomsView(cfg, ctx, nav) {
     extraPopups.push(unlockedPopup(ctx, locks));
   }
   // Climate: one button for all zones with a live "2 cooling" style status; opens a pop-up with every zone's controls.
-  const climateZones = (cfg.climate_zones && cfg.climate_zones.length ? cfg.climate_zones : []).filter((id) => ctx.hass.states[id]);
+  // climate_zones entries: "climate.x" or { entity: "climate.x", name: "Living Room" }.
+  const zoneEntries = (cfg.climate_zones || []).map((z) => (typeof z === "string" ? { entity: z } : z)).filter((z) => ctx.hass.states[z.entity]);
+  const climateZones = zoneEntries.map((z) => z.entity);
   if (climateZones.length) {
     const status =
       "(() => { const a = " + JSON.stringify(climateZones) + ".map((e) => hass.states[e] && hass.states[e].attributes.hvac_action);" +
@@ -977,10 +1026,10 @@ function roomsView(cfg, ctx, nav) {
         "#climate-zones",
         cfg.climate_button_name || "Climate",
         "mdi:thermostat",
-        climateZones.map((id) => ({
+        zoneEntries.map(({ entity: id, name }) => ({
           type: "thermostat",
           entity: id,
-          ...(NAMES[id] ? { name: NAMES[id] } : {}),
+          ...(name || NAMES[id] ? { name: name || NAMES[id] } : {}),
           features: [{ type: "climate-hvac-modes" }],
           grid_options: { columns: climateZones.length > 1 ? 6 : "full" },
         }))
@@ -1051,13 +1100,12 @@ function roomsView(cfg, ctx, nav) {
     type: "grid",
     column_span: SPAN,
     cards: [{ type: "heading", heading: "Rooms", heading_style: "title" }, ...ctx.rooms.filter((r) => !(cfg.hide_room_tiles || []).includes(r.id)).map((r) => {
-      const openings = openingsOf(r);
-      return roomTile(r, ctx.hass, SPAN, openings, cfg.pages.includes("security") ? `${ctx.basePath}/security` : null, (cfg.room_thermostats || {})[r.id] ?? (cfg.floor_thermostats || {})[r.floor]);
+      return roomTile(r, ctx.hass, SPAN, statusOf(r), roomLocksOf(r), (cfg.room_thermostats || {})[r.id] ?? (cfg.floor_thermostats || {})[r.floor]);
     })],
   });
   sections.push({ type: "grid", cards: [...ctx.rooms.map((r) => roomPopup(r, ctx.hass)), ...ctx.rooms.filter((r) => roomLights(r).length).map((r) => roomLightsPopup(r, ctx.hass)),
     ...ctx.rooms.filter((r) => roomFans(r).length).map((r) => roomFansPopup(r, ctx.hass)),
-    ...ctx.rooms.filter((r) => openingsOf(r).length).map((r) => roomDoorsPopup(r, ctx.hass, openingsOf(r))),
+    ...ctx.rooms.filter((r) => roomLocksOf(r).length).map((r) => locksPopup(ctx.hass, "#" + slug(r.name) + "-locks", r.name + " Locks", roomLocksOf(r).map((id) => ({ id, label: shortLabel(r, ctx.hass, id) })))),
     ...[...new Set([
       ...Object.keys(ctx.hass.states).filter((id) => domainOf(id) === "climate" && ctx.roomOf[id]),
       ...Object.values(cfg.floor_thermostats || {}),

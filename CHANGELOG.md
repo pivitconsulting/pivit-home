@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.44 — 2026-11-20
+
+- Lights / Locks / Climate buttons: the count is display-only (no separate clickable chevron); the whole button opens the pop-up.
+- `climate_zones` entries can be `{ entity, name }` to rename a zone in the Climate pop-up.
+- Locks pop-up lists **all** locks, unlocked ones first; *Lock all* → **Lock All Unlocked** (locks only those unlocked, with confirmation). Tapping a locked door unlocks it after confirmation.
+- Room tiles:
+  - Under the room name, any open door/window or detected motion/occupancy shows in yellow (e.g. "Front Door open · Motion"); nothing shows when all is quiet (`room_status_classes`).
+  - The lock icon now reflects the room's locks only (`room_lock_platforms`, e.g. `["schlage"]`): closed-lock icon when all locked, yellow open-lock icon when any is unlocked; tapping opens *<Room> Locks* (Lock All Unlocked when there are several). The door/window icons and Doors & Windows pop-up are replaced by the status line.
+  - Audio is now the left-most icon (order right→left: lights, fan, lock, TV, audio).
+  - What's playing (title — artist) scrolls along the bottom, left of the icons.
+
 ## 1.0.43 — 2026-11-20
 
 - Room tiles: the audio icon is always a speaker (it was showing the album art while playing).
