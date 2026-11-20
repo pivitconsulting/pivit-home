@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.22 — 2026-11-20
+
+- New `room_thermostats` option: per-room override of the tile temperature (a climate id, or `none` to hide it), e.g. to leave the attic out of the upstairs temperature.
+
 ## 1.0.21 — 2026-11-20
 
 - New `floor_thermostats` option (`{ <floor_id>: climate.x }`): room tiles on that floor that have no thermostat of their own show that thermostat's temperature (with the cooling/heating colour).
