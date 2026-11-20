@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.28";
+const VERSION = "1.0.29";
 
 const DEFAULTS = {
   title: "Home",
@@ -42,6 +42,10 @@ const DEFAULTS = {
   room_thermostats: {}, // { <area_id>: climate.x | "none" } — per-room override of the temperature shown ("none" hides it)
   room_openings: ["door", "garage_door", "window", "opening"], // sensor types summarised on each room tile ([] to turn off)
   extra_views: [], // full Lovelace view configs, appended after the built-in pages
+  // Intercoms / gate stations. Each gets a pop-up (#<slug of name>) on every page: live video, unlock, spoken messages.
+  // { name, camera, unlock, speaker, tts, messages: [..], message_entity: input_text.x, say_script: script.x, ring_entity: input_boolean.x }
+  // ring_entity: when it turns "on" the pop-up opens by itself (and closes when it turns off).
+  intercoms: [],
   nav_width: "auto", // "auto" sizes the bottom bar to the number of pages, or set e.g. "940px"
   background:
     "center / cover no-repeat fixed radial-gradient(circle at 20% 0%, #2a2f3a 0%, #121418 55%, #0b0c0f 100%)",
@@ -98,6 +102,9 @@ class PivitHomeStrategy extends HTMLElement {
       const sections = [...(v.sections || []), { type: "grid", column_span: v.max_columns || 3, cards: [nav] }];
       views.push({ background: cfg.background, type: "sections", ...v, sections });
     }
+    // Intercom pop-ups go on every page so a ring can open them wherever the iPad is.
+    if ((cfg.intercoms || []).length)
+      for (const v of views) v.sections = [...(v.sections || []), { type: "grid", cards: cfg.intercoms.map(intercomPopup) }];
     return { title: cfg.title, views };
   }
 }
@@ -544,6 +551,56 @@ function thermostatPopup(hass, id) {
   return popupShell(thermostatHash(id), name, "mdi:thermostat", [{ ...card, grid_options: { columns: "full" } }]);
 }
 
+// Intercom / gate pop-up: live camera, unlock, one-tap spoken messages, and a typed message.
+function intercomHash(ic) {
+  return "#" + slug(ic.name || "intercom");
+}
+function intercomPopup(ic) {
+  const cards = [];
+  if (ic.camera)
+    cards.push({ type: "picture-entity", entity: ic.camera, camera_view: "live", show_name: false, show_state: false, tap_action: { action: "more-info" }, grid_options: { columns: "full" } });
+  if (ic.unlock)
+    cards.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: ic.unlock_name || "Unlock " + (ic.name || "Gate"),
+      icon: "mdi:lock-open-variant",
+      grid_options: { columns: "full" },
+      ...action({
+        action: "perform-action",
+        perform_action: domainOf(ic.unlock) === "lock" ? "lock.unlock" : "button.press",
+        target: { entity_id: ic.unlock },
+        confirmation: { text: `Unlock ${ic.name || "the gate"}?` },
+      }),
+    });
+  if (ic.speaker && ic.tts) {
+    const say = (message) => ({
+      action: "perform-action",
+      perform_action: "tts.speak",
+      target: { entity_id: ic.tts },
+      data: { media_player_entity_id: ic.speaker, message, cache: true },
+    });
+    for (const m of ic.messages || [])
+      cards.push({ type: "custom:bubble-card", card_type: "button", button_type: "name", name: m, icon: "mdi:message-text-outline", grid_options: { columns: 6 }, ...action(say(m)) });
+    if (ic.message_entity && ic.say_script) {
+      cards.push({ type: "entities", entities: [{ entity: ic.message_entity, name: "Type a message" }], grid_options: { columns: 9 } });
+      cards.push({
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "name",
+        name: "Say",
+        icon: "mdi:account-voice",
+        grid_options: { columns: 3 },
+        ...action({ action: "perform-action", perform_action: "script.turn_on", target: { entity_id: ic.say_script } }),
+      });
+    }
+  }
+  const popup = popupShell(intercomHash(ic), ic.name || "Intercom", ic.icon || "mdi:doorbell-video", cards);
+  if (ic.ring_entity) Object.assign(popup, { trigger_entity: ic.ring_entity, trigger_state: "on", trigger_close: true });
+  return popup;
+}
+
 function roomPopup(room, hass) {
   const switchable = room.entities.filter((id) => /^(light|switch|fan)\./.test(id));
   const cards = [];
@@ -809,6 +866,18 @@ function roomsView(cfg, ctx, nav) {
       ...action(d === "climate" ? { action: "navigate", navigation_path: thermostatHash(id) } : { action: "more-info" }),
     });
   }
+  for (const ic of cfg.intercoms || [])
+    quick.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: ic.camera ? "state" : "name",
+      ...(ic.camera ? { entity: ic.camera, show_state: false } : {}),
+      name: ic.name || "Intercom",
+      icon: ic.icon || "mdi:doorbell-video",
+      card_layout: "large",
+      grid_options: { columns: 3 * SPAN },
+      ...action({ action: "navigate", navigation_path: intercomHash(ic) }),
+    });
   for (const a of cfg.alerts) {
     const cond = { condition: a.state !== undefined ? "state" : "numeric_state", entity: a.entity };
     if (a.state !== undefined) cond.state = a.state;

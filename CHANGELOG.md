@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.29 — 2026-11-20
+
+- New `intercoms` option. Each intercom gets a pop-up on every page — live camera (tap for full view/audio), Unlock (with confirmation), one-tap spoken messages via TTS to the intercom speaker, and a typed message + *Say* — plus a button in the Rooms page Home row. With `ring_entity`, the pop-up opens by itself when that entity turns on (e.g. from a doorbell automation) and closes when it turns off.
+
 ## 1.0.28 — 2026-11-20
 
 - Room Audio pop-up: each speaker shows HA's media-control card (full album art, title/artist, transport controls) with a volume slider underneath.
