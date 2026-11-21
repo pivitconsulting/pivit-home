@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.61 — 2026-11-20
+
+- New `nav_order` option: order of the pages (bottom menu and top tabs) by page id / extra-view path.
+
 ## 1.0.60 — 2026-11-20
 
 - `summaries` `spacer_before`: the spacer only shows on screens ≥ 768 px, so narrow screens no longer get an extra gap above the button.

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.60";
+const VERSION = "1.0.61";
 
 const DEFAULTS = {
   title: "Home",
@@ -42,6 +42,7 @@ const DEFAULTS = {
   room_lock_platforms: null, // e.g. ["schlage"]: only these locks drive the room-tile lock icon (null = all locks)
   // Extra Home-row summary buttons: [{ name, icon, hash, entities, on_states, on_word, off_text, cards, popups, spacer_before }]
   summaries: [],
+  nav_order: [], // e.g. ["rooms","media","pool","cameras","security"]: page / extra-view order in the bottom menu and tabs
   corner_alarm: false, // true: round alarm button pinned to the top-right corner of the Rooms page
   audio_card: "default", // "mediocre" uses the Mediocre Media Player Card for speakers (install it from HACS/Marketplace first)
   hide_room_tiles: [], // area ids whose tile is hidden on the Rooms page (their devices still count everywhere else)
@@ -96,10 +97,18 @@ class PivitHomeStrategy extends HTMLElement {
       path: v.path || slug(v.title || "view"),
     }));
 
+    // Optional nav_order: page ids / extra-view paths in the order they should appear (others follow).
+    const rank = (path) => {
+      const i = (cfg.nav_order || []).indexOf(path);
+      return i < 0 ? 999 : i;
+    };
     const navItems = [
       ...pages.map((p) => ({ ...PAGE_META[p], path: p })),
       ...extra.map((v) => ({ name: v.title, icon: v.icon || "mdi:view-dashboard", path: v.path })),
-    ];
+    ]
+      .map((it, i) => [it, i])
+      .sort((a, b) => rank(a[0].path) - rank(b[0].path) || a[1] - b[1])
+      .map(([it]) => it);
     const base = ctx.basePath;
     const nav = navCard(navItems, base, cfg.nav_width);
 
@@ -115,6 +124,8 @@ class PivitHomeStrategy extends HTMLElement {
       const sections = [...(v.sections || []), { type: "grid", column_span: v.max_columns || 3, cards: [nav] }];
       views.push({ background: cfg.background, type: "sections", ...v, sections });
     }
+    // Views (top tabs) follow the same order; Rooms stays first unless nav_order says otherwise.
+    if ((cfg.nav_order || []).length) views.sort((a, b) => rank(a.path) - rank(b.path));
     // Intercom pop-ups go on every page so a ring can open them wherever the iPad is.
     if ((cfg.intercoms || []).length)
       for (const v of views) v.sections = [...(v.sections || []), { type: "grid", cards: cfg.intercoms.map(intercomPopup) }];
