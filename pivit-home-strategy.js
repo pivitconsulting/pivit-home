@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.59";
+const VERSION = "1.0.60";
 
 const DEFAULTS = {
   title: "Home",
@@ -1145,7 +1145,14 @@ function roomsView(cfg, ctx, nav) {
     const onStates = sm.on_states || ["on"];
     const n = "(" + JSON.stringify(ids) + ".filter((e) => hass.states[e] && " + JSON.stringify(onStates) + ".includes(hass.states[e].state)).length)";
     const hash = sm.hash || "#" + slug(sm.name || "summary");
-    if (sm.spacer_before) quick.push({ type: "custom:bubble-card", card_type: "empty-column", grid_options: { columns: 3 * SPAN } });
+    // Spacer only on wide screens (two buttons per row); on phones the buttons stack and a spacer would add a gap.
+    if (sm.spacer_before)
+      quick.push({
+        type: "custom:bubble-card",
+        card_type: "empty-column",
+        grid_options: { columns: 3 * SPAN },
+        visibility: [{ condition: "screen", media_query: "(min-width: 768px)" }],
+      });
     quick.push(summaryButton(sm.name, sm.icon || "mdi:dots-grid", hash, "(" + n + " ? " + n + " + ' " + (sm.on_word || "on") + "' : '" + (sm.off_text || "All off") + "')"));
     extraPopups.push(popupShell(hash, sm.name, sm.icon || "mdi:dots-grid", (sm.cards || []).map((c) => ({ grid_options: { columns: 6 }, ...c }))));
     extraPopups.push(...(sm.popups || []));

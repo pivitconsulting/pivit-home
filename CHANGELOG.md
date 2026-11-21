@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.60 — 2026-11-20
+
+- `summaries` `spacer_before`: the spacer only shows on screens ≥ 768 px, so narrow screens no longer get an extra gap above the button.
+
 ## 1.0.59 — 2026-11-20
 
 - New `summaries` option: extra Home-row buttons that work like Lights/Locks/Climate — a live "N running"-style count (`entities`, `on_states`, `on_word`, `off_text`) and a tap that opens a pop-up with the given `cards` (plus any extra `popups`). `spacer_before` leaves the left slot empty so the button sits in the right column.
