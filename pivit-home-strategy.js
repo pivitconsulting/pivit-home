@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.61";
+const VERSION = "1.0.63";
 
 const DEFAULTS = {
   title: "Home",
@@ -43,6 +43,7 @@ const DEFAULTS = {
   // Extra Home-row summary buttons: [{ name, icon, hash, entities, on_states, on_word, off_text, cards, popups, spacer_before }]
   summaries: [],
   nav_order: [], // e.g. ["rooms","media","pool","cameras","security"]: page / extra-view order in the bottom menu and tabs
+  shared_entities: {}, // { <area_id>: [entity ids] } — also show these in that room (e.g. a Sonos amp shared by two rooms)
   corner_alarm: false, // true: round alarm button pinned to the top-right corner of the Rooms page
   audio_card: "default", // "mediocre" uses the Mediocre Media Player Card for speakers (install it from HACS/Marketplace first)
   hide_room_tiles: [], // area ids whose tile is hidden on the Rooms page (their devices still count everywhere else)
@@ -179,6 +180,8 @@ function buildContext(cfg, hass) {
     .map((a) => {
       const ents = (byArea[a.area_id] || []).filter((id) => roomDomains.has(domainOf(id)));
       for (const id of extras) if (extraArea[id] === a.area_id && !ents.includes(id)) ents.push(id);
+      // shared_entities: also show these entities in this room (e.g. one Sonos amp covering two rooms).
+      for (const id of (cfg.shared_entities || {})[a.area_id] || []) if (hass.states[id] && !ents.includes(id)) ents.push(id);
       return {
         id: a.area_id,
         name: cfg.room_names[a.area_id] || a.name,
@@ -354,7 +357,7 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
   const media = audio[0];
   const tv = tvs[0];
   const climate =
-    floorClimate === "none" ? null : room.entities.find((id) => domainOf(id) === "climate") || (floorClimate && hass.states[floorClimate] ? floorClimate : null);
+    floorClimate === "none" ? null : roomClimates(room, hass)[0] || (floorClimate && hass.states[floorClimate] ? floorClimate : null);
 
   // Bottom row, built right → left: lights, fan, lock, TV, audio (audio furthest left).
   let lightIdx = 0, fanIdx = 0, lockedIdx = 0, unlockedIdx = 0, tvIdx = 0, mediaIdx = 0, climateIdx = 0;
@@ -498,6 +501,16 @@ function roomActivityPopup(room, hass, sensors) {
   ]);
 }
 
+// A room's climate entities, HVAC units (that can cool) before heat-only ones such as fireplaces.
+function roomClimates(room, hass) {
+  const cools = (id) => ((hass.states[id] && hass.states[id].attributes.hvac_modes) || []).some((m) => m === "cool" || m === "heat_cool" || m === "auto");
+  return room.entities
+    .filter((id) => domainOf(id) === "climate")
+    .map((id, i) => [id, i])
+    .sort((a, b) => Number(cools(b[0])) - Number(cools(a[0])) || a[1] - b[1])
+    .map(([id]) => id);
+}
+
 // The fans in one room.
 function roomFans(room) {
   return room.entities.filter((id) => domainOf(id) === "fan");
@@ -533,7 +546,14 @@ function roomLightsPopup(room, hass) {
 
 // A room's media players split into TVs and audio players.
 function roomMediaSplit(room, hass) {
-  const isTv = (id) => hass.states[id] && (hass.states[id].attributes.device_class === "tv" || /\btv\b|television/i.test(id + " " + (hass.states[id].attributes.friendly_name || "")));
+  const model = (id) => {
+    const e = (hass.entities || {})[id];
+    const d = e && (hass.devices || {})[e.device_id];
+    return (d && d.model) || "";
+  };
+  const isTv = (id) =>
+    hass.states[id] &&
+    (hass.states[id].attributes.device_class === "tv" || /\btv\b|television/i.test(id + " " + (hass.states[id].attributes.friendly_name || "") + " " + model(id)));
   const media = room.entities.filter((id) => domainOf(id) === "media_player");
   return { tvs: media.filter(isTv), audio: media.filter((id) => !isTv(id)) };
 }
@@ -834,7 +854,7 @@ function roomPopup(room, hass) {
   // Order: climate and locks above All Off; then lights, fans, shades, TV, audio; then anything else.
   const group = (id) => {
     const d = domainOf(id);
-    if (d === "climate") return 0;
+    if (d === "climate") return 0 + roomClimates(room, hass).indexOf(id) / 100;
     if (d === "lock") return 1;
     if (d === "light" || d === "switch") return 3;
     if (d === "fan") return 4;
@@ -846,7 +866,12 @@ function roomPopup(room, hass) {
   const ordered = room.entities.map((id, i) => [id, i]).sort((a, b) => group(a[0]) - group(b[0]) || a[1] - b[1]).map(([id]) => id);
   const card = (id) => (audio.includes(id) ? audioCards(room, hass, id, audio.length > 1) : [entityCard(hass, id)]);
   const locks = room.entities.filter((id) => domainOf(id) === "lock");
-  for (const id of ordered.filter((id) => domainOf(id) !== "lock")) cards.push(...card(id));
+  // Door unlock buttons (e.g. UniFi Access "… Unlock") go in the title bar too.
+  const unlockButtons = room.entities.filter((id) => domainOf(id) === "button" && /unlock/i.test(id + " " + ((hass.states[id] && hass.states[id].attributes.friendly_name) || "")));
+  // Door/window/motion sensors are shown on the room card (top-left, when open/active), not in the pop-up.
+  const STATUS = ["door", "garage_door", "window", "opening", "motion", "occupancy", "presence"];
+  const isStatus = (id) => domainOf(id) === "binary_sensor" && STATUS.includes((hass.states[id] && hass.states[id].attributes.device_class) || "");
+  for (const id of ordered.filter((id) => domainOf(id) !== "lock" && !unlockButtons.includes(id) && !isStatus(id))) cards.push(...card(id));
   const popup = popupShell("#" + slug(room.name), room.name, room.icon, cards);
   // Door lock status in the title bar, before All Off: green lock when all locked, red open lock when any is unlocked.
   // Tapping it opens the room's Locks pop-up.
@@ -861,6 +886,14 @@ function roomPopup(room, hass) {
     popup.styles =
       ".bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { color: var(--green-color, #4caf50) !important; }" +
       " .bubble-sub-button-2 ha-icon, .bubble-sub-button-2 .bubble-sub-button-icon { color: var(--red-color, #f44336) !important; }";
+  }
+  for (const id of unlockButtons) {
+    const label = ((NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id) + "").replace(/\s*unlock$/i, "");
+    popup.sub_button = [
+      ...(popup.sub_button || []),
+      { entity: id, icon: "mdi:door-closed-lock", show_icon: true, show_name: false, show_state: false, show_background: false,
+        tap_action: { action: "perform-action", perform_action: "button.press", target: { entity_id: id }, confirmation: { text: `Unlock ${label}?` } } },
+    ];
   }
   // All Off in the title bar: lights/switches/fans that are on, TVs that are on, speakers that are playing (never climate, locks or shades).
   // All Off also turns off TVs that are on and pauses speakers that are playing.

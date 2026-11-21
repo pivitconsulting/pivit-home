@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.63 — 2026-11-20
+
+- New `shared_entities` option (`{ <area_id>: [entity ids] }`): show a device in another room as well, e.g. one Sonos amp covering the kitchen and dining room.
+
+## 1.0.62 — 2026-11-20
+
+- Room pop-ups: HVAC thermostats (that can cool) are listed before heat-only climate devices such as fireplaces; the room tile temperature prefers them too.
+- Room pop-ups: door unlock buttons (e.g. UniFi Access "… Unlock") move into the title bar as a door-lock icon (tap → confirm → unlock); door/window/motion sensors are no longer listed in the pop-up (they show on the room card when open/active).
+- TVs are also recognised by device model (e.g. Cast "Smart TV Pro"), so they no longer show up as speakers.
+
 ## 1.0.61 — 2026-11-20
 
 - New `nav_order` option: order of the pages (bottom menu and top tabs) by page id / extra-view path.

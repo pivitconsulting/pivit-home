@@ -70,6 +70,7 @@ All options are optional and go under `strategy:`.
 | `room_lock_platforms` | all | Lock integrations that drive the room-tile lock icon, e.g. `["schlage"]` |
 | `summaries` | none | Extra Home-row summary buttons, e.g. Sprinklers: `[{ name, icon, entities, on_word, off_text, cards, popups, spacer_before }]` — live count, tap opens a pop-up with `cards` |
 | `nav_order` | none | Page order for the bottom menu and tabs, by page id or extra-view path, e.g. `[rooms, media, pool, cameras, security]` |
+| `shared_entities` | none | `{ area_id: [entity ids] }` — also show these devices in that room (e.g. a Sonos amp shared by kitchen and dining) |
 | `corner_alarm` | false | Pin a round alarm button to the top-right corner of the Rooms page |
 | `audio_card` | default | `mediocre` uses the Mediocre Media Player Card (install `antontanderup/mediocre-hass-media-player-cards` first) for speakers |
 | `hide_room_tiles` | none | Area ids whose room tile is hidden on the Rooms page; unlike `hide_areas`, their devices still appear in counts, pop-ups and other pages |
