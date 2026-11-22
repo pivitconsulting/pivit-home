@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.18";
+const VERSION = "1.1.19";
 
 const DEFAULTS = {
   title: "Home",
@@ -1348,6 +1348,8 @@ const ELAN_BACKGROUND =
   "center / cover no-repeat fixed radial-gradient(ellipse at 70% 15%, rgba(120,110,190,.55) 0%, rgba(40,46,92,0) 45%)," +
   " radial-gradient(ellipse at 15% 85%, rgba(70,120,170,.35) 0%, rgba(20,24,48,0) 50%), linear-gradient(175deg, #2a2f5a 0%, #171a33 45%, #0b0d1a 100%)";
 const ELAN_HEAT = "#d23c3c";
+const ELAN_COOL_BOX = "rgba(28,36,140,.9)"; // ELAN climate setpoint boxes: cool navy, heat dark red
+const ELAN_HEAT_BOX = "rgba(120,26,26,.9)";
 const ELAN_WIDE = "(min-width: 1000px)";
 const ELAN_NARROW = "(max-width: 999px)";
 const ELAN_ROW_BG = "rgba(12,14,22,.72)";
@@ -1563,6 +1565,101 @@ function elanPopup(pp) {
   return { ...pp, cards: elanCards(pp.cards), bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE).trim() };
 }
 
+// ELAN climate row (as on the ELAN climate screen): name, big current temperature, a setpoint block — cool (navy) over
+// heat (dark red) when the zone has two setpoints, or one tall box with the mode ("Heat 60°") — grey ▲ / ▼, and a ›.
+// Tap the cool or heat box to choose which one the arrows change. Arrow taps are added up and sent as one
+// climate.set_temperature about 0.8 s after the last tap; the box shows the new value straight away.
+function elanClimateRow(id, name, hash) {
+  const S = "hass.states['" + id + "']";
+  const A = "(" + S + " || { attributes: {} }).attributes";
+  const ST = "(" + S + " ? " + S + ".state : 'off')";
+  const DUAL = "(" + A + ".target_temp_low != null && " + A + ".target_temp_high != null)";
+  const fmt = (x) => "((v) => v == null || isNaN(v) ? '--' : (Math.round(v * 2) / 2) + '°')(" + x + ")";
+  const MODE = "(({ heat: 'Heat', cool: 'Cool', heat_cool: 'Auto', auto: 'Auto', dry: 'Dry', fan_only: 'Fan', off: 'Off' })[" + ST + "] || '')";
+  const SINGLE_BG = "(" + ST + " === 'cool' ? '" + ELAN_COOL_BOX + "' : " + ST + " === 'heat' ? '" + ELAN_HEAT_BOX + "' : 'rgba(255,255,255,.12)')";
+  const SEL = "(card.__pvSel || 'cool')";
+  const nav = { action: "navigate", navigation_path: hash };
+  const none = { action: "none" };
+  const hook =
+    "${(card.__pvH = hass, card.__pvC || (card.__pvC = 1, card.addEventListener('click', function (ev) {" +
+    " var path = ev.composedPath(); var hit = function (n) { return path.some(function (e) { return e.classList && e.classList.contains('bubble-sub-button-' + n); }); };" +
+    " var h = card.__pvH, s = h.states[" + JSON.stringify(id) + "]; if (!s) return; var a = s.attributes;" +
+    " var dual = a.target_temp_low != null && a.target_temp_high != null;" +
+    " var root = card.shadowRoot || card; var q = function (n) { return root.querySelector('.bubble-sub-button-' + n); };" +
+    " var mark = function () { [2, 3].forEach(function (n) { var el = q(n); if (el) el.classList.toggle('pv-sel', dual && ((card.__pvSel || 'cool') === (n === 2 ? 'cool' : 'heat'))); }); };" +
+    " if (hit(2)) { card.__pvSel = 'cool'; mark(); return; } if (hit(3)) { card.__pvSel = 'heat'; mark(); return; }" +
+    " var dir = hit(4) ? 1 : hit(5) ? -1 : 0; if (!dir) return;" +
+    " var step = a.target_temp_step || ((h.config.unit_system || {}).temperature === '°C' ? 0.5 : 1);" +
+    " var lo = a.min_temp != null ? a.min_temp : -100, hiLim = a.max_temp != null ? a.max_temp : 200;" +
+    " var clamp = function (v) { return Math.min(hiLim, Math.max(lo, Math.round(v / step) * step)); };" +
+    " var now = Date.now(); var p = card.__pvP && now - card.__pvP.t < 8000 ? card.__pvP : null; var data, shown;" +
+    " if (dual) { var L = p && p.lo != null ? p.lo : a.target_temp_low, H = p && p.hi != null ? p.hi : a.target_temp_high;" +
+    "   if ((card.__pvSel || 'cool') === 'cool') H = clamp(H + dir * step); else L = clamp(L + dir * step);" +
+    "   card.__pvP = { t: now, lo: L, hi: H }; data = { target_temp_low: L, target_temp_high: H }; shown = { 2: H, 3: L };" +
+    " } else { if (a.temperature == null) return; var T = clamp((p && p.v != null ? p.v : a.temperature) + dir * step);" +
+    "   card.__pvP = { t: now, v: T }; data = { temperature: T }; shown = { 3: T }; }" +
+    " Object.keys(shown).forEach(function (n) { var el = q(n); if (el) el.style.setProperty('--pv-v', '\"' + shown[n] + '°\"'); });" +
+    " clearTimeout(card.__pvT); card.__pvT = setTimeout(function () {" +
+    "   card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+    "   { action: 'perform-action', perform_action: 'climate.set_temperature', target: { entity_id: " + JSON.stringify(id) + " }, data: data } } } }));" +
+    "   setTimeout(function () { [2, 3].forEach(function (n) { var el = q(n); if (el) el.style.removeProperty('--pv-v'); }); card.__pvP = null; }, 7000);" +
+    " }, 800);" +
+    " })), '')}";
+  const box = (n) =>
+    ` .bubble-sub-button-${n} { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; line-height: 1.1; }` +
+    ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon, .bubble-sub-button-${n} .bubble-sub-button-name-container { display: none !important; }`;
+  return {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    entity: id,
+    name,
+    show_icon: false,
+    show_state: false,
+    grid_options: { columns: "full" },
+    sub_button: [
+      { icon: "mdi:circle-small", show_icon: false, show_background: false, tap_action: nav },
+      { icon: "mdi:circle-small", show_icon: false, show_background: true, tap_action: none },
+      { icon: "mdi:circle-small", show_icon: false, show_background: true, tap_action: none },
+      { icon: "mdi:menu-up", show_icon: true, show_background: true, tap_action: none },
+      { icon: "mdi:menu-down", show_icon: true, show_background: true, tap_action: none },
+      { icon: "mdi:chevron-right", show_background: false, tap_action: nav },
+    ],
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-button-card-container { height: 110px !important; } .bubble-main-icon-container { display: none !important; }" +
+      " .bubble-name-container { margin-left: 16px !important; } .bubble-name { font-size: 22px !important; }" +
+      elanSubtitle({ expr: titleCase(A + ".hvac_action || " + ST) }) +
+      " .bubble-sub-button-container { display: grid !important; grid-template-columns: auto 104px 58px 34px; grid-template-rows: 1fr 1fr; gap: 2px 0;" +
+      " height: 98px !important; align-self: center; margin-right: 4px; }" +
+      " .bubble-sub-button { height: auto !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; margin: 0 !important; border-radius: 0 !important; padding: 0 !important; }" +
+      " .bubble-sub-button-1 { grid-column: 1; grid-row: 1 / span 2; background: none !important; padding: 0 22px !important; pointer-events: none !important; display: flex !important; align-items: center !important; }" +
+      " .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { display: none !important; }" +
+      " .bubble-sub-button-1::before { content: \"${" + fmt(A + ".current_temperature") + "}\"; font-size: 52px; font-weight: 300; }" +
+      box(2) + box(3) +
+      ` .bubble-sub-button-2 { grid-column: 2; grid-row: 1; background: ${ELAN_COOL_BOX} !important; }` +
+      ` .bubble-sub-button-3 { grid-column: 2; grid-row: 2; background: ${ELAN_HEAT_BOX} !important; }` +
+      " .bubble-sub-button-2::after { content: var(--pv-v, \"${" + fmt(A + ".target_temp_high") + "}\"); font-size: 25px; font-weight: 300; }" +
+      " .bubble-sub-button-3::after { content: var(--pv-v, \"${" + DUAL + " ? " + fmt(A + ".target_temp_low") + " : (" + ST + " === 'off' ? '' : " + fmt(A + ".temperature") + ")}\"); font-size: 25px; font-weight: 300; }" +
+      " .bubble-sub-button-3::before { content: \"${" + DUAL + " ? '' : " + MODE + "}\"; font-size: 19px; font-weight: 300; }" +
+      " ${" + DUAL + " ? '' : '.bubble-sub-button-2 { display: none !important; } .bubble-sub-button-3 { grid-row: 1 / span 2 !important; background: ' + " + SINGLE_BG + " + ' !important; }'}" +
+      " ${" + DUAL + " ? '.bubble-sub-button-' + (" + SEL + " === 'heat' ? 3 : 2) + ' { box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); }' : ''}" +
+      " .pv-sel { box-shadow: inset 0 0 0 2px rgba(255,255,255,.7) !important; }" +
+      " .bubble-sub-button-4, .bubble-sub-button-5 { background: rgba(255,255,255,.24) !important; display: flex !important; align-items: center !important; justify-content: center !important; }" +
+      " .bubble-sub-button-4 ha-icon, .bubble-sub-button-5 ha-icon { --mdc-icon-size: 34px; color: #f2f5fa !important; }" +
+      " .bubble-sub-button-6 { grid-column: 4; grid-row: 1 / span 2; background: none !important; display: flex !important; align-items: center !important; justify-content: center !important; }" +
+      " .bubble-sub-button-4 { grid-column: 3; grid-row: 1; } .bubble-sub-button-5 { grid-column: 3; grid-row: 2; }" +
+      " ${" + ST + " === 'off' ? '.bubble-sub-button-4, .bubble-sub-button-5 { opacity: .35; pointer-events: none !important; }' : ''}" +
+      " @media (max-width: 520px) { .bubble-button-card-container { height: 80px !important; } .bubble-name { font-size: 16px !important; }" +
+      " .bubble-sub-button-container { grid-template-columns: auto 62px 40px 0; height: 68px !important; } .bubble-sub-button-6 { display: none !important; }" +
+      " .bubble-sub-button-1 { padding: 0 10px !important; } .bubble-sub-button-1::before { font-size: 28px !important; }" +
+      " .bubble-sub-button-2::after, .bubble-sub-button-3::after { font-size: 16px; } .bubble-sub-button-3::before { font-size: 14px; }" +
+      " .bubble-sub-button-4 ha-icon, .bubble-sub-button-5 ha-icon { --mdc-icon-size: 26px; } }" +
+      " " + hook,
+    ...action(nav),
+  };
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -1735,7 +1832,7 @@ class PivitElanStrategy extends HTMLElement {
       views.push(view("security", "Security", content, []));
     }
 
-    // CLIMATE — each zone: name, big current temperature, heat/cool setpoints (Bubble climate card), › to full controls.
+    // CLIMATE — ELAN climate rows (see elanClimateRow): name, big temperature, cool/heat setpoint boxes with ▲ / ▼, › to full controls.
     if (items.some((i) => i.path === "climate"))
       views.push(
         view(
@@ -1743,28 +1840,7 @@ class PivitElanStrategy extends HTMLElement {
           "Climate",
           [
             elanTitle("Climate"),
-            ...climateZones.map(({ entity: id, name }) => ({
-              type: "custom:bubble-card",
-              card_type: "climate",
-              entity: id,
-              name: name || label(id),
-              show_state: false,
-              grid_options: { columns: "full" },
-              sub_button: [
-                { entity: id, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: go(thermostatHash(id)) },
-                { icon: "mdi:chevron-right", show_background: false, tap_action: go(thermostatHash(id)) },
-              ],
-              styles:
-                ELAN_ROW_STYLE +
-                " .bubble-color-background { opacity: 0 !important; }" +
-                " .bubble-low-temp-container { background: rgba(200,40,40,.55) !important; } .bubble-high-temp-container { background: rgba(47,127,224,.6) !important; }" +
-                " .bubble-low-temp-container, .bubble-high-temp-container, .bubble-temperature-container { border-radius: 4px !important; }" +
-                " .bubble-climate-temp-display, .bubble-climate-temp-display * { color: #fff !important; }" +
-                elanSubtitle({ expr: titleCase("hass.states['" + id + "'] && (hass.states['" + id + "'].attributes.hvac_action || hass.states['" + id + "'].state)") }) +
-                " .bubble-sub-button-1 { font-size: 30px !important; font-weight: 300 !important; } .bubble-sub-button-1 * { font-size: 30px !important; font-weight: 300 !important; }" +
-                " @media (max-width: 520px) { .bubble-sub-button-1, .bubble-sub-button-1 * { font-size: 21px !important; } }",
-              ...action(go(thermostatHash(id))),
-            })),
+            ...climateZones.map(({ entity: id, name }) => elanClimateRow(id, name || label(id), thermostatHash(id))),
           ],
           popupsWhere((h) => h.startsWith("#thermostat-"))
         )
