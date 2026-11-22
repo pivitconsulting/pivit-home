@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.24";
+const VERSION = "1.1.25";
 
 const DEFAULTS = {
   title: "Home",
@@ -1670,6 +1670,104 @@ function elanClimateRow(id, name, hash) {
   };
 }
 
+// ELAN alarm controls for the Home Security pop-up: ARM HOME / ARM AWAY / DISARM as ELAN segmented buttons with gold
+// icons (current mode filled blue, like LOCK / UNLOCK), and — when the alarm needs a code — an ELAN keypad. The code
+// typed on the keypad is held in the browser only until a button is tapped, then sent with that command and cleared.
+function elanAlarmCards(hass, id) {
+  const st = hass.states[id];
+  const feat = (st && st.attributes.supported_features) || 0;
+  const needsCode = !!(st && st.attributes.code_format);
+  const S = "(hass.states['" + id + "'] ? hass.states['" + id + "'].state : '')";
+  const modes = [
+    [1, "Arm Home", "mdi:shield-home-outline", "alarm_arm_home", "armed_home"],
+    [2, "Arm Away", "mdi:shield-lock-outline", "alarm_arm_away", "armed_away"],
+    [4, "Arm Night", "mdi:shield-moon-outline", "alarm_arm_night", "armed_night"],
+  ].filter(([b]) => feat & b);
+  const buttons = [...modes, [0, "Disarm", "mdi:shield-off-outline", "alarm_disarm", "disarmed"]];
+  const store = "(window.__pvAlarm = window.__pvAlarm || {})";
+  const none = { action: "none" };
+  const segHook =
+    "${(card.__pvH = hass, card.__pvC || (card.__pvC = 1, card.addEventListener('click', function (ev) {" +
+    " var path = ev.composedPath(); var svc = " + JSON.stringify(buttons.map((b) => b[3])) + ";" +
+    " var n = 0; for (var i = 1; i <= svc.length; i++) if (path.some(function (e) { return e.classList && e.classList.contains('bubble-sub-button-' + i); })) n = i;" +
+    " if (!n) return; var A = " + store + "; var code = A[" + JSON.stringify(id) + "] || '';" +
+    (needsCode
+      ? " if (!code) { var kp = A[" + JSON.stringify(id + ":pad") + "]; if (kp) kp('Enter code first'); return; }"
+      : "") +
+    " var data = code ? { code: code } : {};" +
+    " card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+    " { action: 'perform-action', perform_action: 'alarm_control_panel.' + svc[n - 1], target: { entity_id: " + JSON.stringify(id) + " }, data: data } } } }));" +
+    " A[" + JSON.stringify(id) + "] = ''; var pad = A[" + JSON.stringify(id + ":pad") + "]; if (pad) pad('');" +
+    " })), '')}";
+  const seg = (n, stateName) =>
+    ` .bubble-sub-button-${n} { height: 46px !important; width: auto !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important; margin: 0 !important;` +
+    ` background: \${${S} === '${stateName}' ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
+    ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f2c12e !important; --mdc-icon-size: 19px; display: inline-flex !important; }` +
+    ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }`;
+  const segCard = {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    entity: id,
+    name: NAMES[id] || "Home Security",
+    show_icon: false,
+    show_state: false,
+    grid_options: { columns: "full" },
+    sub_button: buttons.map(([, label, icon]) => ({ name: label, icon, show_name: true, show_icon: true, show_background: true, tap_action: none })),
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-button-card-container { height: auto !important; min-height: 124px; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 12px !important; gap: 12px; }" +
+      " .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin: 0 !important; }" +
+      elanSubtitle({ expr: "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ') : s.replace(/_/g, ' '))(" + S + ")" }) +
+      ` .bubble-sub-button-container { display: grid !important; grid-template-columns: repeat(${buttons.length}, 1fr); gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }` +
+      buttons.map(([, , , , stateName], i) => seg(i + 1, stateName)).join("") +
+      " @media (max-width: 520px) { .bubble-sub-button .bubble-sub-button-name-container { font-size: 10px !important; letter-spacing: .04em !important; } .bubble-sub-button { gap: 4px !important; } }" +
+      " " + segHook,
+    tap_action: none,
+    button_action: { tap_action: none },
+  };
+  if (!needsCode) return [segCard];
+  const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "C"];
+  const padHook =
+    "${(card.__pvC || (card.__pvC = 1, (function () {" +
+    " var A = " + store + "; var root = function () { return card.querySelector('.bubble-sub-button-container') ? card : card.getRootNode(); };" +
+    " var show = function (msg) { var c = root().querySelector('.bubble-sub-button-container'); if (!c) return; var code = A[" + JSON.stringify(id) + "] || '';" +
+    "   c.style.setProperty('--pv-code', '\"' + (msg || (code ? code.replace(/./g, '●  ').trim() : 'Enter code')) + '\"');" +
+    "   if (msg) setTimeout(function () { show(''); }, 1800); };" +
+    " A[" + JSON.stringify(id + ":pad") + "] = show;" +
+    " card.addEventListener('click', function (ev) { var path = ev.composedPath(); var keys = " + JSON.stringify(keys) + "; var n = 0;" +
+    "   for (var i = 1; i <= keys.length; i++) if (path.some(function (e) { return e.classList && e.classList.contains('bubble-sub-button-' + i); })) n = i;" +
+    "   if (!n) return; var k = keys[n - 1]; var code = A[" + JSON.stringify(id) + "] || '';" +
+    "   if (k === 'C') code = ''; else if (k === '⌫') code = code.slice(0, -1); else if (code.length < 12) code += k;" +
+    "   A[" + JSON.stringify(id) + "] = code; show(''); });" +
+    " })()), '')}";
+  const padCard = {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    name: " ",
+    show_icon: false,
+    grid_options: { columns: "full" },
+    sub_button: keys.map((k) => ({ name: k, icon: "mdi:circle-small", show_name: true, show_icon: false, show_background: true, tap_action: none })),
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-button-card-container { height: auto !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 12px !important; }" +
+      " .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
+      " .bubble-sub-button-container { display: grid !important; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 54px; gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }" +
+      " .bubble-sub-button-container::before { content: var(--pv-code, \"Enter code\"); grid-column: 1 / -1; display: flex; align-items: center; justify-content: center;" +
+      " font-size: 20px; letter-spacing: .12em; border-bottom: 1px solid rgba(255,255,255,.35); color: #f2f5fa; }" +
+      " .bubble-sub-button { height: 54px !important; width: auto !important; margin: 0 !important; border-radius: 4px !important; justify-content: center !important;" +
+      " background: rgba(255,255,255,.1) !important; border: 1px solid rgba(255,255,255,.12); }" +
+      " .bubble-sub-button:active { background: " + ELAN_ACCENT + " !important; }" +
+      " .bubble-sub-button .bubble-sub-button-name-container { font-size: 24px !important; font-weight: 300 !important; color: #fff !important; opacity: 1 !important; }" +
+      " .bubble-sub-button-10 .bubble-sub-button-name-container, .bubble-sub-button-12 .bubble-sub-button-name-container { font-size: 18px !important; }" +
+      " " + padHook,
+    tap_action: none,
+    button_action: { tap_action: none },
+  };
+  return [segCard, padCard];
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -1802,7 +1900,7 @@ class PivitElanStrategy extends HTMLElement {
         const modes = [[1, "arm_home"], [2, "arm_away"], [4, "arm_night"], [32, "arm_vacation"]].filter(([b]) => feat & b).map(([, m]) => m);
         securityPopups.push(
           popupShell(`#security-${slug(id.split(".")[1])}`, NAMES[id] || "Home Security", "mdi:shield-lock-outline", [
-            { type: "alarm-panel", entity: id, name: " ", states: modes.length ? modes : ["arm_home", "arm_away"], grid_options: { columns: "full" } },
+            ...elanAlarmCards(hass, id),
           ])
         );
       }
