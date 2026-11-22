@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.26";
+const VERSION = "1.1.27";
 
 const DEFAULTS = {
   title: "Home",
@@ -1716,9 +1716,9 @@ function elanAlarmCards(hass, id) {
     sub_button: buttons.map(([, label, icon]) => ({ name: label, icon, show_name: true, show_icon: true, show_background: true, tap_action: none })),
     styles:
       ELAN_ROW_STYLE +
-      " .bubble-button-card-container { height: 142px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 12px !important; gap: 12px; }" +
-      " .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin: 0 !important; }" +
-      elanSubtitle({ expr: "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ') : s.replace(/_/g, ' '))(" + S + ")" }) +
+      // Just the buttons: the pop-up header already names the alarm, and the lit button shows its mode.
+      " .bubble-button-card-container { height: 72px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; justify-content: center !important; padding: 12px !important; height: 100%; box-sizing: border-box; }" +
+      " .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
       ` .bubble-sub-button-container { display: grid !important; grid-template-columns: repeat(${buttons.length}, 1fr); gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }` +
       buttons.map(([, , , , stateName], i) => seg(i + 1, stateName)).join("") +
       " @media (max-width: 520px) { .bubble-sub-button .bubble-sub-button-name-container { font-size: 10px !important; letter-spacing: .04em !important; } .bubble-sub-button { gap: 4px !important; } }" +
