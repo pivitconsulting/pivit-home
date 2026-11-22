@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.39";
+const VERSION = "1.1.40";
 
 const DEFAULTS = {
   title: "Home",
@@ -807,6 +807,7 @@ function intercomPopup(ic) {
       ...action(tap),
     });
     const key = slug(ic.name || "gate");
+    let holdPicker = null; // shown under the Open / Hold Open row
     if (ic.hold_device_id) {
       // Hold Open shows a picker of how long to hold the gate open; picking one holds it through UniFi Access
       // (custom lock rule for that many minutes, or keep_unlock for "Until cancelled") and records the end time.
@@ -823,7 +824,7 @@ function intercomPopup(ic) {
       });
       const pickHook =
         "${(card.__pvPk || (card.__pvPk = 1, (function () { var key = " + JSON.stringify(key) + ", W = (window.__pvHold = window.__pvHold || {});" +
-        " var outer = function () { var host = card.getRootNode().host; return host && host.parentElement && host.parentElement.tagName === 'HUI-CARD' ? host.parentElement : host; };" +
+        " var outer = function () { var n = card.getRootNode().host; for (var i = 0; i < 6 && n && n.parentElement; i++) { if (n.parentElement.classList && (n.parentElement.classList.contains('bubble-cards-grid') || n.parentElement.classList.contains('bubble-cards-container'))) return n; n = n.parentElement; } return card.getRootNode().host; };" +
         " var sync = function () { var o = outer(); if (o) o.style.display = W[key] ? '' : 'none'; };" +
         " window.addEventListener('pv-hold-' + key, sync); window.addEventListener('hashchange', function () { W[key] = false; sync(); }); setTimeout(sync, 0); setTimeout(sync, 400);" +
         " var mins = " + JSON.stringify(durations) + ";" +
@@ -839,7 +840,7 @@ function intercomPopup(ic) {
           : "") +
         "   W[key] = false; sync(); });" +
         " })()), '')}";
-      cards.push({
+      holdPicker = {
         type: "custom:bubble-card",
         card_type: "button",
         button_type: "name",
@@ -856,7 +857,7 @@ function intercomPopup(ic) {
           " " + pickHook,
         tap_action: { action: "none" },
         button_action: { tap_action: { action: "none" } },
-      });
+      };
     } else
       cards.push({
         type: "conditional",
@@ -874,6 +875,7 @@ function intercomPopup(ic) {
       }),
       grid_options: { columns: 6 },
     });
+    if (holdPicker) cards.push(holdPicker);
     if (ic.close_button)
       cards.push(btn(ic.normal_name || "Close Gate", "mdi:gate", rule(ic.normal_option || "reset")));
     // Optional: hold open until a chosen time (time picker + script).
