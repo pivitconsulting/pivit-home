@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.36";
+const VERSION = "1.1.37";
 
 const DEFAULTS = {
   title: "Home",
@@ -2314,6 +2314,9 @@ class PivitElanStrategy extends HTMLElement {
         hold_action: { action: "none" },
       });
       const grid = (columns) => ({ type: "grid", columns, square: false, cards: ctx.cameras.map(tile) });
+      // Installed? Check the dashboard resources (the card's script may not have loaded yet when this runs).
+      const resources = await hass.connection.sendMessagePromise({ type: "lovelace/resources" }).catch(() => []);
+      const hasCameraCard = !!customElements.get("advanced-camera-card") || (resources || []).some((r) => /advanced-camera-card/.test(r.url || ""));
       // Pop-up player (Advanced Camera Card, when installed): live, with only a mute/unmute button (camera audio) and a
       // full-screen button, along the bottom.
       const off = { enabled: false };
@@ -2338,7 +2341,7 @@ class PivitElanStrategy extends HTMLElement {
       });
       const camPopups = ctx.cameras.map((id) =>
         ({ ...popupShell(camHash(id), camName(id), "mdi:cctv", [
-          customElements.get("advanced-camera-card") ? camCard(id) : { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
+          hasCameraCard ? camCard(id) : { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
         ]), width_desktop: "960px" })
       );
       views.push(view("video", "Video", { wide: [elanTitle("Video"), grid(2)], narrow: [elanTitle("Video"), grid(1)] }, camPopups));
