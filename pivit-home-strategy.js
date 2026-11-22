@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.13";
+const VERSION = "1.1.14";
 
 const DEFAULTS = {
   title: "Home",
@@ -1353,7 +1353,8 @@ const ELAN_ROW_BG = "rgba(12,14,22,.72)";
 
 // Translucent ELAN row look, shared by the row helpers below.
 const ELAN_ROW_STYLE =
-  `.bubble-button-card-container, .bubble-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; }` +
+  `.bubble-button-card-container, .bubble-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; --bubble-border-radius: 6px; --bubble-button-border-radius: 6px; --bubble-card-type-border-radius: 6px; --bubble-media-player-border-radius: 6px; --bubble-sub-slider-border-radius: 4px; --bubble-select-button-border-radius: 4px; }` +
+  " .bubble-range-slider, .bubble-background { border-radius: 6px !important; }" +
   " .bubble-button-background { opacity: 0 !important; }" +
   ` .bubble-main-icon-container { background: transparent !important; border-radius: 0 !important; box-shadow: inset 0 -3px 0 ${ELAN_ACCENT}; }` +
   " .bubble-icon { color: #e9eef7 !important; --mdc-icon-size: 26px; }" +
@@ -1529,7 +1530,7 @@ function elanPool(hass, cards, bodies) {
 // Re-skin a PivIT Home pop-up for the ELAN dashboard: deep navy panel, squarer corners, dark translucent rows.
 // Bubble Card and HA card variables cascade to every card inside the pop-up, so one style covers them all.
 const ELAN_POPUP_STYLE =
-  ".bubble-pop-up { --bubble-pop-up-border-radius: 10px; --bubble-border-radius: 6px; --bubble-sub-button-border-radius: 4px;" +
+  ".bubble-pop-up { --bubble-pop-up-border-radius: 10px; --bubble-border-radius: 6px; --bubble-button-border-radius: 6px; --bubble-card-type-border-radius: 6px; --bubble-media-player-border-radius: 6px; --bubble-sub-slider-border-radius: 4px; --bubble-select-button-border-radius: 4px; --bubble-sub-button-border-radius: 4px;" +
   " --bubble-main-background-color: rgba(255,255,255,.08); --bubble-pop-up-main-background-color: rgba(255,255,255,.08);" +
   " --bubble-secondary-background-color: rgba(255,255,255,.08); --bubble-media-player-buttons-border-radius: 4px;" +
   " --ha-card-background: rgba(255,255,255,.06); --ha-card-border-radius: 6px; --card-background-color: rgba(255,255,255,.06); }" +
