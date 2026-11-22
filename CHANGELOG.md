@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.21 — 2026-11-22
+
+- PivIT ELAN climate: arrow taps now show in the setpoint box immediately (the row looked for its boxes inside the ha-card; they live in the Bubble Card shadow root) and the new value stays until the thermostat reports it back or 90 s pass — Daikin units only report about once a minute. Further taps build on the shown value; cool/heat selection outline appears at once.
+
 ## 1.1.19–1.1.20 — 2026-11-22
 
 - PivIT ELAN Climate screen rebuilt like the ELAN climate screen (elanClimateRow): name + action subtitle, big current temperature, setpoint block with cool (navy) over heat (dark red) for two-setpoint zones or one tall box with the mode ("Heat 70°") for single-setpoint zones, grey ▲ / ▼, ›. Tap cool or heat to choose which the arrows change (white outline; cool by default). Arrow taps update the box at once and are combined into one climate.set_temperature 0.8 s after the last tap (clamped to min/max, target_temp_step). Off zones dim the arrows. Row/name/› open the thermostat pop-up. Phones: compact block, no ›.
