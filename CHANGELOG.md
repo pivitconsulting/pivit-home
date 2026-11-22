@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.32 — 2026-11-22
+
+- PivIT ELAN media: tapping the artwork on a Mediocre card used to open Home Assistant's own (grey) media dialog, which lives outside the dashboard and can't be recoloured. Media page now-playing cards now open that room's ELAN audio pop-up (`#<room>-audio`); inside audio pop-ups the artwork tap does nothing (card `action.tap_action`).
+
 ## 1.1.31 — 2026-11-22
 
 - PivIT ELAN media: Mediocre media cards use the ELAN palette — album-art colours off (use_art_colors: false) on the Media page and in every ELAN pop-up; card, dialog, text, divider, chip, slider and accent colours set through the card's CSS variables (--mmpc-*). Pop-ups carry them in their style; on pages the ELAN title card puts them on the sections view once it is on screen, so standard cards outside pop-ups (e.g. now playing) follow too.
