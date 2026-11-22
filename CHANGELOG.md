@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.14 — 2026-11-22
+
+- PivIT ELAN: slider fills were still pill-rounded inside the squared rows (Bubble clips the fill with --bubble-button-border-radius, which the rows did not set). ELAN rows and pop-ups now set the Bubble corner variables to 6px (4px for sub-sliders/selects), so slider track and fill match the row.
+
 ## 1.1.12–1.1.13 — 2026-11-22
 
 - PivIT ELAN pool/spa: setpoint − / + now shown on phones (water temperature moves into the subtitle); tapping a panel opens the full thermostat; setpoint box red.
