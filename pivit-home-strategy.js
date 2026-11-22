@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.44";
+const VERSION = "1.1.45";
 
 const DEFAULTS = {
   title: "Home",
@@ -2247,7 +2247,7 @@ class PivitElanStrategy extends HTMLElement {
             ".bubble-button-card-container { background: none !important; height: auto !important; min-height: 48px; } .bubble-button-background, .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
             " .bubble-button-card { justify-content: center !important; height: auto !important; padding: 0 !important; }" +
             " .bubble-sub-button-container { position: static !important; display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; margin: 0 !important; }" +
-            " .bubble-sub-button { width: auto !important; height: 38px !important; padding: 0 14px 0 10px !important; gap: 8px !important; border-radius: 4px !important;" +
+            " .bubble-sub-button { width: auto !important; height: 38px !important; padding: 0 14px 0 10px !important; gap: 8px !important; border-radius: 4px !important; flex-direction: row !important; display: inline-flex !important; align-items: center !important;" +
             ` background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.14); }` +
             chips
               .map(
