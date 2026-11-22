@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.10";
+const VERSION = "1.1.11";
 
 const DEFAULTS = {
   title: "Home",
@@ -1585,7 +1585,7 @@ class PivitElanStrategy extends HTMLElement {
         " padding: 0 !important; justify-content: center !important; border-radius: 6px !important; background: rgba(12,14,22,.85) !important; border: 1px solid rgba(255,255,255,.12); }" +
         " .bubble-button.highlight { background: rgba(255,255,255,.2) !important; } .bubble-icon { margin: 0 !important; color: #f2f5fa !important; }" +
         " .bubble-button .bubble-background-color, .bubble-button .bubble-background { border-radius: 6px !important; }" +
-        " @media (max-width: 430px) { .horizontal-buttons-stack-container { gap: 3px !important; padding: 0 !important; } .bubble-button { width: 36px !important; min-width: 36px !important; height: 36px !important; } .bubble-icon { --mdc-icon-size: 20px; } }",
+        " @media (max-width: 430px) { .horizontal-buttons-stack-container { gap: 0 !important; padding: 0 !important; width: 100% !important; min-width: 0 !important; justify-content: space-evenly !important; } .bubble-button { width: 36px !important; min-width: 36px !important; height: 36px !important; } .bubble-icon { --mdc-icon-size: 20px; } }",
       visibility: [{ condition: "screen", media_query: ELAN_NARROW }],
     };
 
