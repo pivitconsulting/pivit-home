@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.17";
+const VERSION = "1.1.18";
 
 const DEFAULTS = {
   title: "Home",
@@ -1708,11 +1708,13 @@ class PivitElanStrategy extends HTMLElement {
       for (const id of locks) {
         const unlocked = JSON.stringify(UNLOCKED_STATES) + ".includes(hass.states['" + id + "'] && hass.states['" + id + "'].state)";
         const seg = (n, on) =>
-          ` .bubble-sub-button-${n} { width: 84px !important; height: 34px !important; border-radius: 3px !important; justify-content: center !important;` +
+          ` .bubble-sub-button-${n} { width: 112px !important; height: 36px !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important;` +
           ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
-          ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { display: none !important; }` +
+          // Gold padlock icons, as on the ELAN security screen (closed padlock on LOCK, open on UNLOCK).
+          ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f2c12e !important; --mdc-icon-size: 17px; display: inline-flex !important; }` +
           ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }` +
-          ` @media (max-width: 520px) { .bubble-sub-button-${n} { width: 58px !important; } .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 10px !important; letter-spacing: .04em !important; } }`;
+          ` @media (max-width: 520px) { .bubble-sub-button-${n} { width: 74px !important; gap: 4px !important; } .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { --mdc-icon-size: 13px; }` +
+          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 9px !important; letter-spacing: .03em !important; } }`;
         content.push({
           type: "custom:bubble-card",
           card_type: "button",
@@ -1722,8 +1724,8 @@ class PivitElanStrategy extends HTMLElement {
           icon: "mdi:door-closed-lock",
           grid_options: { columns: "full" },
           sub_button: [
-            { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: false, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
-            { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: false, show_background: true,
+            { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
+            { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true,
               tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label(id)}?` } } },
           ],
           styles: ELAN_ROW_STYLE + elanSubtitle("Door lock") + seg(1, "!" + unlocked) + seg(2, unlocked) + " .bubble-sub-button-container { gap: 0 !important; }",
