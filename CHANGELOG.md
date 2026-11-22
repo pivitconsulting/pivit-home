@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.18 — 2026-11-22
+
+- PivIT ELAN Security: gold padlock icons on the LOCK (closed) and UNLOCK (open) buttons, as on the ELAN security screen; buttons widened to 112px (74px on phones, smaller icon and text).
+
 ## 1.1.15–1.1.17 — 2026-11-22
 
 - PivIT ELAN pop-ups: panel opens in ELAN night-sky navy (it was grey: Bubble paints .bubble-pop-up-background from --bubble-pop-up-main-background-color, which had been set to the light row colour). ELAN palette inside pop-ups: heat red #d23c3c, cool/auto/active/on ELAN blue (thermostat dial and mode buttons, light/fan/switch fills, toggles); pop-up sliders fill ELAN blue instead of the bulb colour.
