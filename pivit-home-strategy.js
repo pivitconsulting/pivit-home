@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.0.63";
+const VERSION = "1.1.0";
 
 const DEFAULTS = {
   title: "Home",
@@ -1329,9 +1329,370 @@ function mediaView(cfg, ctx, nav) {
   return { title: "Media", path: "media", type: "sections", max_columns: 3, background: cfg.background, sections };
 }
 
+
+/* ------------------------------------------------------------------ */
+/* PivIT ELAN — an ELAN-style variant (separate strategy, same devices) */
+/* ------------------------------------------------------------------ */
+//
+//   strategy:
+//     type: custom:pivit-elan
+//
+// Takes the same options as custom:pivit-home (plus elan_background). Modelled on the ELAN g! / ELAN 8 touch-panel UI
+// (as shown by myEasytek): a translucent subsystem menu down the left (Home, Security, Climate, Lighting, Media,
+// Irrigation, Video, Pool…), a centred page title over a thin rule, and translucent zone rows — line icon with a blue
+// underline, large light name with a small-caps subtitle, big status value on the right and a ›.
+// Tapping a zone opens the same pop-ups the PivIT Home dashboard uses.
+
+const ELAN_ACCENT = "#2f7fe0";
+const ELAN_BACKGROUND =
+  "center / cover no-repeat fixed radial-gradient(ellipse at 70% 15%, rgba(120,110,190,.55) 0%, rgba(40,46,92,0) 45%)," +
+  " radial-gradient(ellipse at 15% 85%, rgba(70,120,170,.35) 0%, rgba(20,24,48,0) 50%), linear-gradient(175deg, #2a2f5a 0%, #171a33 45%, #0b0d1a 100%)";
+const ELAN_ROW_BG = "rgba(12,14,22,.72)";
+
+// Translucent ELAN row look, shared by the row helpers below.
+const ELAN_ROW_STYLE =
+  `.bubble-button-card-container, .bubble-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; }` +
+  " .bubble-button-background { opacity: 0 !important; }" +
+  ` .bubble-main-icon-container { background: transparent !important; border-radius: 0 !important; box-shadow: inset 0 -3px 0 ${ELAN_ACCENT}; }` +
+  " .bubble-icon { color: #e9eef7 !important; --mdc-icon-size: 26px; }" +
+  " .bubble-name { font-size: 19px !important; font-weight: 300 !important; letter-spacing: .01em; }";
+
+const elanTitle = (text) => ({
+  type: "markdown",
+  text_only: true,
+  grid_options: { columns: "full" },
+  content: `<div style="text-align:center;font-weight:300;font-size:1.55em;letter-spacing:.02em;border-bottom:1px solid rgba(255,255,255,.4);padding-bottom:4px">${text}</div>`,
+});
+const elanSubhead = (text) => ({ type: "heading", heading: text, heading_style: "subtitle" });
+
+// Small-caps subtitle under the row name (static text or a JS expression).
+const elanSubtitle = (sub) =>
+  sub == null
+    ? ""
+    : " .bubble-name-container::after { content: \"" + (sub.expr ? "${" + sub.expr + "}" : sub) + "\"; display: block; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; opacity: .6; margin-top: 1px; }";
+
+// Zone row: icon, name, subtitle; big value (+ small label) on the right; › chevron. tap: action config.
+function elanRow({ name, icon, sub, value, label, tap, extra = {} }) {
+  const valueStyles = value
+    ? " .bubble-sub-button-1 { display: flex !important; flex-direction: column !important; align-items: flex-end !important; width: auto !important; padding: 0 10px; pointer-events: none !important; }" +
+      " .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { display: none !important; }" +
+      " .bubble-sub-button-1::before { content: \"${" + value + "}\"; font-size: 28px; font-weight: 300; line-height: 1; }" +
+      (label ? " .bubble-sub-button-1::after { content: \"${" + label + "}\"; font-size: 10px; letter-spacing: .09em; text-transform: uppercase; opacity: .6; margin-top: 2px; }" : "")
+    : "";
+  return {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    name,
+    icon,
+    grid_options: { columns: "full" },
+    sub_button: [
+      ...(value ? [{ icon: "mdi:circle-small", show_icon: false, show_background: false, tap_action: tap }] : []),
+      { icon: "mdi:chevron-right", show_background: false, tap_action: tap },
+    ],
+    styles: ELAN_ROW_STYLE + elanSubtitle(sub) + valueStyles,
+    ...extra,
+    ...action(tap),
+  };
+}
+
+// Left-hand ELAN menu; the current page is highlighted with a lighter panel.
+function elanNav(items, base, current) {
+  return items.map((it) => ({
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    name: it.name,
+    icon: it.icon,
+    grid_options: { columns: "full" },
+    styles:
+      ".bubble-button-background { opacity: 0 !important; }" +
+      ` .bubble-button-card-container { background: ${it.path === current ? "rgba(255,255,255,.16)" : "rgba(10,12,20,.62)"} !important; border-radius: 4px !important; }` +
+      " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; --mdc-icon-size: 28px; }" +
+      " .bubble-name { font-size: 19px !important; font-weight: 300 !important; }",
+    ...action({ action: "navigate", navigation_path: `${base}/${it.path}` }),
+  }));
+}
+
+const titleCase = (x) => "(((" + x + ") || '') + '').replace(/_/g, ' ').replace(/\\b\\w/g, (c) => c.toUpperCase())";
+
+class PivitElanStrategy extends HTMLElement {
+  static async generate(userConfig, hass) {
+    const cfg = { ...DEFAULTS, ...(userConfig || {}) };
+    NAMES = cfg.entity_names || {};
+    AUDIO_CARD = cfg.audio_card || "default";
+    const ctx = buildContext(cfg, hass);
+    SPEAKERS = ctx.rooms.flatMap((r) => roomMediaSplit(r, hass).audio);
+    const base = ctx.basePath;
+    const bg = cfg.elan_background || ELAN_BACKGROUND;
+    const label = (id) => NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
+    const go = (h) => ({ action: "navigate", navigation_path: h });
+
+    // Reuse the PivIT Home Rooms view for every pop-up (lights, audio, TV, thermostats, locks, sprinkler timers…).
+    const savant = roomsView(cfg, ctx, { type: "markdown", content: " " });
+    const popups = savant.sections.flatMap((sec) => sec.cards).filter((c) => c.card_type === "pop-up");
+    const popupsWhere = (test) => popups.filter((pp) => test(pp.hash || ""));
+
+    // What this home has.
+    const lightRooms = ctx.rooms.filter((r) => roomLights(r).length);
+    const shadeRooms = ctx.rooms.filter((r) => r.entities.some((id) => domainOf(id) === "cover" && !/garage|gate/i.test((hass.states[id] && hass.states[id].attributes.device_class) || "")));
+    const mediaRooms = ctx.rooms.filter((r) => { const m = roomMediaSplit(r, hass); return m.audio.length || m.tvs.length; });
+    const zoneEntries = (cfg.climate_zones || []).map((z) => (typeof z === "string" ? { entity: z } : z)).filter((z) => hass.states[z.entity]);
+    const climateZones = zoneEntries.length ? zoneEntries : ctx.climates.filter((id) => hass.states[id]).map((entity) => ({ entity }));
+    const locks = ctx.rooms.flatMap((r) => r.entities.filter((id) => domainOf(id) === "lock"));
+    const garages = Object.keys(hass.states).filter((id) => domainOf(id) === "cover" && ctx.roomOf[id] && /garage|gate/i.test(hass.states[id].attributes.device_class || ""));
+    const intercoms = cfg.intercoms || [];
+    const summaries = cfg.summaries || [];
+    const extra = (cfg.extra_views || []).map((v) => ({ ...v, path: v.path || slug(v.title || "view") }));
+
+    const items = [{ name: "Home", icon: "mdi:home-outline", path: "home" }];
+    if (ctx.alarms.length || locks.length || intercoms.length || garages.length) items.push({ name: "Security", icon: "mdi:lock-outline", path: "security" });
+    if (climateZones.length) items.push({ name: "Climate", icon: "mdi:thermometer", path: "climate" });
+    if (lightRooms.length || shadeRooms.length) items.push({ name: "Lighting", icon: "mdi:lightbulb-outline", path: "lighting" });
+    if (mediaRooms.length) items.push({ name: "Media", icon: "mdi:play-circle-outline", path: "media" });
+    for (const sm of summaries) items.push({ name: /sprinkl/i.test(sm.name) ? "Irrigation" : sm.name, icon: /sprinkl/i.test(sm.name) ? "mdi:water-outline" : sm.icon || "mdi:dots-grid", path: slug(sm.name) });
+    if (ctx.cameras.length) items.push({ name: "Video", icon: "mdi:cctv", path: "video" });
+    for (const v of extra) items.push({ name: v.title, icon: v.icon || "mdi:view-dashboard", path: v.path });
+    if ((cfg.elan_order || []).length) {
+      const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); return i < 0 ? 999 : i; };
+      items.sort((a, b) => rank(a.path) - rank(b.path));
+    }
+    const phoneNav = { ...navCard(items, base, cfg.nav_width), visibility: [{ condition: "screen", media_query: "(max-width: 767px)" }] };
+
+    // One view = ELAN menu (left column, wide screens) + one content column; pop-ups in their own section.
+    const view = (path, title, content, viewPopups = []) => ({
+      title,
+      path,
+      type: "sections",
+      max_columns: 4,
+      background: bg,
+      sections: [
+        { type: "grid", column_span: 1, cards: elanNav(items, base, path), visibility: [{ condition: "screen", media_query: "(min-width: 768px)" }] },
+        { type: "grid", column_span: 3, cards: content },
+        ...(viewPopups.length || intercoms.length ? [{ type: "grid", cards: [...viewPopups, ...intercoms.map(intercomPopup)] }] : []),
+        { type: "grid", column_span: 4, cards: [phoneNav] },
+      ],
+    });
+    const views = [];
+
+    // HOME — big thin clock and date in the middle (as on the ELAN home screen), weather and alarm underneath.
+    views.push(
+      view("home", "Home", [
+        {
+          type: "markdown",
+          text_only: true,
+          grid_options: { columns: "full" },
+          content:
+            `<div style="text-align:center;padding-top:9vh"><div style="font-size:2.4em;font-weight:300;letter-spacing:.35em;opacity:.95">${(cfg.elan_brand || cfg.title || "HOME").toUpperCase()}</div>` +
+            "<div style='font-size:6em;font-weight:200;line-height:1.1;opacity:.85'>{{ now().strftime('%-I:%M') }} <span style='font-size:.5em'>{{ now().strftime('%p') }}</span></div>" +
+            "<div style='font-size:1.2em;opacity:.7'>{{ now().strftime('%A %B %-d') }}" +
+            (ctx.weather ? " · {{ state_attr('" + ctx.weather + "','temperature') | round(0) }}° {{ states('" + ctx.weather + "') | replace('-', ' ') | replace('partlycloudy','partly cloudy') | title }}" : "") +
+            "</div></div>",
+        },
+      ])
+    );
+
+    // SECURITY — alarm, gate(s), garage doors, then every lock with LOCK / UNLOCK.
+    if (items.some((i) => i.path === "security")) {
+      const content = [elanTitle("Security")];
+      for (const id of ctx.alarms) {
+        const st = "hass.states['" + id + "'] ? hass.states['" + id + "'].state : ''";
+        content.push(
+          elanRow({
+            name: NAMES[id] || "Home Security",
+            icon: "mdi:shield-lock-outline",
+            sub: "Security partition",
+            value: "((s) => s.startsWith('armed') ? 'Armed' : " + titleCase("s") + ")(" + st + ")",
+            label: "((s) => s.startsWith('armed_') ? s.slice(6).replace(/_/g, ' ') : '')(" + st + ")",
+            tap: { action: "more-info" },
+            extra: { entity: id },
+          })
+        );
+      }
+      for (const ic of intercoms)
+        content.push(
+          elanRow({
+            name: ic.name || "Gate",
+            icon: "mdi:gate",
+            sub: "Gate",
+            value: ic.status_sensor ? "(hass.states['" + ic.status_sensor + "'] && hass.states['" + ic.status_sensor + "'].state === 'on' ? 'Open' : 'Closed')" : null,
+            tap: go(intercomHash(ic)),
+          })
+        );
+      for (const id of garages)
+        content.push(
+          elanRow({ name: label(id), icon: "mdi:garage-variant", sub: "Door control", value: titleCase("hass.states['" + id + "'] && hass.states['" + id + "'].state"), tap: { action: "toggle" }, extra: { entity: id } })
+        );
+      // Locks: LOCK / UNLOCK segmented buttons; the current state is filled blue.
+      for (const id of locks) {
+        const unlocked = JSON.stringify(UNLOCKED_STATES) + ".includes(hass.states['" + id + "'] && hass.states['" + id + "'].state)";
+        const seg = (n, on) =>
+          ` .bubble-sub-button-${n} { width: 84px !important; height: 34px !important; border-radius: 3px !important; justify-content: center !important;` +
+          ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
+          ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f5c542 !important; --mdc-icon-size: 16px; }` +
+          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; }`;
+        content.push({
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          entity: id,
+          name: label(id),
+          icon: "mdi:door-closed-lock",
+          grid_options: { columns: "full" },
+          sub_button: [
+            { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
+            { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true,
+              tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label(id)}?` } } },
+          ],
+          styles: ELAN_ROW_STYLE + elanSubtitle("Door lock") + seg(1, "!" + unlocked) + seg(2, unlocked) + " .bubble-sub-button-container { gap: 0 !important; }",
+          ...action({ action: "more-info" }),
+        });
+      }
+      views.push(view("security", "Security", content, []));
+    }
+
+    // CLIMATE — each zone: name, big current temperature, heat/cool setpoints (Bubble climate card), › to full controls.
+    if (items.some((i) => i.path === "climate"))
+      views.push(
+        view(
+          "climate",
+          "Climate",
+          [
+            elanTitle("Climate"),
+            ...climateZones.map(({ entity: id, name }) => ({
+              type: "custom:bubble-card",
+              card_type: "climate",
+              entity: id,
+              name: name || label(id),
+              show_state: false,
+              grid_options: { columns: "full" },
+              sub_button: [
+                { entity: id, show_attribute: true, attribute: "current_temperature", show_icon: false, show_background: false, tap_action: go(thermostatHash(id)) },
+                { icon: "mdi:chevron-right", show_background: false, tap_action: go(thermostatHash(id)) },
+              ],
+              styles:
+                ELAN_ROW_STYLE +
+                elanSubtitle({ expr: titleCase("hass.states['" + id + "'] && (hass.states['" + id + "'].attributes.hvac_action || hass.states['" + id + "'].state)") }) +
+                " .bubble-sub-button-1 { font-size: 30px !important; font-weight: 300 !important; } .bubble-sub-button-1 * { font-size: 30px !important; font-weight: 300 !important; }",
+              ...action(go(thermostatHash(id))),
+            })),
+          ],
+          popupsWhere((h) => h.startsWith("#thermostat-"))
+        )
+      );
+
+    // LIGHTING — rooms with the number of devices on; shades follow (ELAN keeps shades under lighting).
+    if (items.some((i) => i.path === "lighting")) {
+      const content = [elanTitle("Lighting")];
+      for (const r of lightRooms) {
+        const n = lightsOnExpr(roomLights(r));
+        content.push(elanRow({ name: r.name, icon: "mdi:lightbulb-outline", value: n, label: "'Devices on'", tap: go("#" + slug(r.name) + "-lights") }));
+      }
+      if (shadeRooms.length) {
+        content.push(elanSubhead("Shades"));
+        for (const r of shadeRooms)
+          for (const id of r.entities.filter((e) => domainOf(e) === "cover" && !/garage|gate/i.test(hass.states[e].attributes.device_class || ""))) {
+            const c = entityCard(hass, id);
+            c.styles = ((c.styles || "") + " " + ELAN_ROW_STYLE).trim();
+            content.push(c);
+          }
+      }
+      views.push(view("lighting", "Lighting", content, popupsWhere((h) => h.endsWith("-lights"))));
+    }
+
+    // MEDIA — "All Zones Off", what's playing, then every zone with its source and a volume bar (› opens the zone).
+    if (items.some((i) => i.path === "media")) {
+      const allAudio = mediaRooms.flatMap((r) => roomMediaSplit(r, hass).audio);
+      const allTvs = mediaRooms.flatMap((r) => roomMediaSplit(r, hass).tvs);
+      const off = liveBulk(allAudio, ["playing"], "media_player.media_pause", {
+        confirm: false,
+        extra: allTvs.length ? [{ ids: allTvs, states: ["on", "playing", "paused", "idle", "buffering"], service: "media_player.turn_off" }] : [],
+      });
+      const content = [
+        elanTitle("Media Zones"),
+        { type: "custom:bubble-card", card_type: "button", button_type: "name", name: "All Zones Off", icon: "mdi:power", grid_options: { columns: "full" }, styles: ELAN_ROW_STYLE + " " + off.hook, ...off.actions },
+        // Now playing: one card per speaker, shown only while it plays.
+        ...[...new Set(allAudio)].map((id) => ({
+          type: "conditional",
+          conditions: [{ condition: "state", entity: id, state: "playing" }],
+          card: AUDIO_CARD === "mediocre"
+            ? { type: "custom:mediocre-media-player-card", entity_id: id, use_art_colors: true, tap_opens_popup: false, options: { show_volume_step_buttons: true } }
+            : { type: "media-control", entity: id },
+          grid_options: { columns: "full" },
+        })),
+      ];
+      for (const r of mediaRooms) {
+        const m = roomMediaSplit(r, hass);
+        const id = m.audio[0] || m.tvs[0];
+        const players = [...m.audio, ...m.tvs];
+        const src =
+          "((() => { const p = " + JSON.stringify(players) + ".map((e) => hass.states[e]).filter(Boolean); const a = p.find((s) => s.state === 'playing');" +
+          " if (a) return (a.attributes.source || a.attributes.app_name || 'Music') + ''; if (p.some((s) => ['on', 'idle'].includes(s.state) && " + JSON.stringify(m.tvs) + ".includes(s.entity_id))) return 'TV'; return 'Off'; })())";
+        content.push({
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "slider",
+          entity: id,
+          name: r.name,
+          icon: r.icon,
+          show_state: false,
+          grid_options: { columns: "full" },
+          sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: go("#" + slug(r.name) + (m.audio.length ? "-audio" : "-tv")) }],
+          styles: ELAN_ROW_STYLE + elanSubtitle({ expr: src }) + " .bubble-range-fill { background: rgba(47,127,224,.35) !important; }",
+        });
+      }
+      views.push(view("media", "Media", content, popupsWhere((h) => h.endsWith("-audio") || h.endsWith("-tv"))));
+    }
+
+    // Summaries (e.g. Sprinklers → "Irrigation"): one row per zone, RUNNING / OFF, › opens the zone's own pop-up.
+    for (const sm of summaries) {
+      const path = slug(sm.name);
+      const byEntity = {};
+      for (const pp of sm.popups || []) if (pp.entity) byEntity[pp.entity] = pp.hash;
+      const title = /sprinkl/i.test(sm.name) ? "Irrigation" : sm.name;
+      const content = [elanTitle(title)];
+      for (const id of sm.entities || []) {
+        if (!hass.states[id]) continue;
+        const card = (sm.cards || []).find((c) => c.entity === id) || {};
+        content.push(
+          elanRow({
+            name: card.name || label(id),
+            icon: card.icon || sm.icon || "mdi:sprinkler-variant",
+            sub: "Zone",
+            value: "(hass.states['" + id + "'] && hass.states['" + id + "'].state === 'on' ? 'Running' : 'Off')",
+            tap: byEntity[id] ? go(byEntity[id]) : { action: "more-info" },
+            extra: byEntity[id] ? {} : { entity: id },
+          })
+        );
+      }
+      views.push(view(path, title, content, sm.popups || []));
+    }
+
+    // VIDEO — camera list; selecting one opens it full screen.
+    if (items.some((i) => i.path === "video"))
+      views.push(
+        view("video", "Video", [
+          elanTitle("Video"),
+          ...ctx.cameras.map((id) =>
+            elanRow({ name: label(id).replace(/\s+(High|Medium|Low) resolution channel$/i, ""), icon: "mdi:cctv", sub: "Camera", tap: { action: "more-info" }, extra: { entity: id } })
+          ),
+        ])
+      );
+
+    // Extra views (e.g. Pool) keep their own content, inside the ELAN frame.
+    for (const v of extra) views.push(view(v.path, v.title, [elanTitle(v.title), ...(v.sections || []).flatMap((x) => x.cards || [])]));
+
+    return { title: cfg.title, views };
+  }
+}
+
 /* ------------------------------------------------------------------ */
 
 if (!customElements.get("ll-strategy-dashboard-pivit-home")) {
   customElements.define("ll-strategy-dashboard-pivit-home", PivitHomeStrategy);
   console.info(`%c PivIT Home %c v${VERSION} `, "background:#1f6feb;color:#fff;border-radius:3px 0 0 3px", "background:#333;color:#fff;border-radius:0 3px 3px 0");
+}
+
+if (!customElements.get("ll-strategy-dashboard-pivit-elan")) {
+  customElements.define("ll-strategy-dashboard-pivit-elan", PivitElanStrategy);
 }

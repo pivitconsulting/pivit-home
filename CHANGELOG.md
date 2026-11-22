@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.0 — 2026-11-22
+
+- New **PivIT ELAN** template (`strategy: type: custom:pivit-elan`), modelled on the ELAN g!/ELAN 8 touch-panel UI: translucent subsystem menu on the left (Home, Security, Climate, Lighting, Media, Irrigation, Video, Pool…), centred page titles, translucent zone rows with big status values. Uses the same options and devices as PivIT Home and reuses its pop-ups. The PivIT Home (Savant-style) template is unchanged.
+
 ## 1.0.63 — 2026-11-20
 
 - New `shared_entities` option (`{ <area_id>: [entity ids] }`): show a device in another room as well, e.g. one Sonos amp covering the kitchen and dining room.
