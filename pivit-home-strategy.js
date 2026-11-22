@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.28";
+const VERSION = "1.1.29";
 
 const DEFAULTS = {
   title: "Home",
@@ -1536,7 +1536,7 @@ const ELAN_POPUP_STYLE =
   ".bubble-pop-up { --bubble-pop-up-border-radius: 10px; --bubble-border-radius: 6px; --bubble-button-border-radius: 6px; --bubble-card-type-border-radius: 6px; --bubble-media-player-border-radius: 6px; --bubble-sub-slider-border-radius: 4px; --bubble-select-button-border-radius: 4px; --bubble-sub-button-border-radius: 4px;" +
   " --bubble-main-background-color: rgba(255,255,255,.08);" +
   " --bubble-secondary-background-color: rgba(255,255,255,.08); --bubble-media-player-buttons-border-radius: 4px;" +
-  " --ha-card-background: rgba(255,255,255,.06); --ha-card-border-radius: 6px; --card-background-color: rgba(255,255,255,.06);" +
+  " --ha-card-background: rgba(255,255,255,.06); --ha-card-border-radius: 6px; --card-background-color: #1d2244;" +
   // ELAN palette: heat red, everything else that is "active" ELAN blue (HA thermostat dial, mode buttons, light/fan/switch fills).
   ` --primary-color: ${ELAN_ACCENT}; --accent-color: ${ELAN_ACCENT}; --state-active-color: ${ELAN_ACCENT}; --state-icon-active-color: ${ELAN_ACCENT};` +
   ` --state-climate-heat-color: ${ELAN_HEAT}; --state-climate-cool-color: ${ELAN_ACCENT}; --state-climate-heat_cool-color: ${ELAN_ACCENT};` +
