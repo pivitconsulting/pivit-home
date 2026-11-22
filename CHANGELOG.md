@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.7–1.1.11 — 2026-11-22
+
+- PivIT ELAN review pass at iPad landscape, iPad portrait (820px) and phone (390px): pop-ups re-skinned for ELAN (navy panel, squarer corners, visible rows) via cascading Bubble/HA card variables; below 1000px the menu becomes a bar of square icon buttons that fits all 8 pages (phones too) and content goes full width; phone sizing for rows, LOCK/UNLOCK, climate (setpoints hidden, row opens thermostat), pool panels/toggles; room-title descenders.
+
 ## 1.1.5–1.1.6 — 2026-11-22
 
 - PivIT ELAN pool/spa: big water temperature beside the setpoint. Home date separator "·" (Bubble Card drops the space after a comma).
