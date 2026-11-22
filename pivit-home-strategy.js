@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.34";
+const VERSION = "1.1.35";
 
 const DEFAULTS = {
   title: "Home",
@@ -2315,9 +2315,9 @@ class PivitElanStrategy extends HTMLElement {
       });
       const grid = (columns) => ({ type: "grid", columns, square: false, cards: ctx.cameras.map(tile) });
       const camPopups = ctx.cameras.map((id) =>
-        popupShell(camHash(id), camName(id), "mdi:cctv", [
+        ({ ...popupShell(camHash(id), camName(id), "mdi:cctv", [
           { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
-        ])
+        ]), width_desktop: "960px" })
       );
       views.push(view("video", "Video", { wide: [elanTitle("Video"), grid(2)], narrow: [elanTitle("Video"), grid(1)] }, camPopups));
     }
