@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.30 — 2026-11-22
+
+- PivIT ELAN shades: Lighting-page shade rows rebuilt (name, position under it — "Open" / "Closed" / "50% open" — and ▲ ■ ▼ buttons); tapping a row opens an ELAN shade pop-up (`#shade-<cover>`): OPEN / STOP / CLOSE buttons with gold icons (fully open / closed fills blue), a position slider when the shade supports set_position, and 24 h of activity.
+
 ## 1.1.28–1.1.29 — 2026-11-22
 
 - PivIT ELAN Security: tapping a door lock row opens an ELAN lock pop-up (`#lock-<lock>`) instead of HA's grey dialog — big LOCK / UNLOCK buttons (gold padlocks, current state blue, unlock confirms) and the lock's last 24 h of activity. ELAN pop-ups use a solid navy card colour so pinned list headers don't show text through them.
