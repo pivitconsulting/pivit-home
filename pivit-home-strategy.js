@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.38";
+const VERSION = "1.1.39";
 
 const DEFAULTS = {
   title: "Home",
@@ -80,6 +80,7 @@ const domainOf = (id) => id.split(".")[0];
 class PivitHomeStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
+    cfg.intercoms = enrichIntercoms(cfg.intercoms, hass);
     NAMES = cfg.entity_names || {};
     AUDIO_CARD = cfg.audio_card || "default";
     const ctx = buildContext(cfg, hass);
@@ -710,17 +711,49 @@ function intercomHash(ic) {
 }
 // Gate open/closed indicator (a sub-button showing the status sensor's state with an open/closed icon).
 // Gate open/closed indicator: two sub-buttons (closed gate / open gate icon) shown by state, with the state text.
+
+// Resolve what the hold-open picker needs: the UniFi Access device behind the lock-rule select (custom durations go
+// through unifi_access.set_lock_rule) and an input_datetime that records when the hold ends (for the countdown):
+// `hold_end_entity`, or input_datetime.pivit_<gate name>_open_until when it exists.
+function enrichIntercoms(intercoms, hass) {
+  return (intercoms || []).map((ic) => {
+    const ent = ic.lock_rule && hass.entities && hass.entities[ic.lock_rule];
+    const dev = ent && ent.platform === "unifi_access" ? ent.device_id : null;
+    const autoEnd = `input_datetime.pivit_${slug(ic.name || "gate").replace(/-/g, "_")}_open_until`;
+    return { ...ic, hold_device_id: ic.hold_device_id || dev, hold_end_entity: ic.hold_end_entity || (hass.states[autoEnd] ? autoEnd : null) };
+  });
+}
+
+// "Held Open · 23 min" countdown text (JS expression for Bubble templates).
+function holdRemainingExpr(ic) {
+  if (!ic.hold_end_entity) return "''";
+  return "((e) => { var p = e ? String(e.state).split(':').map(Number) : []; if (p.length < 2 || isNaN(p[0]) || isNaN(p[1])) return ''; var d = new Date(); d.setHours(p[0], p[1], p[2] || 0, 0);" +
+    " var m = Math.ceil((d - Date.now()) / 60000); if (m < -5) m += 1440; if (m <= 0) return ''; return m >= 60 ? Math.floor(m / 60) + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; })(hass.states['" + ic.hold_end_entity + "'])";
+}
+function holdHeldExpr(ic) {
+  const status = ic.lock_rule_sensor || ic.lock_rule;
+  return "(" + JSON.stringify([ic.hold_option || "keep_unlock", "custom"]) + ".includes(hass.states['" + status + "'] && hass.states['" + status + "'].state))";
+}
+
 function intercomStatusSubs(ic, tap) {
   const base = { entity: ic.status_sensor, show_state: true, show_icon: true, show_background: false, tap_action: tap || { action: "more-info" } };
+  const status = ic.lock_rule_sensor || ic.lock_rule;
+  const held = [ic.hold_option || "keep_unlock", "custom"];
+  const notHeld = status ? [{ condition: "state", entity: status, state_not: held }] : [];
   return [
-    { ...base, icon: "mdi:gate", visibility: [{ condition: "state", entity: ic.status_sensor, state_not: "on" }] },
-    { ...base, icon: "mdi:gate-open", visibility: [{ condition: "state", entity: ic.status_sensor, state: "on" }] },
+    { ...base, icon: "mdi:gate", visibility: [{ condition: "state", entity: ic.status_sensor, state_not: "on" }, ...notHeld] },
+    { ...base, icon: "mdi:gate-open", visibility: [{ condition: "state", entity: ic.status_sensor, state: "on" }, ...notHeld] },
+    // While a hold is active: "Held Open · 23 min" (text drawn by intercomStatusStyles).
+    ...(status ? [{ ...base, entity: status, icon: "mdi:gate-open", show_state: false, show_name: false, visibility: [{ condition: "state", entity: status, state: held }] }] : []),
   ];
 }
 // Yellow while open (the open sub-button is the second of the pair starting at `idx`).
 function intercomStatusStyles(ic, idx) {
   const o = idx + 1;
-  return `.bubble-sub-button-${o}, .bubble-sub-button-${o} ha-icon, .bubble-sub-button-${o} ha-state-icon { color: var(--accent-color) !important; }`;
+  const h = idx + 2;
+  return `.bubble-sub-button-${o}, .bubble-sub-button-${o} ha-icon, .bubble-sub-button-${o} ha-state-icon { color: var(--accent-color) !important; }` +
+    ` .bubble-sub-button-${h}, .bubble-sub-button-${h} ha-icon { color: var(--accent-color) !important; }` +
+    ` .bubble-sub-button-${h}::after { content: "\${'Held Open' + ((r) => r ? ' · ' + r : '')(${holdRemainingExpr(ic)})}"; margin-left: 4px; white-space: nowrap; }`;
 }
 function intercomPopup(ic) {
   const cards = [];
@@ -773,17 +806,71 @@ function intercomPopup(ic) {
       ...extra,
       ...action(tap),
     });
-    cards.push({
-      type: "conditional",
-      conditions: [{ condition: "state", entity: status, state_not: heldStates }],
-      card: btn("Hold Open", "mdi:gate-open", rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you cancel it?`)),
-      grid_options: { columns: 6 },
-    });
+    const key = slug(ic.name || "gate");
+    if (ic.hold_device_id) {
+      // Hold Open shows a picker of how long to hold the gate open; picking one holds it through UniFi Access
+      // (custom lock rule for that many minutes, or keep_unlock for "Until cancelled") and records the end time.
+      const durations = ic.hold_durations || [15, 30, 60, 120, 240, 0];
+      const labelOf = (m) => (m === 0 ? "Until cancelled" : m < 60 ? m + " min" : m / 60 + " hr");
+      const toggleHook =
+        "${(card.__pvHk || (card.__pvHk = 1, card.addEventListener('click', function () { var W = (window.__pvHold = window.__pvHold || {});" +
+        " W[" + JSON.stringify(key) + "] = !W[" + JSON.stringify(key) + "]; window.dispatchEvent(new CustomEvent('pv-hold-" + key + "')); })), '')}";
+      cards.push({
+        type: "conditional",
+        conditions: [{ condition: "state", entity: status, state_not: heldStates }],
+        card: { ...btn("Hold Open", "mdi:gate-open", { action: "none" }), styles: toggleHook },
+        grid_options: { columns: 6 },
+      });
+      const pickHook =
+        "${(card.__pvPk || (card.__pvPk = 1, (function () { var key = " + JSON.stringify(key) + ", W = (window.__pvHold = window.__pvHold || {});" +
+        " var outer = function () { var host = card.getRootNode().host; return host && host.parentElement && host.parentElement.tagName === 'HUI-CARD' ? host.parentElement : host; };" +
+        " var sync = function () { var o = outer(); if (o) o.style.display = W[key] ? '' : 'none'; };" +
+        " window.addEventListener('pv-hold-' + key, sync); window.addEventListener('hashchange', function () { W[key] = false; sync(); }); setTimeout(sync, 0); setTimeout(sync, 400);" +
+        " var mins = " + JSON.stringify(durations) + ";" +
+        " card.addEventListener('click', function (ev) { var path = ev.composedPath(), n = 0;" +
+        "   for (var i = 1; i <= mins.length; i++) if (path.some(function (e) { return e.classList && e.classList.contains('bubble-sub-button-' + i); })) n = i;" +
+        "   if (!n) return; var m = mins[n - 1];" +
+        "   var act = function (svc, data) { card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action: { action: 'perform-action', perform_action: svc, data: data } } } })); };" +
+        "   if (m) act('unifi_access.set_lock_rule', { device_id: " + JSON.stringify(ic.hold_device_id) + ", rule: 'custom', interval: { hours: Math.floor(m / 60), minutes: m % 60 } });" +
+        "   else act('unifi_access.set_lock_rule', { device_id: " + JSON.stringify(ic.hold_device_id) + ", rule: " + JSON.stringify(ic.hold_option || "keep_unlock") + " });" +
+        (ic.hold_end_entity
+          ? "   if (m) { var d = new Date(Date.now() + m * 60000), z = function (x) { return (x < 10 ? '0' : '') + x; };" +
+            "     act('input_datetime.set_datetime', { entity_id: " + JSON.stringify(ic.hold_end_entity) + ", time: z(d.getHours()) + ':' + z(d.getMinutes()) + ':' + z(d.getSeconds()) }); }"
+          : "") +
+        "   W[key] = false; sync(); });" +
+        " })()), '')}";
+      cards.push({
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "name",
+        name: "Hold open for",
+        show_icon: false,
+        grid_options: { columns: "full" },
+        sub_button: durations.map((m) => ({ name: labelOf(m), icon: "mdi:timer-outline", show_name: true, show_icon: false, show_background: true, tap_action: { action: "none" } })),
+        styles:
+          ".bubble-button-card-container { height: 132px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 10px 12px !important; height: 100%; box-sizing: border-box; gap: 8px; }" +
+          " .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin: 0 !important; } .bubble-name { font-size: 13px !important; opacity: .75; text-transform: uppercase; letter-spacing: .08em; }" +
+          " .bubble-sub-button-container { display: grid !important; grid-template-columns: repeat(3, 1fr); gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }" +
+          " .bubble-sub-button { height: 38px !important; width: auto !important; margin: 0 !important; justify-content: center !important; }" +
+          " .bubble-sub-button .bubble-sub-button-name-container { font-size: 13px !important; opacity: 1 !important; }" +
+          " " + pickHook,
+        tap_action: { action: "none" },
+        button_action: { tap_action: { action: "none" } },
+      });
+    } else
+      cards.push({
+        type: "conditional",
+        conditions: [{ condition: "state", entity: status, state_not: heldStates }],
+        card: btn("Hold Open", "mdi:gate-open", rule(ic.hold_option || "keep_unlock", `Hold ${ic.name || "the gate"} open until you cancel it?`)),
+        grid_options: { columns: 6 },
+      });
     cards.push({
       type: "conditional",
       conditions: [{ condition: "state", entity: status, state: heldStates }],
-      card: btn(ic.held_name || "Held Open - Press to Cancel", "mdi:gate-open", rule(ic.normal_option || "reset"), {
-        styles: iconFillWhen("true", "var(--accent-color)"),
+      card: btn(ic.held_name || "Held Open", "mdi:gate-open", rule(ic.normal_option || "reset"), {
+        styles:
+          iconFillWhen("true", "var(--accent-color)") +
+          " .bubble-name-container::after { content: \"${((r) => r ? r + ' left · ' : '')(" + holdRemainingExpr(ic) + ") + 'Press to cancel'}\"; display: block; font-size: 11px; opacity: .7; }",
       }),
       grid_options: { columns: 6 },
     });
@@ -1921,6 +2008,7 @@ function elanShadePopup(hass, id, label) {
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
+    cfg.intercoms = enrichIntercoms(cfg.intercoms, hass);
     NAMES = cfg.entity_names || {};
     AUDIO_CARD = cfg.audio_card || "default";
     const ctx = buildContext(cfg, hass);
@@ -2061,7 +2149,10 @@ class PivitElanStrategy extends HTMLElement {
             name: ic.name || "Gate",
             icon: "mdi:gate",
             sub: "Gate",
-            value: ic.status_sensor ? "(hass.states['" + ic.status_sensor + "'] && hass.states['" + ic.status_sensor + "'].state === 'on' ? 'Open' : 'Closed')" : null,
+            value: ic.status_sensor
+              ? "(" + (ic.lock_rule ? holdHeldExpr(ic) + " ? 'Held Open' : " : "") + "(hass.states['" + ic.status_sensor + "'] && hass.states['" + ic.status_sensor + "'].state === 'on' ? 'Open' : 'Closed'))"
+              : null,
+            label: ic.lock_rule ? "(" + holdHeldExpr(ic) + " ? ((r) => r ? r + ' left' : '')(" + holdRemainingExpr(ic) + ") : '')" : null,
             tap: go(intercomHash(ic)),
           })
         );
