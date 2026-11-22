@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.33–1.1.35 — 2026-11-22
+
+- PivIT ELAN Video page: every camera live (picture-entity, camera_view live, 16:9, name overlay) — two per row beside the menu, one per row below 1000px; tapping a camera opens a wide (960px) ELAN pop-up (`#camera-<camera>`) with it live. The grid uses a camera's low or medium resolution stream when one exists (pop-up stays high-res). view() accepts { wide, narrow } content.
+
 ## 1.1.32 — 2026-11-22
 
 - PivIT ELAN media: tapping the artwork on a Mediocre card used to open Home Assistant's own (grey) media dialog, which lives outside the dashboard and can't be recoloured. Media page now-playing cards now open that room's ELAN audio pop-up (`#<room>-audio`); inside audio pop-ups the artwork tap does nothing (card `action.tap_action`).
