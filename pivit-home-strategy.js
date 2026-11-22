@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.2";
+const VERSION = "1.1.3";
 
 const DEFAULTS = {
   title: "Home",
@@ -1369,7 +1369,7 @@ const elanTitle = (text) => ({
   styles:
     ".bubble-button-card-container { background: none !important; border-radius: 0 !important; border-bottom: 1px solid rgba(255,255,255,.45); }" +
     " .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
-    " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 26px !important; font-weight: 300 !important; text-align: center; }",
+    " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 26px !important; font-weight: 300 !important; text-align: center; line-height: 1.35 !important; overflow: visible !important; }",
   tap_action: { action: "none" },
   button_action: { tap_action: { action: "none" } },
 });
@@ -1512,9 +1512,9 @@ class PivitElanStrategy extends HTMLElement {
           styles:
             ".bubble-button-card-container { background: none !important; height: 62vh !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
             " .bubble-button-card { justify-content: center !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; text-align: center; }" +
-            " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; }" +
+            " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; line-height: 1.4 !important; overflow: visible !important; }" +
             " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
-            " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })" + wx + "}\";" +
+            " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + ', ' + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
             " position: absolute; left: 0; right: 0; bottom: 14%; text-align: center; font-size: 18px; opacity: .7; }",
         },
       ])
@@ -1557,8 +1557,8 @@ class PivitElanStrategy extends HTMLElement {
         const seg = (n, on) =>
           ` .bubble-sub-button-${n} { width: 84px !important; height: 34px !important; border-radius: 3px !important; justify-content: center !important;` +
           ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
-          ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f5c542 !important; --mdc-icon-size: 16px; }` +
-          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; }`;
+          ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { display: none !important; }` +
+          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }`;
         content.push({
           type: "custom:bubble-card",
           card_type: "button",
@@ -1568,8 +1568,8 @@ class PivitElanStrategy extends HTMLElement {
           icon: "mdi:door-closed-lock",
           grid_options: { columns: "full" },
           sub_button: [
-            { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
-            { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true,
+            { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: false, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
+            { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: false, show_background: true,
               tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label(id)}?` } } },
           ],
           styles: ELAN_ROW_STYLE + elanSubtitle("Door lock") + seg(1, "!" + unlocked) + seg(2, unlocked) + " .bubble-sub-button-container { gap: 0 !important; }",
@@ -1600,6 +1600,10 @@ class PivitElanStrategy extends HTMLElement {
               ],
               styles:
                 ELAN_ROW_STYLE +
+                " .bubble-color-background { opacity: 0 !important; }" +
+                " .bubble-low-temp-container { background: rgba(200,40,40,.55) !important; } .bubble-high-temp-container { background: rgba(47,127,224,.6) !important; }" +
+                " .bubble-low-temp-container, .bubble-high-temp-container, .bubble-temperature-container { border-radius: 4px !important; }" +
+                " .bubble-climate-temp-display, .bubble-climate-temp-display * { color: #fff !important; }" +
                 elanSubtitle({ expr: titleCase("hass.states['" + id + "'] && (hass.states['" + id + "'].attributes.hvac_action || hass.states['" + id + "'].state)") }) +
                 " .bubble-sub-button-1 { font-size: 30px !important; font-weight: 300 !important; } .bubble-sub-button-1 * { font-size: 30px !important; font-weight: 300 !important; }",
               ...action(go(thermostatHash(id))),
@@ -1666,7 +1670,7 @@ class PivitElanStrategy extends HTMLElement {
           show_state: false,
           grid_options: { columns: "full" },
           sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: go("#" + slug(r.name) + (m.audio.length ? "-audio" : "-tv")) }],
-          styles: ELAN_ROW_STYLE + elanSubtitle({ expr: src }) + " .bubble-range-fill { background: rgba(47,127,224,.35) !important; }",
+          styles: ELAN_ROW_STYLE + elanSubtitle({ expr: src }) + " .bubble-range-fill { background: rgba(47,127,224,.22) !important; border-right: 2px solid #2f7fe0; }",
         });
       }
       views.push(view("media", "Media", content, popupsWhere((h) => h.endsWith("-audio") || h.endsWith("-tv"))));
@@ -1708,7 +1712,12 @@ class PivitElanStrategy extends HTMLElement {
       );
 
     // Extra views (e.g. Pool) keep their own content, inside the ELAN frame.
-    for (const v of extra) views.push(view(v.path, v.title, [elanTitle(v.title), ...(v.sections || []).flatMap((x) => x.cards || [])]));
+    for (const v of extra) {
+      const cards = (v.sections || []).flatMap((x) => x.cards || []);
+      // Drop a heading that only repeats the page title (the ELAN title already shows it).
+      if (cards[0] && cards[0].type === "heading" && (cards[0].heading || "").toLowerCase() === (v.title || "").toLowerCase()) cards.shift();
+      views.push(view(v.path, v.title, [elanTitle(v.title), ...cards]));
+    }
 
     return { title: cfg.title, views };
   }
