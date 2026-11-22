@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.30";
+const VERSION = "1.1.31";
 
 const DEFAULTS = {
   title: "Home",
@@ -1367,6 +1367,15 @@ const ELAN_ROW_STYLE =
   " .bubble-sub-button-1 * { font-size: 20px !important; } .bubble-sub-button-container .bubble-sub-button[class*='bubble-sub-button-'] { min-width: 0; }" +
   " .bubble-temperature-container, .bubble-target-temperature-container { display: none !important; } .bubble-buttons-container::before { font-size: 30px !important; } }";
 
+// Mediocre media cards and other standard HA cards in ELAN colours (see the card's CSS variables).
+const ELAN_CARD_VARS =
+  " --mmpc-card: rgba(12,14,22,.72); --mmpc-on-card: #f2f5fa; --mmpc-on-card-muted: rgba(242,245,250,.6); --mmpc-on-card-divider: rgba(255,255,255,.12);" +
+  " --mmpc-dialog: #1d2244; --mmpc-on-dialog: #f2f5fa; --mmpc-on-dialog-muted: rgba(242,245,250,.6); --mmpc-on-dialog-divider: rgba(255,255,255,.12);" +
+  " --mmpc-art-border-radius: 4px; --mmpc-chip-background: rgba(255,255,255,.08); --mmpc-chip-foreground: #f2f5fa;" +
+  ` --slider-on-fill-color: ${ELAN_ACCENT}; --primary-color: ${ELAN_ACCENT}; --accent-color: ${ELAN_ACCENT}; --state-media_player-active-color: ${ELAN_ACCENT};` +
+  " --divider-color: rgba(255,255,255,.12); --secondary-background-color: rgba(255,255,255,.08); --card-background-color: #1d2244; --ha-card-border-radius: 6px;";
+// Set on each ELAN page by its title card, so cards outside pop-ups (e.g. the Media page's now-playing cards) follow.
+const ELAN_PAGE_VARS = ELAN_CARD_VARS + " --ha-card-background: rgba(12,14,22,.72); --ha-card-border-width: 1px; --ha-card-border-color: rgba(255,255,255,.06);";
 const elanTitle = (text) => ({
   type: "custom:bubble-card",
   card_type: "button",
@@ -1377,7 +1386,11 @@ const elanTitle = (text) => ({
   styles:
     ".bubble-button-card-container { background: none !important; border-radius: 0 !important; border-bottom: 1px solid rgba(255,255,255,.45); }" +
     " .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
-    " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 26px !important; font-weight: 300 !important; text-align: center; line-height: 1.35 !important; overflow: visible !important; }",
+    " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 26px !important; font-weight: 300 !important; text-align: center; line-height: 1.35 !important; overflow: visible !important; }" +
+    // Once on screen, put the ELAN card colours on the page (the sections view) so standard cards on it follow them.
+    " ${(card.__pvTheme || (card.__pvTheme = 1, (function paint(tries) { var n = card; for (var i = 0; i < 60 && n; i++) { n = n.parentNode || n.host;" +
+    " if (n && n.tagName === 'HUI-SECTIONS-VIEW') { if (!n.__pvElan) { n.__pvElan = 1; n.style.cssText += " + JSON.stringify(ELAN_PAGE_VARS) + "; } return; } }" +
+    " if (tries < 20) setTimeout(function () { paint(tries + 1); }, 250); })(0)), '')}",
   tap_action: { action: "none" },
   button_action: { tap_action: { action: "none" } },
 });
@@ -1546,7 +1559,8 @@ const ELAN_POPUP_STYLE =
   ` --state-lock-locked-color: ${ELAN_ACCENT}; --state-lock-unlocked-color: ${ELAN_HEAT}; --bubble-accent-color: ${ELAN_ACCENT}; --switch-checked-color: ${ELAN_ACCENT};` +
   ` --state-alarm_control_panel-disarmed-color: ${ELAN_ACCENT}; --state-alarm_control_panel-armed_home-color: ${ELAN_HEAT}; --state-alarm_control_panel-armed_away-color: ${ELAN_HEAT};` +
   ` --state-alarm_control_panel-armed_night-color: ${ELAN_HEAT}; --state-alarm_control_panel-armed_vacation-color: ${ELAN_HEAT}; --state-alarm_control_panel-triggered-color: ${ELAN_HEAT};` +
-  ` --mdc-theme-primary: ${ELAN_ACCENT}; --secondary-background-color: rgba(255,255,255,.08); --divider-color: rgba(255,255,255,.12); }` +
+  ` --mdc-theme-primary: ${ELAN_ACCENT}; --secondary-background-color: rgba(255,255,255,.08); --divider-color: rgba(255,255,255,.12);` +
+  ELAN_CARD_VARS.replace('--card-background-color: #1d2244;', '') + ' }' +
   // The panel itself: ELAN night-sky navy (Bubble would otherwise paint it with the row colour → grey).
   " .bubble-pop-up-background { background: linear-gradient(175deg, rgba(42,47,92,.97) 0%, rgba(23,26,51,.97) 55%, rgba(13,15,30,.97) 100%) !important; }" +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
@@ -1557,6 +1571,7 @@ function elanCards(cards) {
   return (cards || []).map((c) => {
     if (!c || typeof c !== "object") return c;
     let out = { ...c };
+    if (out.type === "custom:mediocre-media-player-card") out.use_art_colors = false; // ELAN palette, not album colours
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
       out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
     if (Array.isArray(out.cards)) out.cards = elanCards(out.cards);
@@ -2208,7 +2223,7 @@ class PivitElanStrategy extends HTMLElement {
           type: "conditional",
           conditions: [{ condition: "state", entity: id, state: "playing" }],
           card: AUDIO_CARD === "mediocre"
-            ? { type: "custom:mediocre-media-player-card", entity_id: id, use_art_colors: true, tap_opens_popup: false, options: { show_volume_step_buttons: true } }
+            ? { type: "custom:mediocre-media-player-card", entity_id: id, use_art_colors: false, tap_opens_popup: false, options: { show_volume_step_buttons: true } }
             : { type: "media-control", entity: id },
           grid_options: { columns: "full" },
         })),
