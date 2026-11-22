@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.8";
+const VERSION = "1.1.9";
 
 const DEFAULTS = {
   title: "Home",
@@ -1499,7 +1499,8 @@ function elanPool(hass, cards, bodies) {
             ".bubble-button-background { opacity: 0 !important; }" +
             " .bubble-button-card-container { background: ${" + on + " ? '" + ELAN_ACCENT + "' : '" + ELAN_ROW_BG + "'} !important; border: 1px solid rgba(255,255,255,.08); border-radius: 4px !important; }" +
             " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; }" +
-            " .bubble-name { font-size: 15px !important; } .bubble-state { font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }",
+            " .bubble-name { font-size: 15px !important; } .bubble-state { font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }" +
+            " @media (max-width: 520px) { .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; } .bubble-name { font-size: 13px !important; } }",
           ...action({ action: "toggle" }),
         };
       }),
@@ -1524,9 +1525,9 @@ function elanPool(hass, cards, bodies) {
 // Bubble Card and HA card variables cascade to every card inside the pop-up, so one style covers them all.
 const ELAN_POPUP_STYLE =
   ".bubble-pop-up { --bubble-pop-up-border-radius: 10px; --bubble-border-radius: 6px; --bubble-sub-button-border-radius: 4px;" +
-  " --bubble-main-background-color: rgba(12,14,22,.72); --bubble-pop-up-main-background-color: rgba(12,14,22,.72);" +
-  " --bubble-secondary-background-color: rgba(255,255,255,.07); --bubble-media-player-buttons-border-radius: 4px;" +
-  " --ha-card-background: rgba(12,14,22,.72); --ha-card-border-radius: 6px; --card-background-color: rgba(12,14,22,.72); }" +
+  " --bubble-main-background-color: rgba(255,255,255,.08); --bubble-pop-up-main-background-color: rgba(255,255,255,.08);" +
+  " --bubble-secondary-background-color: rgba(255,255,255,.08); --bubble-media-player-buttons-border-radius: 4px;" +
+  " --ha-card-background: rgba(255,255,255,.06); --ha-card-border-radius: 6px; --card-background-color: rgba(255,255,255,.06); }" +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
 function elanPopup(pp) {
   return { ...pp, bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE).trim() };
@@ -1583,7 +1584,8 @@ class PivitElanStrategy extends HTMLElement {
         " .bubble-button { position: relative !important; transform: none !important; left: auto !important; width: 48px !important; min-width: 48px !important;" +
         " padding: 0 !important; justify-content: center !important; border-radius: 6px !important; background: rgba(12,14,22,.85) !important; border: 1px solid rgba(255,255,255,.12); }" +
         " .bubble-button.highlight { background: rgba(255,255,255,.2) !important; } .bubble-icon { margin: 0 !important; color: #f2f5fa !important; }" +
-        " .bubble-button .bubble-background-color, .bubble-button .bubble-background { border-radius: 6px !important; }",
+        " .bubble-button .bubble-background-color, .bubble-button .bubble-background { border-radius: 6px !important; }" +
+        " @media (max-width: 430px) { .horizontal-buttons-stack-container { gap: 4px !important; } .bubble-button { width: 40px !important; min-width: 40px !important; } }",
       visibility: [{ condition: "screen", media_query: ELAN_NARROW }],
     };
 
@@ -1778,7 +1780,7 @@ class PivitElanStrategy extends HTMLElement {
             styles:
               ".bubble-button-card-container { background: none !important; } .bubble-button-background { opacity: 0 !important; }" +
               " .bubble-main-icon-container { background: transparent !important; } .bubble-icon, .bubble-sub-button ha-icon { --mdc-icon-size: 34px; color: #f2f5fa !important; }" +
-              " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 24px !important; font-weight: 300 !important; }",
+              " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 24px !important; font-weight: 300 !important; line-height: 1.35 !important; overflow: visible !important; }",
           },
         ];
         for (const id of loads) {
