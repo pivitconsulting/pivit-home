@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.36–1.1.38 — 2026-11-22
+
+- PivIT ELAN camera pop-ups use the Advanced Camera Card when it is installed (detected from the dashboard resources, since its script may load after the strategy runs): live view, fixed 16:9, an overlay menu along the bottom with only mute/unmute (camera audio) and full screen; no thumbnails, next/previous or other buttons. Falls back to the HA live picture when the card is missing. The grid stays muted.
+
 ## 1.1.33–1.1.35 — 2026-11-22
 
 - PivIT ELAN Video page: every camera live (picture-entity, camera_view live, 16:9, name overlay) — two per row beside the menu, one per row below 1000px; tapping a camera opens a wide (960px) ELAN pop-up (`#camera-<camera>`) with it live. The grid uses a camera's low or medium resolution stream when one exists (pop-up stays high-res). view() accepts { wide, narrow } content.
