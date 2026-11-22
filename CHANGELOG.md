@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.24 — 2026-11-22
+
+- PivIT ELAN Media: "All Zones Off" only sends media_player.turn_off to players that support it (feature 256); players that cannot be switched off (Sonos with a TV input) are paused instead. Fixes "does not support action media_player.turn_off" errors.
+
 ## 1.1.23 — 2026-11-22
 
 - PivIT ELAN Security: the Home Security row opens an ELAN pop-up (`#security-<alarm>`) with Home Assistant's alarm panel — Arm Home / Arm Away (from the alarm's supported features) / Disarm, and a keypad whenever the alarm requires a code. Alarm colours in the ELAN palette (disarmed blue, armed/triggered red).
