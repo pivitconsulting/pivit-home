@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.23";
+const VERSION = "1.1.24";
 
 const DEFAULTS = {
   title: "Home",
@@ -1961,9 +1961,13 @@ class PivitElanStrategy extends HTMLElement {
     if (items.some((i) => i.path === "media")) {
       const allAudio = mediaRooms.flatMap((r) => roomMediaSplit(r, hass).audio);
       const allTvs = mediaRooms.flatMap((r) => roomMediaSplit(r, hass).tvs);
-      const off = liveBulk(allAudio, ["playing"], "media_player.media_pause", {
+      // Players that can't be switched off (e.g. a Sonos with a TV input) are paused instead of turned off.
+      const canOff = (id) => ((hass.states[id] && hass.states[id].attributes.supported_features) || 0) & 256;
+      const offTvs = allTvs.filter(canOff);
+      const pauseOnly = [...new Set([...allAudio, ...allTvs.filter((id) => !canOff(id))])];
+      const off = liveBulk(pauseOnly, ["playing"], "media_player.media_pause", {
         confirm: false,
-        extra: allTvs.length ? [{ ids: allTvs, states: ["on", "playing", "paused", "idle", "buffering"], service: "media_player.turn_off" }] : [],
+        extra: offTvs.length ? [{ ids: offTvs, states: ["on", "playing", "paused", "idle", "buffering"], service: "media_player.turn_off" }] : [],
       });
       const content = [
         elanTitle("Media Zones"),
