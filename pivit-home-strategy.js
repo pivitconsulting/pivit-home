@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.40";
+const VERSION = "1.1.41";
 
 const DEFAULTS = {
   title: "Home",
@@ -1877,34 +1877,100 @@ function elanAlarmCards(hass, id) {
 
 // ELAN lock pop-up: big LOCK / UNLOCK buttons (gold padlocks, current state filled blue, unlock confirms) and the
 // lock's recent activity — who locked or unlocked it and when — in place of Home Assistant's grey dialog.
+// Door lock state for ELAN rows: "Locked" (white, closed padlock) / "Unlocked" (red, open padlock, red edge) /
+// "Jammed" (amber) / "Locking…" / "Unlocking…". One button offers the opposite action: LOCK (solid blue) when unlocked,
+// UNLOCK (outlined, confirms) when locked.
+const LOCK_COLORS = { unlocked: ELAN_HEAT, open: ELAN_HEAT, jammed: "#f0a020" };
+function lockStateExpr(id) {
+  return "((s) => ({ locked: 'Locked', unlocked: 'Unlocked', open: 'Open', jammed: 'Jammed', locking: 'Locking…', unlocking: 'Unlocking…', opening: 'Opening…' })[s] || (s || '').replace(/_/g, ' '))(hass.states['" + id + "'] && hass.states['" + id + "'].state)";
+}
+function lockColorExpr(id) {
+  return "((s) => (" + JSON.stringify(LOCK_COLORS) + ")[s] || '#f2f5fa')(hass.states['" + id + "'] && hass.states['" + id + "'].state)";
+}
+function lockActionButtons(id, label) {
+  const isUnlocked = { condition: "state", entity: id, state: ["unlocked", "open", "jammed"] };
+  const isLocked = { condition: "state", entity: id, state_not: ["unlocked", "open", "jammed"] };
+  return [
+    { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, visibility: [isUnlocked],
+      tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
+    { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true, visibility: [isLocked],
+      tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label}?` } } },
+  ];
+}
+function lockButtonStyles(h, w, wPhone) {
+  const base = (n) =>
+    ` .bubble-sub-button-${n} { width: ${w}px !important; height: ${h}px !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important; }` +
+    ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { --mdc-icon-size: 17px; display: inline-flex !important; }` +
+    ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }` +
+    ` @media (max-width: 520px) { .bubble-sub-button-${n} { width: ${wPhone}px !important; gap: 4px !important; } .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 10px !important; letter-spacing: .04em !important; } }`;
+  return (
+    base(1) + base(2) +
+    ` .bubble-sub-button-1 { background: ${ELAN_ACCENT} !important; border: 1px solid ${ELAN_ACCENT}; } .bubble-sub-button-1 ha-icon { color: #fff !important; }` +
+    " .bubble-sub-button-2 { background: rgba(255,255,255,.04) !important; border: 1px solid rgba(255,255,255,.35); } .bubble-sub-button-2 ha-icon { color: #f2c12e !important; }"
+  );
+}
+function elanLockRow(hass, id, label, tap) {
+  const col = lockColorExpr(id);
+  const isOpen = "(['unlocked', 'open', 'jammed'].includes(hass.states['" + id + "'] && hass.states['" + id + "'].state))";
+  return {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    entity: id,
+    name: label,
+    grid_options: { columns: "full" },
+    sub_button: lockActionButtons(id, label),
+    styles:
+      ELAN_ROW_STYLE +
+      // State on its own line under the name, in colour; unlocked rows get a red edge and tint.
+      " .bubble-name-container::after { content: \"${" + lockStateExpr(id) + "}\"; display: block; font-size: 15px; font-weight: 500; letter-spacing: .04em; margin-top: 2px; color: ${" + col + "}; }" +
+      " .bubble-icon { color: ${" + col + "} !important; }" +
+      " .bubble-button-card-container { box-shadow: ${" + isOpen + " ? 'inset 5px 0 0 ' + " + col + " : 'none'} !important; background: ${" + isOpen + " ? 'rgba(120,26,26,.35)' : '" + ELAN_ROW_BG + "'} !important; }" +
+      lockButtonStyles(38, 112, 82),
+    ...action(tap),
+  };
+}
+// Top of the lock list: "3 doors unlocked" (red) or "All doors locked", with Lock All when any are unlocked.
+function elanLocksSummary(locks) {
+  const openCount = "(" + JSON.stringify(locks) + ".filter((e) => hass.states[e] && ['unlocked', 'open'].includes(hass.states[e].state)).length)";
+  const bulk = liveBulk(locks, ["unlocked", "open"], "lock.lock", { sub: 1, verb: "Lock", one: "door", many: "doors" });
+  return {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    name: "Doors",
+    icon: "mdi:door-closed-lock",
+    grid_options: { columns: "full" },
+    sub_button: [
+      { name: "Lock All", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, tap_action: { action: "none" },
+        visibility: [{ condition: "or", conditions: locks.map((e) => ({ condition: "state", entity: e, state: ["unlocked", "open"] })) }] },
+    ],
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-name-container::after { content: \"${((n) => n ? n + (n === 1 ? ' door unlocked' : ' doors unlocked') : 'All doors locked')(" + openCount + ")}\"; display: block; font-size: 15px; font-weight: 500; margin-top: 2px;" +
+      " color: ${" + openCount + " ? '" + ELAN_HEAT + "' : '#f2f5fa'}; }" +
+      ` .bubble-sub-button-1 { width: 124px !important; height: 38px !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important; background: ${ELAN_ACCENT} !important; }` +
+      " .bubble-sub-button-1 ha-icon { color: #fff !important; --mdc-icon-size: 17px; } .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; }" +
+      " " + bulk.hook,
+    ...bulk.actions,
+  };
+}
+
 function elanLockPopup(hass, id, label) {
-  const S = "(hass.states['" + id + "'] ? hass.states['" + id + "'].state : '')";
-  const unlocked = JSON.stringify(UNLOCKED_STATES) + ".includes(" + S + ")";
-  const seg = (n, on) =>
-    ` .bubble-sub-button-${n} { height: 50px !important; width: auto !important; border-radius: 3px !important; justify-content: center !important; gap: 10px !important; margin: 0 !important;` +
-    ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
-    ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f2c12e !important; --mdc-icon-size: 20px; display: inline-flex !important; }` +
-    ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 13px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }`;
+  const col = lockColorExpr(id);
   const buttons = {
     type: "custom:bubble-card",
     card_type: "button",
     button_type: "name",
     entity: id,
     name: label,
-    show_icon: false,
-    show_state: false,
     grid_options: { columns: "full" },
-    sub_button: [
-      { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
-      { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true,
-        tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label}?` } } },
-    ],
+    sub_button: lockActionButtons(id, label),
     styles:
       ELAN_ROW_STYLE +
-      " .bubble-button-card-container { height: 76px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; justify-content: center !important; padding: 12px !important; height: 100%; box-sizing: border-box; }" +
-      " .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
-      " .bubble-sub-button-container { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }" +
-      seg(1, "!" + unlocked) + seg(2, unlocked),
+      " .bubble-button-card-container { height: 84px !important; } .bubble-name { display: none !important; } .bubble-icon { color: ${" + col + "} !important; --mdc-icon-size: 34px; }" +
+      " .bubble-name-container::after { content: \"${" + lockStateExpr(id) + "}\"; display: block; font-size: 30px; font-weight: 300; color: ${" + col + "}; }" +
+      lockButtonStyles(46, 140, 110),
     tap_action: { action: "none" },
     button_action: { tap_action: { action: "none" } },
   };
@@ -2162,33 +2228,10 @@ class PivitElanStrategy extends HTMLElement {
         content.push(
           elanRow({ name: label(id), icon: "mdi:garage-variant", sub: "Door control", value: titleCase("hass.states['" + id + "'] && hass.states['" + id + "'].state"), tap: { action: "toggle" }, extra: { entity: id } })
         );
-      // Locks: LOCK / UNLOCK segmented buttons; the current state is filled blue.
+      // Locks: each door says Locked / Unlocked in words and colour, with one button for the opposite action.
+      if (locks.length > 1) content.push(elanLocksSummary(locks));
       for (const id of locks) {
-        const unlocked = JSON.stringify(UNLOCKED_STATES) + ".includes(hass.states['" + id + "'] && hass.states['" + id + "'].state)";
-        const seg = (n, on) =>
-          ` .bubble-sub-button-${n} { width: 112px !important; height: 36px !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important;` +
-          ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
-          // Gold padlock icons, as on the ELAN security screen (closed padlock on LOCK, open on UNLOCK).
-          ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f2c12e !important; --mdc-icon-size: 17px; display: inline-flex !important; }` +
-          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }` +
-          ` @media (max-width: 520px) { .bubble-sub-button-${n} { width: 74px !important; gap: 4px !important; } .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { --mdc-icon-size: 13px; }` +
-          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 9px !important; letter-spacing: .03em !important; } }`;
-        content.push({
-          type: "custom:bubble-card",
-          card_type: "button",
-          button_type: "name",
-          entity: id,
-          name: label(id),
-          icon: "mdi:door-closed-lock",
-          grid_options: { columns: "full" },
-          sub_button: [
-            { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
-            { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true,
-              tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label(id)}?` } } },
-          ],
-          styles: ELAN_ROW_STYLE + elanSubtitle("Door lock") + seg(1, "!" + unlocked) + seg(2, unlocked) + " .bubble-sub-button-container { gap: 0 !important; }",
-          ...action(go(`#lock-${slug(id.split(".")[1])}`)),
-        });
+        content.push(elanLockRow(hass, id, label(id), go(`#lock-${slug(id.split(".")[1])}`)));
         securityPopups.push(elanLockPopup(hass, id, label(id)));
       }
       views.push(view("security", "Security", content, securityPopups));
