@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.27";
+const VERSION = "1.1.28";
 
 const DEFAULTS = {
   title: "Home",
@@ -1768,6 +1768,46 @@ function elanAlarmCards(hass, id) {
   return [segCard, padCard];
 }
 
+// ELAN lock pop-up: big LOCK / UNLOCK buttons (gold padlocks, current state filled blue, unlock confirms) and the
+// lock's recent activity — who locked or unlocked it and when — in place of Home Assistant's grey dialog.
+function elanLockPopup(hass, id, label) {
+  const S = "(hass.states['" + id + "'] ? hass.states['" + id + "'].state : '')";
+  const unlocked = JSON.stringify(UNLOCKED_STATES) + ".includes(" + S + ")";
+  const seg = (n, on) =>
+    ` .bubble-sub-button-${n} { height: 50px !important; width: auto !important; border-radius: 3px !important; justify-content: center !important; gap: 10px !important; margin: 0 !important;` +
+    ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
+    ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f2c12e !important; --mdc-icon-size: 20px; display: inline-flex !important; }` +
+    ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 13px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }`;
+  const buttons = {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    entity: id,
+    name: label,
+    show_icon: false,
+    show_state: false,
+    grid_options: { columns: "full" },
+    sub_button: [
+      { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
+      { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true,
+        tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label}?` } } },
+    ],
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-button-card-container { height: 76px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; justify-content: center !important; padding: 12px !important; height: 100%; box-sizing: border-box; }" +
+      " .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
+      " .bubble-sub-button-container { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }" +
+      seg(1, "!" + unlocked) + seg(2, unlocked),
+    tap_action: { action: "none" },
+    button_action: { tap_action: { action: "none" } },
+  };
+  return popupShell(`#lock-${slug(id.split(".")[1])}`, label, "mdi:door-closed-lock", [
+    buttons,
+    { type: "heading", heading: "Recent activity", heading_style: "subtitle", grid_options: { columns: "full" } },
+    { type: "logbook", target: { entity_id: [id] }, hours_to_show: 24, grid_options: { columns: "full" } },
+  ]);
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -1943,8 +1983,9 @@ class PivitElanStrategy extends HTMLElement {
               tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label(id)}?` } } },
           ],
           styles: ELAN_ROW_STYLE + elanSubtitle("Door lock") + seg(1, "!" + unlocked) + seg(2, unlocked) + " .bubble-sub-button-container { gap: 0 !important; }",
-          ...action({ action: "more-info" }),
+          ...action(go(`#lock-${slug(id.split(".")[1])}`)),
         });
+        securityPopups.push(elanLockPopup(hass, id, label(id)));
       }
       views.push(view("security", "Security", content, securityPopups));
     }
