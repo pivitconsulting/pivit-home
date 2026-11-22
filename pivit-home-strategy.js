@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.11";
+const VERSION = "1.1.12";
 
 const DEFAULTS = {
   title: "Home",
@@ -1457,6 +1457,7 @@ function elanPool(hass, cards, bodies) {
       name: title,
       show_state: false,
       grid_options: { columns: "full", rows: 2 },
+      ...action({ action: "more-info" }),
       sub_button: [
         ...(heater
           ? [{ entity: heater, name: "Heater", icon: "mdi:fire", show_name: true, show_icon: true, show_background: true, tap_action: { action: "toggle" } }]
@@ -1470,7 +1471,11 @@ function elanPool(hass, cards, bodies) {
         " .bubble-name { font-size: 24px !important; }" +
         elanSubtitle({ expr: "(" + heaterOn + " ? 'Heater on' : 'Heater off') + ' · set ' + ((hass.states['" + b.entity + "'] || { attributes: {} }).attributes.temperature || '--') + '°'" }) +
         " .bubble-buttons-container::before { content: \"${" + tempExpr + "}\"; font-size: 46px; font-weight: 200; line-height: 1; margin-right: 18px; align-self: center; }" +
-        " @media (max-width: 520px) { .bubble-buttons-container::before { font-size: 30px; margin-right: 8px; } .bubble-sub-button-1 .bubble-sub-button-name-container { display: none !important; } }" +
+        // Phones: keep the − / + setpoint controls (they win over the row style's phone rule); the water temperature
+        // moves into the subtitle to make room.
+        " @media (max-width: 520px) { .bubble-temperature-container, .bubble-target-temperature-container { display: flex !important; }" +
+        " .bubble-buttons-container::before { content: none !important; } .bubble-sub-button-1 .bubble-sub-button-name-container { display: none !important; }" +
+        " .bubble-name-container::after { content: \"${" + tempExpr + " + ' · ' + (" + heaterOn + " ? 'heating' : 'heater off')}\" !important; } }" +
         (heater
           ? " .bubble-sub-button-1 { background: ${" + heaterOn + " ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
             " .bubble-sub-button-1 ha-icon { color: ${" + heaterOn + " ? '#fff' : '#f5a442'} !important; }"
