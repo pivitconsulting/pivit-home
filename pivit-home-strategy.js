@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.29";
+const VERSION = "1.1.30";
 
 const DEFAULTS = {
   title: "Home",
@@ -1808,6 +1808,98 @@ function elanLockPopup(hass, id, label) {
   ]);
 }
 
+// ELAN shade row and pop-up. Row: name, position under it, ▲ ■ ▼ buttons; tapping the row opens the pop-up.
+// Pop-up: OPEN / STOP / CLOSE buttons (gold icons, fully open or closed fills blue), a position slider when the shade
+// supports it, and the shade's recent activity.
+const shadeHash = (id) => `#shade-${slug(id.split(".")[1])}`;
+function shadeStateExpr(id) {
+  const S = "hass.states['" + id + "']";
+  return "((s) => !s ? '' : s.attributes.current_position != null && s.state !== 'opening' && s.state !== 'closing' ? (s.attributes.current_position >= 100 ? 'Open' : s.attributes.current_position <= 0 ? 'Closed' : s.attributes.current_position + '% open') : s.state.replace(/^./, (c) => c.toUpperCase()))(" + S + ")";
+}
+function elanShadeRow(hass, id, label) {
+  const svc = (s) => ({ action: "perform-action", perform_action: "cover." + s, target: { entity_id: id } });
+  return {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    entity: id,
+    name: label,
+    icon: "mdi:roller-shade",
+    show_state: false,
+    grid_options: { columns: "full" },
+    sub_button: [
+      { icon: "mdi:arrow-up", show_background: true, tap_action: svc("open_cover") },
+      { icon: "mdi:stop", show_background: true, tap_action: svc("stop_cover") },
+      { icon: "mdi:arrow-down", show_background: true, tap_action: svc("close_cover") },
+    ],
+    styles:
+      ELAN_ROW_STYLE +
+      elanSubtitle({ expr: shadeStateExpr(id) }) +
+      " .bubble-sub-button { width: 46px !important; height: 38px !important; border-radius: 3px !important; background: rgba(255,255,255,.08) !important; border: 1px solid rgba(255,255,255,.16); }" +
+      " .bubble-sub-button ha-icon { color: #f2f5fa !important; }",
+    ...action({ action: "navigate", navigation_path: shadeHash(id) }),
+  };
+}
+function elanShadePopup(hass, id, label) {
+  const st = hass.states[id];
+  const feat = (st && st.attributes.supported_features) || 0;
+  const P = "((hass.states['" + id + "'] || { attributes: {} }).attributes)";
+  const S = "(hass.states['" + id + "'] ? hass.states['" + id + "'].state : '')";
+  const isOpen = "(" + P + ".current_position != null ? " + P + ".current_position >= 100 : " + S + " === 'open')";
+  const isClosed = "(" + P + ".current_position != null ? " + P + ".current_position <= 0 : " + S + " === 'closed')";
+  const svc = (s) => ({ action: "perform-action", perform_action: "cover." + s, target: { entity_id: id } });
+  const btns = [
+    [1, "Open", "mdi:arrow-up-bold-box-outline", "open_cover", isOpen],
+    [8, "Stop", "mdi:stop-circle-outline", "stop_cover", "false"],
+    [2, "Close", "mdi:arrow-down-bold-box-outline", "close_cover", isClosed],
+  ].filter(([b]) => feat & b);
+  const seg = (n, on) =>
+    ` .bubble-sub-button-${n} { height: 50px !important; width: auto !important; border-radius: 3px !important; justify-content: center !important; gap: 10px !important; margin: 0 !important;` +
+    ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
+    ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { color: #f2c12e !important; --mdc-icon-size: 20px; display: inline-flex !important; }` +
+    ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 13px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }`;
+  const cards = [
+    {
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      entity: id,
+      name: label,
+      show_icon: false,
+      show_state: false,
+      grid_options: { columns: "full" },
+      sub_button: btns.map(([, name, icon, s]) => ({ name, icon, show_name: true, show_icon: true, show_background: true, tap_action: svc(s) })),
+      styles:
+        ELAN_ROW_STYLE +
+        " .bubble-button-card-container { height: 76px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; justify-content: center !important; padding: 12px !important; height: 100%; box-sizing: border-box; }" +
+        " .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
+        ` .bubble-sub-button-container { display: grid !important; grid-template-columns: repeat(${btns.length}, 1fr); gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }` +
+        btns.map(([, , , , on], i) => seg(i + 1, on)).join(""),
+      tap_action: { action: "none" },
+      button_action: { tap_action: { action: "none" } },
+    },
+  ];
+  if (feat & 4)
+    cards.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "slider",
+      entity: id,
+      name: "Position",
+      icon: "mdi:roller-shade",
+      show_state: true,
+      show_attribute: true,
+      attribute: "current_position",
+      grid_options: { columns: "full" },
+      styles: ELAN_ROW_STYLE + ELAN_SLIDER_STYLE + " .bubble-button-card-container { height: 64px !important; } .bubble-state { font-size: 13px !important; opacity: .75; }",
+    });
+  cards.push(
+    { type: "heading", heading: "Recent activity", heading_style: "subtitle", grid_options: { columns: "full" } },
+    { type: "logbook", target: { entity_id: [id] }, hours_to_show: 24, grid_options: { columns: "full" } }
+  );
+  return popupShell(shadeHash(id), label, "mdi:roller-shade", cards);
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -2007,6 +2099,7 @@ class PivitElanStrategy extends HTMLElement {
     // LIGHTING — rooms with the number of devices on; shades follow (ELAN keeps shades under lighting).
     if (items.some((i) => i.path === "lighting")) {
       const content = [elanTitle("Lighting")];
+      const shadePopups = [];
       for (const r of lightRooms) {
         const n = lightsOnExpr(roomLights(r));
         content.push(elanRow({ name: r.name, icon: "mdi:lightbulb-outline", value: n, label: "'Devices on'", tap: go(`${base}/lighting-${slug(r.name)}`) }));
@@ -2015,12 +2108,11 @@ class PivitElanStrategy extends HTMLElement {
         content.push(elanSubhead("Shades"));
         for (const r of shadeRooms)
           for (const id of r.entities.filter((e) => domainOf(e) === "cover" && !/garage|gate/i.test(hass.states[e].attributes.device_class || ""))) {
-            const c = entityCard(hass, id);
-            c.styles = ((c.styles || "") + " " + ELAN_ROW_STYLE).trim();
-            content.push(c);
+            content.push(elanShadeRow(hass, id, label(id)));
+            shadePopups.push(elanShadePopup(hass, id, label(id)));
           }
       }
-      views.push(view("lighting", "Lighting", content, popupsWhere((h) => h.endsWith("-lights"))));
+      views.push(view("lighting", "Lighting", content, [...popupsWhere((h) => h.endsWith("-lights")), ...shadePopups]));
     }
 
     // LIGHTING ROOM PAGES — "◀ Room ▶" switcher, a wide slider per dimmer, on/off loads, the room's scenes,
