@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.31";
+const VERSION = "1.1.32";
 
 const DEFAULTS = {
   title: "Home",
@@ -1571,7 +1571,10 @@ function elanCards(cards) {
   return (cards || []).map((c) => {
     if (!c || typeof c !== "object") return c;
     let out = { ...c };
-    if (out.type === "custom:mediocre-media-player-card") out.use_art_colors = false; // ELAN palette, not album colours
+    if (out.type === "custom:mediocre-media-player-card") {
+      out.use_art_colors = false; // ELAN palette, not album colours
+      out.action = out.action || { tap_action: { action: "none" } }; // already in the room's pop-up: no grey media dialog
+    }
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
       out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
     if (Array.isArray(out.cards)) out.cards = elanCards(out.cards);
@@ -2215,6 +2218,8 @@ class PivitElanStrategy extends HTMLElement {
         confirm: false,
         extra: offTvs.length ? [{ ids: offTvs, states: ["on", "playing", "paused", "idle", "buffering"], service: "media_player.turn_off" }] : [],
       });
+      const audioRoomOf = {};
+      for (const r of mediaRooms) for (const a of roomMediaSplit(r, hass).audio) if (!audioRoomOf[a]) audioRoomOf[a] = r.name;
       const content = [
         elanTitle("Media Zones"),
         { type: "custom:bubble-card", card_type: "button", button_type: "name", name: "All Zones Off", icon: "mdi:power", grid_options: { columns: "full" }, styles: ELAN_ROW_STYLE + " " + off.hook, ...off.actions },
@@ -2223,7 +2228,15 @@ class PivitElanStrategy extends HTMLElement {
           type: "conditional",
           conditions: [{ condition: "state", entity: id, state: "playing" }],
           card: AUDIO_CARD === "mediocre"
-            ? { type: "custom:mediocre-media-player-card", entity_id: id, use_art_colors: false, tap_opens_popup: false, options: { show_volume_step_buttons: true } }
+            ? {
+                type: "custom:mediocre-media-player-card",
+                entity_id: id,
+                use_art_colors: false,
+                tap_opens_popup: false,
+                options: { show_volume_step_buttons: true },
+                // Tapping the artwork opens the room's ELAN audio pop-up, not Home Assistant's grey media dialog.
+                action: { tap_action: audioRoomOf[id] ? go("#" + slug(audioRoomOf[id]) + "-audio") : { action: "none" } },
+              }
             : { type: "media-control", entity: id },
           grid_options: { columns: "full" },
         })),
