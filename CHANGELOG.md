@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.42 — 2026-11-22
+
+- PivIT ELAN locks: unlocked doors show only a red padlock icon and red "Unlocked" text (no red row fill or edge); LOCK, UNLOCK and LOCK ALL share one outlined style with gold padlock icons.
+
 ## 1.1.41 — 2026-11-22
 
 - PivIT ELAN locks redesigned for clarity (Will: LOCK/UNLOCK pair was confusing): each door row says **Locked** (white, closed padlock) or **Unlocked** (red, open padlock, red left edge and tint), Jammed in amber, Locking…/Unlocking… while moving; one button with the opposite action — solid blue LOCK when unlocked, outlined UNLOCK (gold padlock, confirms) when locked. A "Doors" summary row on top: "N doors unlocked" in red with LOCK ALL (confirms, locks only unlocked doors) or "All doors locked". Lock pop-up: big coloured state + the single action button + activity.
