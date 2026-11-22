@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.33";
+const VERSION = "1.1.34";
 
 const DEFAULTS = {
   title: "Home",
@@ -2294,9 +2294,18 @@ class PivitElanStrategy extends HTMLElement {
     if (items.some((i) => i.path === "video")) {
       const camName = (id) => label(id).replace(/\s+(High|Medium|Low) resolution channel$/i, "");
       const camHash = (id) => `#camera-${slug(id.split(".")[1].replace(/_(high|medium|low)_resolution_channel$/, ""))}`;
+      // Grid tiles use a camera's low (or medium) resolution stream when one exists — twelve high-res live feeds are a
+      // lot for an iPad; the pop-up always uses the camera as configured (high resolution).
+      const gridStream = (id) => {
+        for (const res of ["low", "medium"]) {
+          const alt = id.replace(/_(high|medium|low)_resolution_channel$/, `_${res}_resolution_channel`);
+          if (alt !== id && hass.states[alt] && hass.states[alt].state !== "unavailable") return alt;
+        }
+        return id;
+      };
       const tile = (id) => ({
         type: "picture-entity",
-        entity: id,
+        entity: gridStream(id),
         name: camName(id),
         camera_view: "live",
         show_state: false,
