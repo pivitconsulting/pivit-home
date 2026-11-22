@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.22 — 2026-11-22
+
+- PivIT ELAN climate: current temperatures and setpoints display as the nearest whole degree (was nearest 0.5°), including the value shown straight after an arrow tap.
+
 ## 1.1.21 — 2026-11-22
 
 - PivIT ELAN climate: arrow taps now show in the setpoint box immediately (the row looked for its boxes inside the ha-card; they live in the Bubble Card shadow root) and the new value stays until the thermostat reports it back or 90 s pass — Daikin units only report about once a minute. Further taps build on the shown value; cool/heat selection outline appears at once.
