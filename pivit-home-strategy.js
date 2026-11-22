@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.41";
+const VERSION = "1.1.42";
 
 const DEFAULTS = {
   title: "Home",
@@ -1878,8 +1878,8 @@ function elanAlarmCards(hass, id) {
 // ELAN lock pop-up: big LOCK / UNLOCK buttons (gold padlocks, current state filled blue, unlock confirms) and the
 // lock's recent activity — who locked or unlocked it and when — in place of Home Assistant's grey dialog.
 // Door lock state for ELAN rows: "Locked" (white, closed padlock) / "Unlocked" (red, open padlock, red edge) /
-// "Jammed" (amber) / "Locking…" / "Unlocking…". One button offers the opposite action: LOCK (solid blue) when unlocked,
-// UNLOCK (outlined, confirms) when locked.
+// "Jammed" (amber) / "Locking…" / "Unlocking…". One outlined button offers the opposite action: LOCK when unlocked,
+// UNLOCK (confirms) when locked.
 const LOCK_COLORS = { unlocked: ELAN_HEAT, open: ELAN_HEAT, jammed: "#f0a020" };
 function lockStateExpr(id) {
   return "((s) => ({ locked: 'Locked', unlocked: 'Unlocked', open: 'Open', jammed: 'Jammed', locking: 'Locking…', unlocking: 'Unlocking…', opening: 'Opening…' })[s] || (s || '').replace(/_/g, ' '))(hass.states['" + id + "'] && hass.states['" + id + "'].state)";
@@ -1905,13 +1905,13 @@ function lockButtonStyles(h, w, wPhone) {
     ` @media (max-width: 520px) { .bubble-sub-button-${n} { width: ${wPhone}px !important; gap: 4px !important; } .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 10px !important; letter-spacing: .04em !important; } }`;
   return (
     base(1) + base(2) +
-    ` .bubble-sub-button-1 { background: ${ELAN_ACCENT} !important; border: 1px solid ${ELAN_ACCENT}; } .bubble-sub-button-1 ha-icon { color: #fff !important; }` +
-    " .bubble-sub-button-2 { background: rgba(255,255,255,.04) !important; border: 1px solid rgba(255,255,255,.35); } .bubble-sub-button-2 ha-icon { color: #f2c12e !important; }"
+    // LOCK and UNLOCK look the same: outlined, gold padlock.
+    " .bubble-sub-button-1, .bubble-sub-button-2 { background: rgba(255,255,255,.04) !important; border: 1px solid rgba(255,255,255,.35); }" +
+    " .bubble-sub-button-1 ha-icon, .bubble-sub-button-2 ha-icon { color: #f2c12e !important; }"
   );
 }
 function elanLockRow(hass, id, label, tap) {
   const col = lockColorExpr(id);
-  const isOpen = "(['unlocked', 'open', 'jammed'].includes(hass.states['" + id + "'] && hass.states['" + id + "'].state))";
   return {
     type: "custom:bubble-card",
     card_type: "button",
@@ -1925,7 +1925,6 @@ function elanLockRow(hass, id, label, tap) {
       // State on its own line under the name, in colour; unlocked rows get a red edge and tint.
       " .bubble-name-container::after { content: \"${" + lockStateExpr(id) + "}\"; display: block; font-size: 15px; font-weight: 500; letter-spacing: .04em; margin-top: 2px; color: ${" + col + "}; }" +
       " .bubble-icon { color: ${" + col + "} !important; }" +
-      " .bubble-button-card-container { box-shadow: ${" + isOpen + " ? 'inset 5px 0 0 ' + " + col + " : 'none'} !important; background: ${" + isOpen + " ? 'rgba(120,26,26,.35)' : '" + ELAN_ROW_BG + "'} !important; }" +
       lockButtonStyles(38, 112, 82),
     ...action(tap),
   };
@@ -1949,8 +1948,8 @@ function elanLocksSummary(locks) {
       ELAN_ROW_STYLE +
       " .bubble-name-container::after { content: \"${((n) => n ? n + (n === 1 ? ' door unlocked' : ' doors unlocked') : 'All doors locked')(" + openCount + ")}\"; display: block; font-size: 15px; font-weight: 500; margin-top: 2px;" +
       " color: ${" + openCount + " ? '" + ELAN_HEAT + "' : '#f2f5fa'}; }" +
-      ` .bubble-sub-button-1 { width: 124px !important; height: 38px !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important; background: ${ELAN_ACCENT} !important; }` +
-      " .bubble-sub-button-1 ha-icon { color: #fff !important; --mdc-icon-size: 17px; } .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; }" +
+      " .bubble-sub-button-1 { width: 124px !important; height: 38px !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important; background: rgba(255,255,255,.04) !important; border: 1px solid rgba(255,255,255,.35); }" +
+      " .bubble-sub-button-1 ha-icon { color: #f2c12e !important; --mdc-icon-size: 17px; } .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; }" +
       " " + bulk.hook,
     ...bulk.actions,
   };
