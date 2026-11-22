@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.4 — 2026-11-22
+
+- PivIT ELAN: lighting room pages (subviews `lighting-<room>`): "◀ Room ▶" switcher, a wide slider per dimmer, on/off loads and fans, room scenes/scripts as buttons, wide dark-red "<Room> All Off" (only what is on). Lighting rows open them.
+- PivIT ELAN: pool/spa page for extra views holding pool/spa thermostats: one panel per body (big water temperature, red heat setpoint −/+, heater toggle), pumps/lights/features as large toggles (blue when on), other readings as rows.
+
 ## 1.1.1–1.1.3 — 2026-11-22
 
 - PivIT ELAN: menu and page side by side in one full-width section (menu hides below 1000px, bottom nav instead); titles and Home clock drawn with Bubble Card (HA markdown strips styles); dark climate rows with red heat / blue cool setpoints; LOCK/UNLOCK text-only segments; extra-view duplicate heading dropped.

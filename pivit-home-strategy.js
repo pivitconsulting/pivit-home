@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.3";
+const VERSION = "1.1.4";
 
 const DEFAULTS = {
   title: "Home",
@@ -1426,6 +1426,97 @@ function elanNav(items, base, current) {
 
 const titleCase = (x) => "(((" + x + ") || '') + '').replace(/_/g, ' ').replace(/\\b\\w/g, (c) => c.toUpperCase())";
 
+
+// ELAN pool/spa page: one panel per body of water (big water temperature, red heat setpoint with − / +, heater
+// on/off), then every pump, light and water feature as a large toggle (blue when on), then remaining readings.
+function elanPool(hass, cards, bodies) {
+  const used = new Set();
+  const ent = (id) => hass.states[id];
+  const ids = cards.map((c) => c.entity).filter(Boolean);
+  const nameOf = (c) => c.name || NAMES[c.entity] || (ent(c.entity) && ent(c.entity).attributes.friendly_name) || c.entity;
+  const out = [];
+  for (const b of bodies) {
+    const key = /spa/i.test(b.entity + " " + (b.name || "")) ? "spa" : "pool";
+    const temp = ids.find((id) => domainOf(id) === "sensor" && new RegExp(`(^|_)${key}_temp`).test(id)) ||
+      Object.keys(hass.states).find((id) => domainOf(id) === "sensor" && new RegExp(`_${key}_temp$`).test(id));
+    const heater = ids.find((id) => domainOf(id) === "switch" && new RegExp(`${key}_heater`).test(id));
+    used.add(b.entity); if (temp) used.add(temp); if (heater) used.add(heater);
+    const title = key === "spa" ? "Spa" : "Pool";
+    const tempExpr = temp
+      ? "((s) => s && !isNaN(parseFloat(s.state)) ? Math.round(parseFloat(s.state)) + '°' : '--')(hass.states['" + temp + "'])"
+      : "((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '--')(hass.states['" + b.entity + "'])";
+    const heaterOn = heater ? "(hass.states['" + heater + "'] && hass.states['" + heater + "'].state === 'on')" : "false";
+    out.push({
+      type: "custom:bubble-card",
+      card_type: "climate",
+      entity: b.entity,
+      name: title,
+      show_state: false,
+      grid_options: { columns: "full", rows: 2 },
+      sub_button: [
+        { icon: "mdi:circle-small", show_icon: false, show_background: false, tap_action: { action: "more-info" } },
+        ...(heater
+          ? [{ entity: heater, name: "Heater", icon: "mdi:fire", show_name: true, show_icon: true, show_background: true, tap_action: { action: "toggle" } }]
+          : []),
+      ],
+      styles:
+        ELAN_ROW_STYLE +
+        " .bubble-color-background { opacity: 0 !important; }" +
+        " .bubble-high-temp-container, .bubble-low-temp-container, .bubble-target-temperature-container { background: rgba(200,40,40,.6) !important; border-radius: 4px !important; }" +
+        " .bubble-climate-temp-display, .bubble-climate-temp-display * { color: #fff !important; }" +
+        " .bubble-name { font-size: 24px !important; }" +
+        elanSubtitle({ expr: "(" + heaterOn + " ? 'Heater on' : 'Heater off') + ' · set ' + ((hass.states['" + b.entity + "'] || { attributes: {} }).attributes.temperature || '--') + '°'" }) +
+        " .bubble-sub-button-1 { pointer-events: none !important; width: auto !important; padding: 0 12px; }" +
+        " .bubble-sub-button-1::before { content: \"${" + tempExpr + "}\"; font-size: 46px; font-weight: 200; line-height: 1; }" +
+        (heater
+          ? " .bubble-sub-button-2 { background: ${" + heaterOn + " ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
+            " .bubble-sub-button-2 ha-icon { color: ${" + heaterOn + " ? '#fff' : '#f5a442'} !important; }"
+          : ""),
+    });
+  }
+  // Toggles: pumps, lights, features.
+  const toggles = cards.filter((c) => c.entity && ["switch", "light", "fan", "input_boolean"].includes(domainOf(c.entity)) && !used.has(c.entity));
+  toggles.forEach((c) => used.add(c.entity));
+  if (toggles.length)
+    out.push({
+      type: "grid",
+      columns: 3,
+      square: false,
+      grid_options: { columns: "full" },
+      cards: toggles.map((c) => {
+        const on = "(hass.states['" + c.entity + "'] && hass.states['" + c.entity + "'].state === 'on')";
+        return {
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          entity: c.entity,
+          name: nameOf(c),
+          show_state: true,
+          styles:
+            ".bubble-button-background { opacity: 0 !important; }" +
+            " .bubble-button-card-container { background: ${" + on + " ? '" + ELAN_ACCENT + "' : '" + ELAN_ROW_BG + "'} !important; border: 1px solid rgba(255,255,255,.08); border-radius: 4px !important; }" +
+            " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; }" +
+            " .bubble-name { font-size: 15px !important; } .bubble-state { font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }",
+          ...action({ action: "toggle" }),
+        };
+      }),
+    });
+  // Everything else (air temperature, salinity, cover…) as plain ELAN rows.
+  for (const c of cards) {
+    if (!c.entity || used.has(c.entity) || c.type === "heading") continue;
+    out.push(
+      elanRow({
+        name: nameOf(c),
+        icon: (ent(c.entity) && ent(c.entity).attributes.icon) || (domainOf(c.entity) === "sensor" ? "mdi:thermometer" : "mdi:information-outline"),
+        value: "((s) => s ? s.state + (s.attributes.unit_of_measurement ? ' ' + s.attributes.unit_of_measurement : '') : '--')(hass.states['" + c.entity + "'])",
+        tap: { action: "more-info" },
+        extra: { entity: c.entity },
+      })
+    );
+  }
+  return out;
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -1472,9 +1563,10 @@ class PivitElanStrategy extends HTMLElement {
     // One view = ELAN menu (left column, wide screens) + one content column; pop-ups in their own section.
     // ELAN menu (left) and page content (right) sit side by side inside one full-width section; below 1000px the menu
     // hides, the content takes the full width and the bottom nav bar appears instead.
-    const view = (path, title, content, viewPopups = []) => ({
+    const view = (path, title, content, viewPopups = [], navPath = path) => ({
       title,
       path,
+      ...(navPath !== path ? { subview: true, back_path: `${base}/${navPath}` } : {}),
       type: "sections",
       max_columns: 2,
       background: bg,
@@ -1483,7 +1575,7 @@ class PivitElanStrategy extends HTMLElement {
           type: "grid",
           column_span: 2,
           cards: [
-            { type: "vertical-stack", cards: elanNav(items, base, path), grid_options: { columns: 6, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
+            { type: "vertical-stack", cards: elanNav(items, base, navPath), grid_options: { columns: 6, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
             { type: "vertical-stack", cards: content, grid_options: { columns: 18, rows: "auto" } },
             ...viewPopups,
             ...intercoms.map(intercomPopup),
@@ -1618,7 +1710,7 @@ class PivitElanStrategy extends HTMLElement {
       const content = [elanTitle("Lighting")];
       for (const r of lightRooms) {
         const n = lightsOnExpr(roomLights(r));
-        content.push(elanRow({ name: r.name, icon: "mdi:lightbulb-outline", value: n, label: "'Devices on'", tap: go("#" + slug(r.name) + "-lights") }));
+        content.push(elanRow({ name: r.name, icon: "mdi:lightbulb-outline", value: n, label: "'Devices on'", tap: go(`${base}/lighting-${slug(r.name)}`) }));
       }
       if (shadeRooms.length) {
         content.push(elanSubhead("Shades"));
@@ -1631,6 +1723,79 @@ class PivitElanStrategy extends HTMLElement {
       }
       views.push(view("lighting", "Lighting", content, popupsWhere((h) => h.endsWith("-lights"))));
     }
+
+    // LIGHTING ROOM PAGES — "◀ Room ▶" switcher, a wide slider per dimmer, on/off loads, the room's scenes,
+    // and a wide dark-red "<Room> All Off" (acts only on what is on), as on the ELAN lighting room screen.
+    if (items.some((i) => i.path === "lighting"))
+      lightRooms.forEach((r, i) => {
+        const prev = lightRooms[(i - 1 + lightRooms.length) % lightRooms.length];
+        const next = lightRooms[(i + 1) % lightRooms.length];
+        const loads = [...roomLights(r), ...r.entities.filter((id) => domainOf(id) === "fan")];
+        const scenes = r.entities.filter((id) => ["scene", "script"].includes(domainOf(id)));
+        const content = [
+          elanTitle("Lighting"),
+          {
+            type: "custom:bubble-card",
+            card_type: "button",
+            button_type: "name",
+            name: r.name,
+            icon: "mdi:chevron-left",
+            grid_options: { columns: "full" },
+            tap_action: go(`${base}/lighting-${slug(prev.name)}`),
+            button_action: { tap_action: { action: "none" } },
+            sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: go(`${base}/lighting-${slug(next.name)}`) }],
+            styles:
+              ".bubble-button-card-container { background: none !important; } .bubble-button-background { opacity: 0 !important; }" +
+              " .bubble-main-icon-container { background: transparent !important; } .bubble-icon, .bubble-sub-button ha-icon { --mdc-icon-size: 34px; color: #f2f5fa !important; }" +
+              " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 24px !important; font-weight: 300 !important; }",
+          },
+        ];
+        for (const id of loads) {
+          const c = entityCard(hass, id, { half: "full" });
+          c.name = shortLabel(r, hass, id);
+          c.grid_options = { columns: "full" };
+          c.styles =
+            (c.styles || "") +
+            " " + ELAN_ROW_STYLE +
+            " .bubble-range-fill { background: rgba(47,127,224,.28) !important; border-right: 2px solid " + ELAN_ACCENT + "; }" +
+            " .bubble-state { font-size: 13px !important; opacity: .7; }";
+          content.push(c);
+        }
+        if (scenes.length) {
+          content.push(elanSubhead("Scenes"));
+          content.push({
+            type: "grid",
+            columns: 3,
+            square: false,
+            cards: scenes.map((id) => ({
+              type: "custom:bubble-card",
+              card_type: "button",
+              button_type: "name",
+              entity: id,
+              name: shortLabel(r, hass, id),
+              show_icon: false,
+              styles:
+                `.bubble-button-card-container { background: ${domainOf(id) === "scene" ? "rgba(40,150,90,.55)" : "rgba(255,255,255,.12)"} !important; border-radius: 4px !important; }` +
+                " .bubble-button-background, .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; }",
+              ...action({ action: "perform-action", perform_action: domainOf(id) === "scene" ? "scene.turn_on" : "script.turn_on", target: { entity_id: id } }),
+            })),
+          });
+        }
+        const off = liveBulk(loads, ["on"], "homeassistant.turn_off", { confirm: false });
+        content.push({
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          name: `${r.name} All Off`,
+          show_icon: false,
+          grid_options: { columns: "full" },
+          styles:
+            ".bubble-button-card-container { background: rgba(140,22,22,.85) !important; border-radius: 4px !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
+            " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 18px !important; font-weight: 400 !important; } " + off.hook,
+          ...off.actions,
+        });
+        views.push(view(`lighting-${slug(r.name)}`, r.name, content, [], "lighting"));
+      });
 
     // MEDIA — "All Zones Off", what's playing, then every zone with its source and a volume bar (› opens the zone).
     if (items.some((i) => i.path === "media")) {
@@ -1716,7 +1881,8 @@ class PivitElanStrategy extends HTMLElement {
       const cards = (v.sections || []).flatMap((x) => x.cards || []);
       // Drop a heading that only repeats the page title (the ELAN title already shows it).
       if (cards[0] && cards[0].type === "heading" && (cards[0].heading || "").toLowerCase() === (v.title || "").toLowerCase()) cards.shift();
-      views.push(view(v.path, v.title, [elanTitle(v.title), ...cards]));
+      const bodies = cards.filter((c) => ["thermostat", "custom:bubble-card"].includes(c.type) && domainOf(c.entity || "") === "climate" && /pool|spa/i.test(c.entity + " " + (c.name || "")));
+      views.push(view(v.path, v.title, bodies.length ? [elanTitle(v.title), ...elanPool(hass, cards, bodies)] : [elanTitle(v.title), ...cards]));
     }
 
     return { title: cfg.title, views };
