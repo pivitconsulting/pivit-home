@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.23 — 2026-11-22
+
+- PivIT ELAN Security: the Home Security row opens an ELAN pop-up (`#security-<alarm>`) with Home Assistant's alarm panel — Arm Home / Arm Away (from the alarm's supported features) / Disarm, and a keypad whenever the alarm requires a code. Alarm colours in the ELAN palette (disarmed blue, armed/triggered red).
+
 ## 1.1.22 — 2026-11-22
 
 - PivIT ELAN climate: current temperatures and setpoints display as the nearest whole degree (was nearest 0.5°), including the value shown straight after an arrow tap.
