@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.39 — 2026-11-22
+
+- Intercoms (both templates): when the hold-open lock rule belongs to a UniFi Access device, Hold Open shows a duration picker (`hold_durations`, default 15 min, 30 min, 1 hr, 2 hr, 4 hr, Until cancelled). A duration calls unifi_access.set_lock_rule (rule custom, interval) and stores the end time in `hold_end_entity` (auto: input_datetime.pivit_<gate>_open_until); Until cancelled uses keep_unlock. While held, the status pill (pop-up header and Home row) reads "Held Open · 23 min", the button reads "Held Open" with "23 min left · Press to cancel", and the ELAN Security row shows Held Open with the time left. Picking a duration is the confirmation (no extra dialog).
+
 ## 1.1.36–1.1.38 — 2026-11-22
 
 - PivIT ELAN camera pop-ups use the Advanced Camera Card when it is installed (detected from the dashboard resources, since its script may load after the strategy runs): live view, fixed 16:9, an overlay menu along the bottom with only mute/unmute (camera audio) and full screen; no thumbnails, next/previous or other buttons. Falls back to the HA live picture when the card is missing. The grid stays muted.
