@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.37";
+const VERSION = "1.1.38";
 
 const DEFAULTS = {
   title: "Home",
@@ -2325,7 +2325,7 @@ class PivitElanStrategy extends HTMLElement {
         cameras: [{ camera_entity: id, live_provider: "auto" }],
         view: { default: "live" },
         live: { draggable: false, controls: { builtin: false, next_previous: { style: "none" }, thumbnails: { mode: "none" } } },
-        dimensions: { aspect_ratio: "16:9" },
+        dimensions: { aspect_ratio_mode: "static", aspect_ratio: "16:9" },
         menu: {
           style: "overlay",
           position: "bottom",
