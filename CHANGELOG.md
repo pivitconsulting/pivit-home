@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.25–1.1.27 — 2026-11-22
+
+- PivIT ELAN Home Security pop-up rebuilt (elanAlarmCards): ARM HOME / ARM AWAY (/ ARM NIGHT if supported) / DISARM as ELAN segmented buttons with gold shield icons, current mode filled blue (same look as LOCK / UNLOCK); ELAN keypad (1–9, ⌫, 0, C) with a dot display when the alarm needs a code. The code lives only in the browser until a button is tapped, is sent with that command, then cleared. Tapping a button with no code shows "Enter code first" and sends nothing. Cards use fixed heights (Bubble Card positions contents absolutely).
+
 ## 1.1.24 — 2026-11-22
 
 - PivIT ELAN Media: "All Zones Off" only sends media_player.turn_off to players that support it (feature 256); players that cannot be switched off (Sonos with a TV input) are paused instead. Fixes "does not support action media_player.turn_off" errors.
