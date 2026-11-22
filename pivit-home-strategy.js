@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.35";
+const VERSION = "1.1.36";
 
 const DEFAULTS = {
   title: "Home",
@@ -2314,9 +2314,31 @@ class PivitElanStrategy extends HTMLElement {
         hold_action: { action: "none" },
       });
       const grid = (columns) => ({ type: "grid", columns, square: false, cards: ctx.cameras.map(tile) });
+      // Pop-up player (Advanced Camera Card, when installed): live, with only a mute/unmute button (camera audio) and a
+      // full-screen button, along the bottom.
+      const off = { enabled: false };
+      const camCard = (id) => ({
+        type: "custom:advanced-camera-card",
+        cameras: [{ camera_entity: id, live_provider: "auto" }],
+        view: { default: "live" },
+        live: { draggable: false, controls: { builtin: false, next_previous: { style: "none" }, thumbnails: { mode: "none" } } },
+        dimensions: { aspect_ratio: "16:9" },
+        menu: {
+          style: "overlay",
+          position: "bottom",
+          alignment: "right",
+          button_size: 44,
+          buttons: {
+            mute: { enabled: true, priority: 90 },
+            fullscreen: { enabled: true, priority: 80 },
+            ...Object.fromEntries(["iris", "cameras", "substreams", "live", "clips", "snapshots", "recordings", "image", "timeline", "download", "camera_ui", "media_player", "display_mode", "gallery", "folders", "info", "set_review", "call", "expand", "pip", "play", "screenshot"].map((b) => [b, off])),
+          },
+        },
+        grid_options: { columns: "full" },
+      });
       const camPopups = ctx.cameras.map((id) =>
         ({ ...popupShell(camHash(id), camName(id), "mdi:cctv", [
-          { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
+          customElements.get("advanced-camera-card") ? camCard(id) : { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
         ]), width_desktop: "960px" })
       );
       views.push(view("video", "Video", { wide: [elanTitle("Video"), grid(2)], narrow: [elanTitle("Video"), grid(1)] }, camPopups));
