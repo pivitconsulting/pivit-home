@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.5–1.1.6 — 2026-11-22
+
+- PivIT ELAN pool/spa: big water temperature beside the setpoint. Home date separator "·" (Bubble Card drops the space after a comma).
+
 ## 1.1.4 — 2026-11-22
 
 - PivIT ELAN: lighting room pages (subviews `lighting-<room>`): "◀ Room ▶" switcher, a wide slider per dimmer, on/off loads and fans, room scenes/scripts as buttons, wide dark-red "<Room> All Off" (only what is on). Lighting rows open them.
