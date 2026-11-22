@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.1–1.1.3 — 2026-11-22
+
+- PivIT ELAN: menu and page side by side in one full-width section (menu hides below 1000px, bottom nav instead); titles and Home clock drawn with Bubble Card (HA markdown strips styles); dark climate rows with red heat / blue cool setpoints; LOCK/UNLOCK text-only segments; extra-view duplicate heading dropped.
+
 ## 1.1.0 — 2026-11-22
 
 - New **PivIT ELAN** template (`strategy: type: custom:pivit-elan`), modelled on the ELAN g!/ELAN 8 touch-panel UI: translucent subsystem menu on the left (Home, Security, Climate, Lighting, Media, Irrigation, Video, Pool…), centred page titles, translucent zone rows with big status values. Uses the same options and devices as PivIT Home and reuses its pop-ups. The PivIT Home (Savant-style) template is unchanged.
