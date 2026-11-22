@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.15–1.1.17 — 2026-11-22
+
+- PivIT ELAN pop-ups: panel opens in ELAN night-sky navy (it was grey: Bubble paints .bubble-pop-up-background from --bubble-pop-up-main-background-color, which had been set to the light row colour). ELAN palette inside pop-ups: heat red #d23c3c, cool/auto/active/on ELAN blue (thermostat dial and mode buttons, light/fan/switch fills, toggles); pop-up sliders fill ELAN blue instead of the bulb colour.
+
 ## 1.1.14 — 2026-11-22
 
 - PivIT ELAN: slider fills were still pill-rounded inside the squared rows (Bubble clips the fill with --bubble-button-border-radius, which the rows did not set). ELAN rows and pop-ups now set the Bubble corner variables to 6px (4px for sub-sliders/selects), so slider track and fill match the row.
