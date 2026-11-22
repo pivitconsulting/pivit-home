@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.28–1.1.29 — 2026-11-22
+
+- PivIT ELAN Security: tapping a door lock row opens an ELAN lock pop-up (`#lock-<lock>`) instead of HA's grey dialog — big LOCK / UNLOCK buttons (gold padlocks, current state blue, unlock confirms) and the lock's last 24 h of activity. ELAN pop-ups use a solid navy card colour so pinned list headers don't show text through them.
+
 ## 1.1.25–1.1.27 — 2026-11-22
 
 - PivIT ELAN Home Security pop-up rebuilt (elanAlarmCards): ARM HOME / ARM AWAY (/ ARM NIGHT if supported) / DISARM as ELAN segmented buttons with gold shield icons, current mode filled blue (same look as LOCK / UNLOCK); ELAN keypad (1–9, ⌫, 0, C) with a dot display when the alarm needs a code. The code lives only in the browser until a button is tapped, is sent with that command, then cleared. Tapping a button with no code shows "Enter code first" and sends nothing. Cards use fixed heights (Bubble Card positions contents absolutely).
