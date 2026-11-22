@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.0";
+const VERSION = "1.1.1";
 
 const DEFAULTS = {
   title: "Home",
@@ -1347,6 +1347,8 @@ const ELAN_ACCENT = "#2f7fe0";
 const ELAN_BACKGROUND =
   "center / cover no-repeat fixed radial-gradient(ellipse at 70% 15%, rgba(120,110,190,.55) 0%, rgba(40,46,92,0) 45%)," +
   " radial-gradient(ellipse at 15% 85%, rgba(70,120,170,.35) 0%, rgba(20,24,48,0) 50%), linear-gradient(175deg, #2a2f5a 0%, #171a33 45%, #0b0d1a 100%)";
+const ELAN_WIDE = "(min-width: 1000px)";
+const ELAN_NARROW = "(max-width: 999px)";
 const ELAN_ROW_BG = "rgba(12,14,22,.72)";
 
 // Translucent ELAN row look, shared by the row helpers below.
@@ -1358,10 +1360,18 @@ const ELAN_ROW_STYLE =
   " .bubble-name { font-size: 19px !important; font-weight: 300 !important; letter-spacing: .01em; }";
 
 const elanTitle = (text) => ({
-  type: "markdown",
-  text_only: true,
+  type: "custom:bubble-card",
+  card_type: "button",
+  button_type: "name",
+  name: text,
+  show_icon: false,
   grid_options: { columns: "full" },
-  content: `<div style="text-align:center;font-weight:300;font-size:1.55em;letter-spacing:.02em;border-bottom:1px solid rgba(255,255,255,.4);padding-bottom:4px">${text}</div>`,
+  styles:
+    ".bubble-button-card-container { background: none !important; border-radius: 0 !important; border-bottom: 1px solid rgba(255,255,255,.45); }" +
+    " .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
+    " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 26px !important; font-weight: 300 !important; text-align: center; }",
+  tap_action: { action: "none" },
+  button_action: { tap_action: { action: "none" } },
 });
 const elanSubhead = (text) => ({ type: "heading", heading: text, heading_style: "subtitle" });
 
@@ -1457,37 +1467,46 @@ class PivitElanStrategy extends HTMLElement {
       const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); return i < 0 ? 999 : i; };
       items.sort((a, b) => rank(a.path) - rank(b.path));
     }
-    const phoneNav = { ...navCard(items, base, cfg.nav_width), visibility: [{ condition: "screen", media_query: "(max-width: 767px)" }] };
+    const phoneNav = { ...navCard(items, base, cfg.nav_width), visibility: [{ condition: "screen", media_query: ELAN_NARROW }] };
 
     // One view = ELAN menu (left column, wide screens) + one content column; pop-ups in their own section.
     const view = (path, title, content, viewPopups = []) => ({
       title,
       path,
       type: "sections",
-      max_columns: 4,
+      max_columns: 3,
       background: bg,
       sections: [
-        { type: "grid", column_span: 1, cards: elanNav(items, base, path), visibility: [{ condition: "screen", media_query: "(min-width: 768px)" }] },
-        { type: "grid", column_span: 3, cards: content },
+        { type: "grid", column_span: 1, cards: elanNav(items, base, path), visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
+        { type: "grid", column_span: 2, cards: content },
         ...(viewPopups.length || intercoms.length ? [{ type: "grid", cards: [...viewPopups, ...intercoms.map(intercomPopup)] }] : []),
-        { type: "grid", column_span: 4, cards: [phoneNav] },
+        { type: "grid", column_span: 3, cards: [phoneNav] },
       ],
     });
     const views = [];
 
-    // HOME — big thin clock and date in the middle (as on the ELAN home screen), weather and alarm underneath.
+    // HOME — big thin clock and date in the middle (as on the ELAN home screen), weather underneath.
+    const wx = ctx.weather
+      ? " + ' · ' + Math.round((hass.states['" + ctx.weather + "'] || { attributes: {} }).attributes.temperature) + '° ' + " + titleCase("hass.states['" + ctx.weather + "'] && hass.states['" + ctx.weather + "'].state.replace('partlycloudy', 'partly cloudy')")
+      : "";
     views.push(
       view("home", "Home", [
         {
-          type: "markdown",
-          text_only: true,
-          grid_options: { columns: "full" },
-          content:
-            `<div style="text-align:center;padding-top:9vh"><div style="font-size:2.4em;font-weight:300;letter-spacing:.35em;opacity:.95">${(cfg.elan_brand || cfg.title || "HOME").toUpperCase()}</div>` +
-            "<div style='font-size:6em;font-weight:200;line-height:1.1;opacity:.85'>{{ now().strftime('%-I:%M') }} <span style='font-size:.5em'>{{ now().strftime('%p') }}</span></div>" +
-            "<div style='font-size:1.2em;opacity:.7'>{{ now().strftime('%A %B %-d') }}" +
-            (ctx.weather ? " · {{ state_attr('" + ctx.weather + "','temperature') | round(0) }}° {{ states('" + ctx.weather + "') | replace('-', ' ') | replace('partlycloudy','partly cloudy') | title }}" : "") +
-            "</div></div>",
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          name: (cfg.elan_brand || cfg.title || "Home").toUpperCase(),
+          show_icon: false,
+          grid_options: { columns: "full", rows: 6 },
+          tap_action: { action: "none" },
+          button_action: { tap_action: { action: "none" } },
+          styles:
+            ".bubble-button-card-container { background: none !important; height: 100% !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
+            " .bubble-button-card { justify-content: center !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; text-align: center; }" +
+            " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; }" +
+            " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
+            " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })" + wx + "}\";" +
+            " position: absolute; left: 0; right: 0; bottom: 14%; text-align: center; font-size: 18px; opacity: .7; }",
         },
       ])
     );
