@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.19";
+const VERSION = "1.1.20";
 
 const DEFAULTS = {
   title: "Home",
@@ -1606,7 +1606,8 @@ function elanClimateRow(id, name, hash) {
     " }, 800);" +
     " })), '')}";
   const box = (n) =>
-    ` .bubble-sub-button-${n} { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; line-height: 1.1; }` +
+    ` .bubble-sub-button-${n} { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; line-height: 1.1;` +
+    ` align-self: stretch !important; justify-self: stretch !important; height: 100% !important; box-sizing: border-box; }` +
     ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon, .bubble-sub-button-${n} .bubble-sub-button-name-container { display: none !important; }`;
   return {
     type: "custom:bubble-card",
