@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.32";
+const VERSION = "1.1.33";
 
 const DEFAULTS = {
   title: "Home",
@@ -1991,8 +1991,9 @@ class PivitElanStrategy extends HTMLElement {
           cards: [
             { type: "vertical-stack", cards: elanNav(items, base, navPath), grid_options: { columns: 6, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
             // Beside the menu on wide screens; full width (menu replaced by the bottom bar) on narrower ones.
-            { type: "vertical-stack", cards: content, grid_options: { columns: 18, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
-            { type: "vertical-stack", cards: content, grid_options: { columns: "full", rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_NARROW }] },
+            // content may be { wide, narrow } when a page lays out differently on phones (e.g. Video's camera grid).
+            { type: "vertical-stack", cards: content.wide || content, grid_options: { columns: 18, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
+            { type: "vertical-stack", cards: content.narrow || content, grid_options: { columns: "full", rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_NARROW }] },
             ...viewPopups.map(elanPopup),
             ...intercoms.map(intercomPopup).map(elanPopup),
             phoneNav,
@@ -2288,16 +2289,29 @@ class PivitElanStrategy extends HTMLElement {
       views.push(view(path, title, content, sm.popups || []));
     }
 
-    // VIDEO — camera list; selecting one opens it full screen.
-    if (items.some((i) => i.path === "video"))
-      views.push(
-        view("video", "Video", [
-          elanTitle("Video"),
-          ...ctx.cameras.map((id) =>
-            elanRow({ name: label(id).replace(/\s+(High|Medium|Low) resolution channel$/i, ""), icon: "mdi:cctv", sub: "Camera", tap: { action: "more-info" }, extra: { entity: id } })
-          ),
+    // VIDEO — every camera live (two per row beside the menu, one per row on narrower screens); tapping a camera opens
+    // an ELAN pop-up with it live and large.
+    if (items.some((i) => i.path === "video")) {
+      const camName = (id) => label(id).replace(/\s+(High|Medium|Low) resolution channel$/i, "");
+      const camHash = (id) => `#camera-${slug(id.split(".")[1].replace(/_(high|medium|low)_resolution_channel$/, ""))}`;
+      const tile = (id) => ({
+        type: "picture-entity",
+        entity: id,
+        name: camName(id),
+        camera_view: "live",
+        show_state: false,
+        aspect_ratio: "16:9",
+        tap_action: { action: "navigate", navigation_path: camHash(id) },
+        hold_action: { action: "none" },
+      });
+      const grid = (columns) => ({ type: "grid", columns, square: false, cards: ctx.cameras.map(tile) });
+      const camPopups = ctx.cameras.map((id) =>
+        popupShell(camHash(id), camName(id), "mdi:cctv", [
+          { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
         ])
       );
+      views.push(view("video", "Video", { wide: [elanTitle("Video"), grid(2)], narrow: [elanTitle("Video"), grid(1)] }, camPopups));
+    }
 
     // Extra views (e.g. Pool) keep their own content, inside the ELAN frame.
     for (const v of extra) {
