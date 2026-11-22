@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.14";
+const VERSION = "1.1.15";
 
 const DEFAULTS = {
   title: "Home",
@@ -1347,6 +1347,7 @@ const ELAN_ACCENT = "#2f7fe0";
 const ELAN_BACKGROUND =
   "center / cover no-repeat fixed radial-gradient(ellipse at 70% 15%, rgba(120,110,190,.55) 0%, rgba(40,46,92,0) 45%)," +
   " radial-gradient(ellipse at 15% 85%, rgba(70,120,170,.35) 0%, rgba(20,24,48,0) 50%), linear-gradient(175deg, #2a2f5a 0%, #171a33 45%, #0b0d1a 100%)";
+const ELAN_HEAT = "#d23c3c";
 const ELAN_WIDE = "(min-width: 1000px)";
 const ELAN_NARROW = "(max-width: 999px)";
 const ELAN_ROW_BG = "rgba(12,14,22,.72)";
@@ -1533,7 +1534,14 @@ const ELAN_POPUP_STYLE =
   ".bubble-pop-up { --bubble-pop-up-border-radius: 10px; --bubble-border-radius: 6px; --bubble-button-border-radius: 6px; --bubble-card-type-border-radius: 6px; --bubble-media-player-border-radius: 6px; --bubble-sub-slider-border-radius: 4px; --bubble-select-button-border-radius: 4px; --bubble-sub-button-border-radius: 4px;" +
   " --bubble-main-background-color: rgba(255,255,255,.08); --bubble-pop-up-main-background-color: rgba(255,255,255,.08);" +
   " --bubble-secondary-background-color: rgba(255,255,255,.08); --bubble-media-player-buttons-border-radius: 4px;" +
-  " --ha-card-background: rgba(255,255,255,.06); --ha-card-border-radius: 6px; --card-background-color: rgba(255,255,255,.06); }" +
+  " --ha-card-background: rgba(255,255,255,.06); --ha-card-border-radius: 6px; --card-background-color: rgba(255,255,255,.06);" +
+  // ELAN palette: heat red, everything else that is "active" ELAN blue (HA thermostat dial, mode buttons, light/fan/switch fills).
+  ` --primary-color: ${ELAN_ACCENT}; --accent-color: ${ELAN_ACCENT}; --state-active-color: ${ELAN_ACCENT}; --state-icon-active-color: ${ELAN_ACCENT};` +
+  ` --state-climate-heat-color: ${ELAN_HEAT}; --state-climate-cool-color: ${ELAN_ACCENT}; --state-climate-heat_cool-color: ${ELAN_ACCENT};` +
+  ` --state-climate-auto-color: ${ELAN_ACCENT}; --state-climate-dry-color: ${ELAN_ACCENT}; --state-climate-fan_only-color: ${ELAN_ACCENT};` +
+  ` --state-light-active-color: ${ELAN_ACCENT}; --state-light-on-color: ${ELAN_ACCENT}; --state-fan-active-color: ${ELAN_ACCENT}; --state-switch-active-color: ${ELAN_ACCENT};` +
+  ` --state-input_boolean-active-color: ${ELAN_ACCENT}; --state-media_player-active-color: ${ELAN_ACCENT}; --state-cover-active-color: ${ELAN_ACCENT};` +
+  ` --state-lock-locked-color: ${ELAN_ACCENT}; --state-lock-unlocked-color: ${ELAN_HEAT}; --bubble-accent-color: ${ELAN_ACCENT}; --switch-checked-color: ${ELAN_ACCENT}; }` +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
 function elanPopup(pp) {
   return { ...pp, bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE).trim() };
