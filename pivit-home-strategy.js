@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.6";
+const VERSION = "1.1.8";
 
 const DEFAULTS = {
   title: "Home",
@@ -1357,7 +1357,11 @@ const ELAN_ROW_STYLE =
   " .bubble-button-background { opacity: 0 !important; }" +
   ` .bubble-main-icon-container { background: transparent !important; border-radius: 0 !important; box-shadow: inset 0 -3px 0 ${ELAN_ACCENT}; }` +
   " .bubble-icon { color: #e9eef7 !important; --mdc-icon-size: 26px; }" +
-  " .bubble-name { font-size: 19px !important; font-weight: 300 !important; letter-spacing: .01em; }";
+  " .bubble-name { font-size: 19px !important; font-weight: 300 !important; letter-spacing: .01em; }" +
+  // Phones: smaller type, slimmer LOCK/UNLOCK, setpoints hidden (the row opens the full thermostat controls).
+  " @media (max-width: 520px) { .bubble-name { font-size: 16px !important; } .bubble-sub-button-1::before { font-size: 20px !important; }" +
+  " .bubble-sub-button-1 * { font-size: 20px !important; } .bubble-sub-button-container .bubble-sub-button[class*='bubble-sub-button-'] { min-width: 0; }" +
+  " .bubble-temperature-container, .bubble-target-temperature-container { display: none !important; } .bubble-buttons-container::before { font-size: 30px !important; } }";
 
 const elanTitle = (text) => ({
   type: "custom:bubble-card",
@@ -1466,6 +1470,7 @@ function elanPool(hass, cards, bodies) {
         " .bubble-name { font-size: 24px !important; }" +
         elanSubtitle({ expr: "(" + heaterOn + " ? 'Heater on' : 'Heater off') + ' · set ' + ((hass.states['" + b.entity + "'] || { attributes: {} }).attributes.temperature || '--') + '°'" }) +
         " .bubble-buttons-container::before { content: \"${" + tempExpr + "}\"; font-size: 46px; font-weight: 200; line-height: 1; margin-right: 18px; align-self: center; }" +
+        " @media (max-width: 520px) { .bubble-buttons-container::before { font-size: 30px; margin-right: 8px; } .bubble-sub-button-1 .bubble-sub-button-name-container { display: none !important; } }" +
         (heater
           ? " .bubble-sub-button-1 { background: ${" + heaterOn + " ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
             " .bubble-sub-button-1 ha-icon { color: ${" + heaterOn + " ? '#fff' : '#f5a442'} !important; }"
@@ -1515,6 +1520,18 @@ function elanPool(hass, cards, bodies) {
   return out;
 }
 
+// Re-skin a PivIT Home pop-up for the ELAN dashboard: deep navy panel, squarer corners, dark translucent rows.
+// Bubble Card and HA card variables cascade to every card inside the pop-up, so one style covers them all.
+const ELAN_POPUP_STYLE =
+  ".bubble-pop-up { --bubble-pop-up-border-radius: 10px; --bubble-border-radius: 6px; --bubble-sub-button-border-radius: 4px;" +
+  " --bubble-main-background-color: rgba(12,14,22,.72); --bubble-pop-up-main-background-color: rgba(12,14,22,.72);" +
+  " --bubble-secondary-background-color: rgba(255,255,255,.07); --bubble-media-player-buttons-border-radius: 4px;" +
+  " --ha-card-background: rgba(12,14,22,.72); --ha-card-border-radius: 6px; --card-background-color: rgba(12,14,22,.72); }" +
+  " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
+function elanPopup(pp) {
+  return { ...pp, bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE).trim() };
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -1556,7 +1573,19 @@ class PivitElanStrategy extends HTMLElement {
       const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); return i < 0 ? 999 : i; };
       items.sort((a, b) => rank(a.path) - rank(b.path));
     }
-    const phoneNav = { ...navCard(items, base, cfg.nav_width), visibility: [{ condition: "screen", media_query: ELAN_NARROW }] };
+    // Below 1000px the ELAN menu becomes a bar of square icon buttons along the bottom (every page fits, even on phones).
+    const phoneNavBase = navCard(items, base, cfg.nav_width);
+    const phoneNav = {
+      ...phoneNavBase,
+      styles:
+        ".bubble-name { display: none !important; }" +
+        " .horizontal-buttons-stack-container { display: flex !important; justify-content: center !important; gap: 6px !important; }" +
+        " .bubble-button { position: relative !important; transform: none !important; left: auto !important; width: 48px !important; min-width: 48px !important;" +
+        " padding: 0 !important; justify-content: center !important; border-radius: 6px !important; background: rgba(12,14,22,.85) !important; border: 1px solid rgba(255,255,255,.12); }" +
+        " .bubble-button.highlight { background: rgba(255,255,255,.2) !important; } .bubble-icon { margin: 0 !important; color: #f2f5fa !important; }" +
+        " .bubble-button .bubble-background-color, .bubble-button .bubble-background { border-radius: 6px !important; }",
+      visibility: [{ condition: "screen", media_query: ELAN_NARROW }],
+    };
 
     // One view = ELAN menu (left column, wide screens) + one content column; pop-ups in their own section.
     // ELAN menu (left) and page content (right) sit side by side inside one full-width section; below 1000px the menu
@@ -1574,9 +1603,11 @@ class PivitElanStrategy extends HTMLElement {
           column_span: 2,
           cards: [
             { type: "vertical-stack", cards: elanNav(items, base, navPath), grid_options: { columns: 6, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
-            { type: "vertical-stack", cards: content, grid_options: { columns: 18, rows: "auto" } },
-            ...viewPopups,
-            ...intercoms.map(intercomPopup),
+            // Beside the menu on wide screens; full width (menu replaced by the bottom bar) on narrower ones.
+            { type: "vertical-stack", cards: content, grid_options: { columns: 18, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
+            { type: "vertical-stack", cards: content, grid_options: { columns: "full", rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_NARROW }] },
+            ...viewPopups.map(elanPopup),
+            ...intercoms.map(intercomPopup).map(elanPopup),
             phoneNav,
           ],
         },
@@ -1648,7 +1679,8 @@ class PivitElanStrategy extends HTMLElement {
           ` .bubble-sub-button-${n} { width: 84px !important; height: 34px !important; border-radius: 3px !important; justify-content: center !important;` +
           ` background: \${${on} ? '${ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; border: 1px solid rgba(255,255,255,.18); }` +
           ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { display: none !important; }` +
-          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }`;
+          ` .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #fff !important; opacity: 1 !important; overflow: visible !important; }` +
+          ` @media (max-width: 520px) { .bubble-sub-button-${n} { width: 58px !important; } .bubble-sub-button-${n} .bubble-sub-button-name-container { font-size: 10px !important; letter-spacing: .04em !important; } }`;
         content.push({
           type: "custom:bubble-card",
           card_type: "button",
@@ -1695,7 +1727,8 @@ class PivitElanStrategy extends HTMLElement {
                 " .bubble-low-temp-container, .bubble-high-temp-container, .bubble-temperature-container { border-radius: 4px !important; }" +
                 " .bubble-climate-temp-display, .bubble-climate-temp-display * { color: #fff !important; }" +
                 elanSubtitle({ expr: titleCase("hass.states['" + id + "'] && (hass.states['" + id + "'].attributes.hvac_action || hass.states['" + id + "'].state)") }) +
-                " .bubble-sub-button-1 { font-size: 30px !important; font-weight: 300 !important; } .bubble-sub-button-1 * { font-size: 30px !important; font-weight: 300 !important; }",
+                " .bubble-sub-button-1 { font-size: 30px !important; font-weight: 300 !important; } .bubble-sub-button-1 * { font-size: 30px !important; font-weight: 300 !important; }" +
+                " @media (max-width: 520px) { .bubble-sub-button-1, .bubble-sub-button-1 * { font-size: 21px !important; } }",
               ...action(go(thermostatHash(id))),
             })),
           ],
