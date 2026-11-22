@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.25";
+const VERSION = "1.1.26";
 
 const DEFAULTS = {
   title: "Home",
@@ -1716,7 +1716,7 @@ function elanAlarmCards(hass, id) {
     sub_button: buttons.map(([, label, icon]) => ({ name: label, icon, show_name: true, show_icon: true, show_background: true, tap_action: none })),
     styles:
       ELAN_ROW_STYLE +
-      " .bubble-button-card-container { height: auto !important; min-height: 124px; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 12px !important; gap: 12px; }" +
+      " .bubble-button-card-container { height: 142px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 12px !important; gap: 12px; }" +
       " .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin: 0 !important; }" +
       elanSubtitle({ expr: "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ') : s.replace(/_/g, ' '))(" + S + ")" }) +
       ` .bubble-sub-button-container { display: grid !important; grid-template-columns: repeat(${buttons.length}, 1fr); gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }` +
@@ -1751,7 +1751,7 @@ function elanAlarmCards(hass, id) {
     sub_button: keys.map((k) => ({ name: k, icon: "mdi:circle-small", show_name: true, show_icon: false, show_background: true, tap_action: none })),
     styles:
       ELAN_ROW_STYLE +
-      " .bubble-button-card-container { height: auto !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 12px !important; }" +
+      " .bubble-button-card-container { height: 322px !important; } .bubble-button-card { flex-direction: column !important; align-items: stretch !important; padding: 12px !important; height: 100%; box-sizing: border-box; }" +
       " .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
       " .bubble-sub-button-container { display: grid !important; grid-template-columns: repeat(3, 1fr); grid-auto-rows: 54px; gap: 6px !important; width: 100% !important; position: static !important; margin: 0 !important; }" +
       " .bubble-sub-button-container::before { content: var(--pv-code, \"Enter code\"); grid-column: 1 / -1; display: flex; align-items: center; justify-content: center;" +
