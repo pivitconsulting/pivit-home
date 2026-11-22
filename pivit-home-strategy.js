@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.1";
+const VERSION = "1.1.2";
 
 const DEFAULTS = {
   title: "Home",
@@ -1470,17 +1470,26 @@ class PivitElanStrategy extends HTMLElement {
     const phoneNav = { ...navCard(items, base, cfg.nav_width), visibility: [{ condition: "screen", media_query: ELAN_NARROW }] };
 
     // One view = ELAN menu (left column, wide screens) + one content column; pop-ups in their own section.
+    // ELAN menu (left) and page content (right) sit side by side inside one full-width section; below 1000px the menu
+    // hides, the content takes the full width and the bottom nav bar appears instead.
     const view = (path, title, content, viewPopups = []) => ({
       title,
       path,
       type: "sections",
-      max_columns: 3,
+      max_columns: 2,
       background: bg,
       sections: [
-        { type: "grid", column_span: 1, cards: elanNav(items, base, path), visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
-        { type: "grid", column_span: 2, cards: content },
-        ...(viewPopups.length || intercoms.length ? [{ type: "grid", cards: [...viewPopups, ...intercoms.map(intercomPopup)] }] : []),
-        { type: "grid", column_span: 3, cards: [phoneNav] },
+        {
+          type: "grid",
+          column_span: 2,
+          cards: [
+            { type: "vertical-stack", cards: elanNav(items, base, path), grid_options: { columns: 6, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
+            { type: "vertical-stack", cards: content, grid_options: { columns: 18, rows: "auto" } },
+            ...viewPopups,
+            ...intercoms.map(intercomPopup),
+            phoneNav,
+          ],
+        },
       ],
     });
     const views = [];
@@ -1501,7 +1510,7 @@ class PivitElanStrategy extends HTMLElement {
           tap_action: { action: "none" },
           button_action: { tap_action: { action: "none" } },
           styles:
-            ".bubble-button-card-container { background: none !important; height: 100% !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
+            ".bubble-button-card-container { background: none !important; height: 62vh !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
             " .bubble-button-card { justify-content: center !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; text-align: center; }" +
             " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; }" +
             " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
