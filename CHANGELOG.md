@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.31 — 2026-11-22
+
+- PivIT ELAN media: Mediocre media cards use the ELAN palette — album-art colours off (use_art_colors: false) on the Media page and in every ELAN pop-up; card, dialog, text, divider, chip, slider and accent colours set through the card's CSS variables (--mmpc-*). Pop-ups carry them in their style; on pages the ELAN title card puts them on the sections view once it is on screen, so standard cards outside pop-ups (e.g. now playing) follow too.
+
 ## 1.1.30 — 2026-11-22
 
 - PivIT ELAN shades: Lighting-page shade rows rebuilt (name, position under it — "Open" / "Closed" / "50% open" — and ▲ ■ ▼ buttons); tapping a row opens an ELAN shade pop-up (`#shade-<cover>`): OPEN / STOP / CLOSE buttons with gold icons (fully open / closed fills blue), a position slider when the shade supports set_position, and 24 h of activity.
