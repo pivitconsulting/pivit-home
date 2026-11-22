@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.20";
+const VERSION = "1.1.21";
 
 const DEFAULTS = {
   title: "Home",
@@ -1580,20 +1580,27 @@ function elanClimateRow(id, name, hash) {
   const SEL = "(card.__pvSel || 'cool')";
   const nav = { action: "navigate", navigation_path: hash };
   const none = { action: "none" };
+  // card is the row's ha-card; its sub-buttons live in the Bubble Card shadow root around it.
+  // Pending values stay on screen until the thermostat reports them (Daikin reports about once a minute) or 90 s pass.
   const hook =
-    "${(card.__pvH = hass, card.__pvC || (card.__pvC = 1, card.addEventListener('click', function (ev) {" +
+    "${(card.__pvH = hass, card.__pvSync && card.__pvSync(), card.__pvC || (card.__pvC = 1," +
+    " card.__pvQ = function (n) { var r = card.querySelector('.bubble-sub-button-' + n) ? card : card.getRootNode(); return r.querySelector('.bubble-sub-button-' + n); }," +
+    " card.__pvSync = function () { var P = card.__pvP; if (!P) return; var s = card.__pvH.states[" + JSON.stringify(id) + "]; var a = s ? s.attributes : {};" +
+    "   var near = function (x, y) { return x != null && y != null && Math.abs(x - y) < 0.95; };" +
+    "   var done = Date.now() - P.t > 90000 || (P.v != null ? near(a.temperature, P.v) : near(a.target_temp_low, P.lo) && near(a.target_temp_high, P.hi));" +
+    "   if (done) { card.__pvP = null; [2, 3].forEach(function (n) { var el = card.__pvQ(n); if (el) el.style.removeProperty('--pv-v'); }); } }," +
+    " card.addEventListener('click', function (ev) {" +
     " var path = ev.composedPath(); var hit = function (n) { return path.some(function (e) { return e.classList && e.classList.contains('bubble-sub-button-' + n); }); };" +
     " var h = card.__pvH, s = h.states[" + JSON.stringify(id) + "]; if (!s) return; var a = s.attributes;" +
-    " var dual = a.target_temp_low != null && a.target_temp_high != null;" +
-    " var root = card.shadowRoot || card; var q = function (n) { return root.querySelector('.bubble-sub-button-' + n); };" +
+    " var dual = a.target_temp_low != null && a.target_temp_high != null; var q = card.__pvQ;" +
     " var mark = function () { [2, 3].forEach(function (n) { var el = q(n); if (el) el.classList.toggle('pv-sel', dual && ((card.__pvSel || 'cool') === (n === 2 ? 'cool' : 'heat'))); }); };" +
     " if (hit(2)) { card.__pvSel = 'cool'; mark(); return; } if (hit(3)) { card.__pvSel = 'heat'; mark(); return; }" +
     " var dir = hit(4) ? 1 : hit(5) ? -1 : 0; if (!dir) return;" +
     " var step = a.target_temp_step || ((h.config.unit_system || {}).temperature === '°C' ? 0.5 : 1);" +
     " var lo = a.min_temp != null ? a.min_temp : -100, hiLim = a.max_temp != null ? a.max_temp : 200;" +
     " var clamp = function (v) { return Math.min(hiLim, Math.max(lo, Math.round(v / step) * step)); };" +
-    " var now = Date.now(); var p = card.__pvP && now - card.__pvP.t < 8000 ? card.__pvP : null; var data, shown;" +
-    " if (dual) { var L = p && p.lo != null ? p.lo : a.target_temp_low, H = p && p.hi != null ? p.hi : a.target_temp_high;" +
+    " var now = Date.now(); var p = card.__pvP; var data, shown;" +
+    " if (dual) { var L = p && p.lo != null ? p.lo : clamp(a.target_temp_low), H = p && p.hi != null ? p.hi : clamp(a.target_temp_high);" +
     "   if ((card.__pvSel || 'cool') === 'cool') H = clamp(H + dir * step); else L = clamp(L + dir * step);" +
     "   card.__pvP = { t: now, lo: L, hi: H }; data = { target_temp_low: L, target_temp_high: H }; shown = { 2: H, 3: L };" +
     " } else { if (a.temperature == null) return; var T = clamp((p && p.v != null ? p.v : a.temperature) + dir * step);" +
@@ -1602,7 +1609,6 @@ function elanClimateRow(id, name, hash) {
     " clearTimeout(card.__pvT); card.__pvT = setTimeout(function () {" +
     "   card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
     "   { action: 'perform-action', perform_action: 'climate.set_temperature', target: { entity_id: " + JSON.stringify(id) + " }, data: data } } } }));" +
-    "   setTimeout(function () { [2, 3].forEach(function (n) { var el = q(n); if (el) el.style.removeProperty('--pv-v'); }); card.__pvP = null; }, 7000);" +
     " }, 800);" +
     " })), '')}";
   const box = (n) =>
