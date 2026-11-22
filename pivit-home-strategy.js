@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.21";
+const VERSION = "1.1.22";
 
 const DEFAULTS = {
   title: "Home",
@@ -1574,7 +1574,7 @@ function elanClimateRow(id, name, hash) {
   const A = "(" + S + " || { attributes: {} }).attributes";
   const ST = "(" + S + " ? " + S + ".state : 'off')";
   const DUAL = "(" + A + ".target_temp_low != null && " + A + ".target_temp_high != null)";
-  const fmt = (x) => "((v) => v == null || isNaN(v) ? '--' : (Math.round(v * 2) / 2) + '°')(" + x + ")";
+  const fmt = (x) => "((v) => v == null || isNaN(v) ? '--' : Math.round(v) + '°')(" + x + ")"; // whole degrees
   const MODE = "(({ heat: 'Heat', cool: 'Cool', heat_cool: 'Auto', auto: 'Auto', dry: 'Dry', fan_only: 'Fan', off: 'Off' })[" + ST + "] || '')";
   const SINGLE_BG = "(" + ST + " === 'cool' ? '" + ELAN_COOL_BOX + "' : " + ST + " === 'heat' ? '" + ELAN_HEAT_BOX + "' : 'rgba(255,255,255,.12)')";
   const SEL = "(card.__pvSel || 'cool')";
@@ -1605,7 +1605,7 @@ function elanClimateRow(id, name, hash) {
     "   card.__pvP = { t: now, lo: L, hi: H }; data = { target_temp_low: L, target_temp_high: H }; shown = { 2: H, 3: L };" +
     " } else { if (a.temperature == null) return; var T = clamp((p && p.v != null ? p.v : a.temperature) + dir * step);" +
     "   card.__pvP = { t: now, v: T }; data = { temperature: T }; shown = { 3: T }; }" +
-    " Object.keys(shown).forEach(function (n) { var el = q(n); if (el) el.style.setProperty('--pv-v', '\"' + shown[n] + '°\"'); });" +
+    " Object.keys(shown).forEach(function (n) { var el = q(n); if (el) el.style.setProperty('--pv-v', '\"' + Math.round(shown[n]) + '°\"'); });" +
     " clearTimeout(card.__pvT); card.__pvT = setTimeout(function () {" +
     "   card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
     "   { action: 'perform-action', perform_action: 'climate.set_temperature', target: { entity_id: " + JSON.stringify(id) + " }, data: data } } } }));" +
