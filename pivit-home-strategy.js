@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.5";
+const VERSION = "1.1.6";
 
 const DEFAULTS = {
   title: "Home",
@@ -1604,7 +1604,7 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-button-card { justify-content: center !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; text-align: center; }" +
             " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; line-height: 1.4 !important; overflow: visible !important; }" +
             " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
-            " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + String.fromCharCode(44, 160) + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
+            " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + ' · ' + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
             " position: absolute; left: 0; right: 0; bottom: 14%; text-align: center; font-size: 18px; opacity: .7; }",
         },
       ])
