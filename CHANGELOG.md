@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.41 — 2026-11-22
+
+- PivIT ELAN locks redesigned for clarity (Will: LOCK/UNLOCK pair was confusing): each door row says **Locked** (white, closed padlock) or **Unlocked** (red, open padlock, red left edge and tint), Jammed in amber, Locking…/Unlocking… while moving; one button with the opposite action — solid blue LOCK when unlocked, outlined UNLOCK (gold padlock, confirms) when locked. A "Doors" summary row on top: "N doors unlocked" in red with LOCK ALL (confirms, locks only unlocked doors) or "All doors locked". Lock pop-up: big coloured state + the single action button + activity.
+
 ## 1.1.40 — 2026-11-22
 
 - Intercom pop-up: the hold-duration picker now comes after the Open / Hold Open / Held Open buttons and, when closed, hides its grid slot (Bubble wraps each pop-up card in div.card), so Held Open always sits beside Open Front Gate.
