@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.22";
+const VERSION = "1.1.23";
 
 const DEFAULTS = {
   title: "Home",
@@ -1543,7 +1543,10 @@ const ELAN_POPUP_STYLE =
   ` --state-climate-auto-color: ${ELAN_ACCENT}; --state-climate-dry-color: ${ELAN_ACCENT}; --state-climate-fan_only-color: ${ELAN_ACCENT};` +
   ` --state-light-active-color: ${ELAN_ACCENT}; --state-light-on-color: ${ELAN_ACCENT}; --state-fan-active-color: ${ELAN_ACCENT}; --state-switch-active-color: ${ELAN_ACCENT};` +
   ` --state-input_boolean-active-color: ${ELAN_ACCENT}; --state-media_player-active-color: ${ELAN_ACCENT}; --state-cover-active-color: ${ELAN_ACCENT};` +
-  ` --state-lock-locked-color: ${ELAN_ACCENT}; --state-lock-unlocked-color: ${ELAN_HEAT}; --bubble-accent-color: ${ELAN_ACCENT}; --switch-checked-color: ${ELAN_ACCENT}; }` +
+  ` --state-lock-locked-color: ${ELAN_ACCENT}; --state-lock-unlocked-color: ${ELAN_HEAT}; --bubble-accent-color: ${ELAN_ACCENT}; --switch-checked-color: ${ELAN_ACCENT};` +
+  ` --state-alarm_control_panel-disarmed-color: ${ELAN_ACCENT}; --state-alarm_control_panel-armed_home-color: ${ELAN_HEAT}; --state-alarm_control_panel-armed_away-color: ${ELAN_HEAT};` +
+  ` --state-alarm_control_panel-armed_night-color: ${ELAN_HEAT}; --state-alarm_control_panel-armed_vacation-color: ${ELAN_HEAT}; --state-alarm_control_panel-triggered-color: ${ELAN_HEAT};` +
+  ` --mdc-theme-primary: ${ELAN_ACCENT}; --secondary-background-color: rgba(255,255,255,.08); --divider-color: rgba(255,255,255,.12); }` +
   // The panel itself: ELAN night-sky navy (Bubble would otherwise paint it with the row colour → grey).
   " .bubble-pop-up-background { background: linear-gradient(175deg, rgba(42,47,92,.97) 0%, rgba(23,26,51,.97) 55%, rgba(13,15,30,.97) 100%) !important; }" +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
@@ -1780,6 +1783,7 @@ class PivitElanStrategy extends HTMLElement {
     // SECURITY — alarm, gate(s), garage doors, then every lock with LOCK / UNLOCK.
     if (items.some((i) => i.path === "security")) {
       const content = [elanTitle("Security")];
+      const securityPopups = [];
       for (const id of ctx.alarms) {
         const st = "hass.states['" + id + "'] ? hass.states['" + id + "'].state : ''";
         content.push(
@@ -1789,9 +1793,17 @@ class PivitElanStrategy extends HTMLElement {
             sub: "Security partition",
             value: "((s) => s.startsWith('armed') ? 'Armed' : " + titleCase("s") + ")(" + st + ")",
             label: "((s) => s.startsWith('armed_') ? s.slice(6).replace(/_/g, ' ') : '')(" + st + ")",
-            tap: { action: "more-info" },
-            extra: { entity: id },
+            tap: go(`#security-${slug(id.split(".")[1])}`),
           })
+        );
+        // ELAN pop-up with Home Assistant's alarm panel: Arm Home / Arm Away / Disarm, and a keypad whenever the
+        // alarm requires a code (for Alarm.com: Settings → Devices & services → Alarm.com → Configure → Arm code).
+        const feat = (hass.states[id] && hass.states[id].attributes.supported_features) || 0;
+        const modes = [[1, "arm_home"], [2, "arm_away"], [4, "arm_night"], [32, "arm_vacation"]].filter(([b]) => feat & b).map(([, m]) => m);
+        securityPopups.push(
+          popupShell(`#security-${slug(id.split(".")[1])}`, NAMES[id] || "Home Security", "mdi:shield-lock-outline", [
+            { type: "alarm-panel", entity: id, name: " ", states: modes.length ? modes : ["arm_home", "arm_away"], grid_options: { columns: "full" } },
+          ])
         );
       }
       for (const ic of intercoms)
@@ -1836,7 +1848,7 @@ class PivitElanStrategy extends HTMLElement {
           ...action({ action: "more-info" }),
         });
       }
-      views.push(view("security", "Security", content, []));
+      views.push(view("security", "Security", content, securityPopups));
     }
 
     // CLIMATE — ELAN climate rows (see elanClimateRow): name, big temperature, cool/heat setpoint boxes with ▲ / ▼, › to full controls.
