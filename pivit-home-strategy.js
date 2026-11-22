@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.43";
+const VERSION = "1.1.44";
 
 const DEFAULTS = {
   title: "Home",
@@ -728,7 +728,7 @@ function enrichIntercoms(intercoms, hass) {
 function holdRemainingExpr(ic) {
   if (!ic.hold_end_entity) return "''";
   return "((e) => { var p = e ? String(e.state).split(':').map(Number) : []; if (p.length < 2 || isNaN(p[0]) || isNaN(p[1])) return ''; var d = new Date(); d.setHours(p[0], p[1], p[2] || 0, 0);" +
-    " var m = Math.ceil((d - Date.now()) / 60000); if (m < -5) m += 1440; if (m <= 0) return ''; return m >= 60 ? Math.floor(m / 60) + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; })(hass.states['" + ic.hold_end_entity + "'])";
+    " var m = Math.ceil((d - Date.now()) / 60000); if (m < -720) m += 1440; if (m <= 0) return ''; return m >= 60 ? Math.floor(m / 60) + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; })(hass.states['" + ic.hold_end_entity + "'])";
 }
 function holdHeldExpr(ic) {
   const status = ic.lock_rule_sensor || ic.lock_rule;
@@ -2181,10 +2181,12 @@ class PivitElanStrategy extends HTMLElement {
         );
       // Doors / windows open (gate sensors have their own chip).
       const gateSensors = intercoms.map((ic) => ic.status_sensor).filter(Boolean);
-      const contacts = ctx.rooms
-        .flatMap((r) => r.entities)
-        .filter((e, i, a) => a.indexOf(e) === i && domainOf(e) === "binary_sensor" && !gateSensors.includes(e))
-        .filter((e) => ["door", "window", "opening", "garage_door"].includes((hass.states[e] && hass.states[e].attributes.device_class) || ""));
+      const contacts = Object.keys(hass.states).filter((e) => {
+        if (domainOf(e) !== "binary_sensor" || gateSensors.includes(e)) return false;
+        const reg = hass.entities && hass.entities[e];
+        if (reg && (reg.hidden || reg.entity_category)) return false;
+        return ["door", "window", "opening", "garage_door"].includes(hass.states[e].attributes.device_class || "");
+      });
       if (contacts.length)
         chip(
           "mdi:door-open",
@@ -2250,8 +2252,8 @@ class PivitElanStrategy extends HTMLElement {
             chips
               .map(
                 (c, i) =>
-                  ` .bubble-sub-button-${i + 1} ha-icon { color: \${${c.colour}} !important; --mdc-icon-size: 18px; }` +
-                  ` .bubble-sub-button-${i + 1}::after { content: "\${${c.text}}"; font-size: 14px; white-space: nowrap; color: #f2f5fa; }`
+                  ` .bubble-sub-button-${i + 1} ha-icon { color: \${${c.colour}} !important; --mdc-icon-size: 18px; order: 0; }` +
+                  ` .bubble-sub-button-${i + 1}::after { content: "\${${c.text}}"; font-size: 14px; white-space: nowrap; color: #f2f5fa; order: 1; }`
               )
               .join(""),
           tap_action: { action: "none" },
