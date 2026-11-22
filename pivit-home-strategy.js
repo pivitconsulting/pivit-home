@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.12";
+const VERSION = "1.1.13";
 
 const DEFAULTS = {
   title: "Home",
@@ -1466,7 +1466,7 @@ function elanPool(hass, cards, bodies) {
       styles:
         ELAN_ROW_STYLE +
         " .bubble-color-background { opacity: 0 !important; }" +
-        " .bubble-high-temp-container, .bubble-low-temp-container, .bubble-target-temperature-container { background: rgba(200,40,40,.6) !important; border-radius: 4px !important; }" +
+        " .bubble-high-temp-container, .bubble-low-temp-container, .bubble-target-temperature-container, .bubble-temperature-container { background: rgba(200,40,40,.6) !important; border-radius: 4px !important; }" +
         " .bubble-climate-temp-display, .bubble-climate-temp-display * { color: #fff !important; }" +
         " .bubble-name { font-size: 24px !important; }" +
         elanSubtitle({ expr: "(" + heaterOn + " ? 'Heater on' : 'Heater off') + ' · set ' + ((hass.states['" + b.entity + "'] || { attributes: {} }).attributes.temperature || '--') + '°'" }) +
