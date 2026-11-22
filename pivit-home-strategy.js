@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.15";
+const VERSION = "1.1.16";
 
 const DEFAULTS = {
   title: "Home",
@@ -1543,8 +1543,22 @@ const ELAN_POPUP_STYLE =
   ` --state-input_boolean-active-color: ${ELAN_ACCENT}; --state-media_player-active-color: ${ELAN_ACCENT}; --state-cover-active-color: ${ELAN_ACCENT};` +
   ` --state-lock-locked-color: ${ELAN_ACCENT}; --state-lock-unlocked-color: ${ELAN_HEAT}; --bubble-accent-color: ${ELAN_ACCENT}; --switch-checked-color: ${ELAN_ACCENT}; }` +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
+// Sliders inside pop-ups fill with ELAN blue (not the bulb's own colour), like the ELAN rows.
+const ELAN_SLIDER_STYLE =
+  ` .bubble-range-fill { background: rgba(47,127,224,.35) !important; border-right: 2px solid ${ELAN_ACCENT}; opacity: 1 !important; }`;
+function elanCards(cards) {
+  return (cards || []).map((c) => {
+    if (!c || typeof c !== "object") return c;
+    let out = { ...c };
+    if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
+      out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
+    if (Array.isArray(out.cards)) out.cards = elanCards(out.cards);
+    if (out.card && typeof out.card === "object") out.card = elanCards([out.card])[0];
+    return out;
+  });
+}
 function elanPopup(pp) {
-  return { ...pp, bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE).trim() };
+  return { ...pp, cards: elanCards(pp.cards), bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE).trim() };
 }
 
 class PivitElanStrategy extends HTMLElement {
