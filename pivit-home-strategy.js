@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.42";
+const VERSION = "1.1.43";
 
 const DEFAULTS = {
   title: "Home",
@@ -2158,6 +2158,107 @@ class PivitElanStrategy extends HTMLElement {
     });
     const views = [];
 
+    // HOME alerts under the date: chips that appear only while something needs attention — alarm state (always),
+    // doors/windows open, doors unlocked, gate held open / open, sprinklers running, pool/spa heaters on.
+    // Each chip opens the page or pop-up that deals with it.
+    const homeAlerts = () => {
+      const chips = [];
+      const st = (id) => "(hass.states['" + id + "'] ? hass.states['" + id + "'].state : '')";
+      const anyOn = (ids, states = ["on"]) => ({ condition: "or", conditions: ids.map((e) => ({ condition: "state", entity: e, state: states })) });
+      const firstName = (ids, states) =>
+        "((l) => l.length ? l[0][1] : '')(" + JSON.stringify(ids.map((e) => [e, label(e)])) + ".filter((x) => " + JSON.stringify(states) + ".includes(" + "(hass.states[x[0]] || {}).state)))";
+      const count = (ids, states) => "(" + JSON.stringify(ids) + ".filter((e) => hass.states[e] && " + JSON.stringify(states) + ".includes(hass.states[e].state)).length)";
+      const toPage = (path) => go(`${base}/${path}`);
+      const chip = (icon, text, colour, tap, visibility) => chips.push({ icon, text, colour, tap, visibility });
+      // Alarm: always shown; red while armed or triggered.
+      for (const id of ctx.alarms)
+        chip(
+          "mdi:shield-lock-outline",
+          "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : s === 'triggered' ? 'ALARM' : s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '')(" + st(id) + ")",
+          "(" + st(id) + ".startsWith('armed') || " + st(id) + " === 'triggered' ? '" + ELAN_HEAT + "' : '#f2f5fa')",
+          toPage("security"),
+          null
+        );
+      // Doors / windows open (gate sensors have their own chip).
+      const gateSensors = intercoms.map((ic) => ic.status_sensor).filter(Boolean);
+      const contacts = ctx.rooms
+        .flatMap((r) => r.entities)
+        .filter((e, i, a) => a.indexOf(e) === i && domainOf(e) === "binary_sensor" && !gateSensors.includes(e))
+        .filter((e) => ["door", "window", "opening", "garage_door"].includes((hass.states[e] && hass.states[e].attributes.device_class) || ""));
+      if (contacts.length)
+        chip(
+          "mdi:door-open",
+          "((n) => n === 1 ? " + firstName(contacts, ["on"]) + " + ' open' : n + ' doors/windows open')(" + count(contacts, ["on"]) + ")",
+          "'#f0a020'",
+          toPage("security"),
+          [anyOn(contacts)]
+        );
+      // Doors unlocked.
+      if (locks.length)
+        chip(
+          "mdi:lock-open-variant",
+          "((n) => n === 1 ? " + firstName(locks, ["unlocked", "open"]) + " + ' unlocked' : n + ' doors unlocked')(" + count(locks, ["unlocked", "open"]) + ")",
+          "'" + ELAN_HEAT + "'",
+          toPage("security"),
+          [anyOn(locks, ["unlocked", "open"])]
+        );
+      // Gate held open (with time left) / open.
+      for (const ic of intercoms) {
+        const status = ic.lock_rule_sensor || ic.lock_rule;
+        const held = [ic.hold_option || "keep_unlock", "custom"];
+        if (status)
+          chip("mdi:gate-open", "'" + (ic.name || "Gate") + " held open' + ((r) => r ? ' · ' + r : '')(" + holdRemainingExpr(ic) + ")", "'#f0a020'", go(intercomHash(ic)),
+            [{ condition: "state", entity: status, state: held }]);
+        if (ic.status_sensor)
+          chip("mdi:gate-open", "'" + (ic.name || "Gate") + " open'", "'#f0a020'", go(intercomHash(ic)),
+            [{ condition: "state", entity: ic.status_sensor, state: "on" }, ...(status ? [{ condition: "state", entity: status, state_not: held }] : [])]);
+      }
+      // Sprinklers (and any other summary group) running.
+      for (const sm of summaries) {
+        const ids = (sm.entities || []).filter((e) => hass.states[e]);
+        if (!ids.length) continue;
+        chip(
+          /sprinkl/i.test(sm.name) ? "mdi:sprinkler-variant" : sm.icon || "mdi:information-outline",
+          "((n) => '" + sm.name + " running · ' + (n === 1 ? " + firstName(ids, ["on"]) + " : n + ' zones'))(" + count(ids, ["on"]) + ")",
+          "'" + ELAN_ACCENT + "'",
+          toPage(slug(sm.name)),
+          [anyOn(ids)]
+        );
+      }
+      // Pool / spa heaters on (switches named "… heater" on the extra pages, e.g. Pool).
+      for (const v of extra) {
+        const heaters = (v.sections || []).flatMap((x) => x.cards || []).map((c) => c.entity).filter((e) => e && /heater/i.test(e) && hass.states[e]);
+        for (const e of heaters)
+          chip("mdi:fire", "'" + label(e).replace(/'/g, "") + " on'", "'" + ELAN_HEAT + "'", toPage(v.path), [{ condition: "state", entity: e, state: "on" }]);
+      }
+      if (!chips.length) return [];
+      return [
+        {
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          name: " ",
+          show_icon: false,
+          grid_options: { columns: "full" },
+          sub_button: chips.map((c) => ({ icon: c.icon, show_icon: true, show_name: false, show_background: true, tap_action: c.tap, ...(c.visibility ? { visibility: c.visibility } : {}) })),
+          styles:
+            ".bubble-button-card-container { background: none !important; height: auto !important; min-height: 48px; } .bubble-button-background, .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
+            " .bubble-button-card { justify-content: center !important; height: auto !important; padding: 0 !important; }" +
+            " .bubble-sub-button-container { position: static !important; display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; margin: 0 !important; }" +
+            " .bubble-sub-button { width: auto !important; height: 38px !important; padding: 0 14px 0 10px !important; gap: 8px !important; border-radius: 4px !important;" +
+            ` background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.14); }` +
+            chips
+              .map(
+                (c, i) =>
+                  ` .bubble-sub-button-${i + 1} ha-icon { color: \${${c.colour}} !important; --mdc-icon-size: 18px; }` +
+                  ` .bubble-sub-button-${i + 1}::after { content: "\${${c.text}}"; font-size: 14px; white-space: nowrap; color: #f2f5fa; }`
+              )
+              .join(""),
+          tap_action: { action: "none" },
+          button_action: { tap_action: { action: "none" } },
+        },
+      ];
+    };
     // HOME — big thin clock and date in the middle (as on the ELAN home screen), weather underneath.
     const wx = ctx.weather
       ? " + ' · ' + Math.round((hass.states['" + ctx.weather + "'] || { attributes: {} }).attributes.temperature) + '° ' + " + titleCase("hass.states['" + ctx.weather + "'] && hass.states['" + ctx.weather + "'].state.replace('partlycloudy', 'partly cloudy')")
@@ -2174,13 +2275,14 @@ class PivitElanStrategy extends HTMLElement {
           tap_action: { action: "none" },
           button_action: { tap_action: { action: "none" } },
           styles:
-            ".bubble-button-card-container { background: none !important; height: 62vh !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
+            ".bubble-button-card-container { background: none !important; height: 52vh !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
             " .bubble-button-card { justify-content: center !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; text-align: center; }" +
             " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; line-height: 1.4 !important; overflow: visible !important; }" +
             " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
             " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + ' · ' + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
-            " position: absolute; left: 0; right: 0; bottom: 14%; text-align: center; font-size: 18px; opacity: .7; }",
+            " position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font-size: 18px; opacity: .7; }",
         },
+        ...homeAlerts(),
       ])
     );
 
