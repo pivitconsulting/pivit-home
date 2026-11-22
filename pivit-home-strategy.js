@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.4";
+const VERSION = "1.1.5";
 
 const DEFAULTS = {
   title: "Home",
@@ -1454,7 +1454,6 @@ function elanPool(hass, cards, bodies) {
       show_state: false,
       grid_options: { columns: "full", rows: 2 },
       sub_button: [
-        { icon: "mdi:circle-small", show_icon: false, show_background: false, tap_action: { action: "more-info" } },
         ...(heater
           ? [{ entity: heater, name: "Heater", icon: "mdi:fire", show_name: true, show_icon: true, show_background: true, tap_action: { action: "toggle" } }]
           : []),
@@ -1466,11 +1465,10 @@ function elanPool(hass, cards, bodies) {
         " .bubble-climate-temp-display, .bubble-climate-temp-display * { color: #fff !important; }" +
         " .bubble-name { font-size: 24px !important; }" +
         elanSubtitle({ expr: "(" + heaterOn + " ? 'Heater on' : 'Heater off') + ' · set ' + ((hass.states['" + b.entity + "'] || { attributes: {} }).attributes.temperature || '--') + '°'" }) +
-        " .bubble-sub-button-1 { pointer-events: none !important; width: auto !important; padding: 0 12px; }" +
-        " .bubble-sub-button-1::before { content: \"${" + tempExpr + "}\"; font-size: 46px; font-weight: 200; line-height: 1; }" +
+        " .bubble-buttons-container::before { content: \"${" + tempExpr + "}\"; font-size: 46px; font-weight: 200; line-height: 1; margin-right: 18px; align-self: center; }" +
         (heater
-          ? " .bubble-sub-button-2 { background: ${" + heaterOn + " ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
-            " .bubble-sub-button-2 ha-icon { color: ${" + heaterOn + " ? '#fff' : '#f5a442'} !important; }"
+          ? " .bubble-sub-button-1 { background: ${" + heaterOn + " ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
+            " .bubble-sub-button-1 ha-icon { color: ${" + heaterOn + " ? '#fff' : '#f5a442'} !important; }"
           : ""),
     });
   }
@@ -1606,7 +1604,7 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-button-card { justify-content: center !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; text-align: center; }" +
             " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; line-height: 1.4 !important; overflow: visible !important; }" +
             " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
-            " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + ', ' + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
+            " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + String.fromCharCode(44, 160) + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
             " position: absolute; left: 0; right: 0; bottom: 14%; text-align: center; font-size: 18px; opacity: .7; }",
         },
       ])
