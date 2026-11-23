@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.62";
+const VERSION = "1.1.63";
 
 const DEFAULTS = {
   title: "Home",
@@ -1456,12 +1456,8 @@ const ELAN_WIDE = "(min-width: 1000px)";
 const ELAN_NARROW = "(max-width: 999px)";
 const ELAN_ROW_BG = "rgba(12,14,22,.72)";
 
-// Bubble fades the icon and name while a slider is dragged; on ELAN they stay, and the live value sits at the right end.
-const ELAN_DRAG_STYLE =
-  " .is-dragging > :not(.bubble-range-slider):not(style) { opacity: 1 !important; }" +
-  " .is-dragging .bubble-range-value { left: auto !important; right: 14px !important; transform: translateY(-50%) !important; justify-content: flex-end !important; }";
 // Translucent ELAN row look, shared by the row helpers below.
-const ELAN_ROW_STYLE = ELAN_DRAG_STYLE +
+const ELAN_ROW_STYLE =
   `.bubble-button-card-container, .bubble-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; --bubble-border-radius: 6px; --bubble-button-border-radius: 6px; --bubble-card-type-border-radius: 6px; --bubble-media-player-border-radius: 6px; --bubble-sub-slider-border-radius: 4px; --bubble-select-button-border-radius: 4px; }` +
   " .bubble-range-slider, .bubble-background { border-radius: 6px !important; }" +
   " .bubble-button-background { opacity: 0 !important; }" +
@@ -1683,7 +1679,7 @@ const ELAN_POPUP_STYLE =
   " .bubble-pop-up-background { background: linear-gradient(175deg, rgba(42,47,92,.97) 0%, rgba(23,26,51,.97) 55%, rgba(13,15,30,.97) 100%) !important; }" +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
 // Sliders inside pop-ups fill with ELAN blue (not the bulb's own colour), like the ELAN rows.
-const ELAN_SLIDER_STYLE = ELAN_DRAG_STYLE +
+const ELAN_SLIDER_STYLE =
   ` .bubble-range-fill { background: rgba(47,127,224,.35) !important; border-right: 2px solid ${ELAN_ACCENT}; opacity: 1 !important; }`;
 function elanCards(cards) {
   return (cards || []).map((c) => {
@@ -2898,12 +2894,15 @@ class PivitEventsCard extends HTMLElement {
     try {
       const norm = (x) => (x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
       const root = await hass.callWS({ type: "media_source/browse_media", media_content_id: "media-source://unifiprotect" });
-      const nvrs = (root.children || []).filter((n) => n.can_expand);
+      // One console: the root already lists its cameras ("All Cameras", "Driveway"…); several: one entry per console.
+      const single = (root.children || []).some((n) => /:browse:all$/.test(n.media_content_id));
+      const tops = single
+        ? [root]
+        : await Promise.all((root.children || []).filter((n) => n.can_expand).map((n) => hass.callWS({ type: "media_source/browse_media", media_content_id: n.media_content_id })));
       const want = (this._cfg.cameras || []).map((c) => (typeof c === "string" ? { name: c, match: c } : c));
       const jobs = [];
-      for (const nvr of nvrs) {
-        const top = await hass.callWS({ type: "media_source/browse_media", media_content_id: nvr.media_content_id });
-        for (const camNode of (top.children || []).filter((x) => !/:browse:all$/.test(x.media_content_id))) {
+      for (const top of tops) {
+        for (const camNode of (top.children || []).filter((x) => /:browse:[^:]+$/.test(x.media_content_id) && !/:browse:all$/.test(x.media_content_id))) {
           const w = want.length ? want.find((c) => norm(c.match || c.name) === norm(camNode.title)) : { name: camNode.title };
           if (!w) continue;
           const id = camNode.media_content_id;

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.63 — 2026-11-23
+
+- Camera Events: fixed an empty list with a single UniFi console (the media source lists the cameras at the top level).
+- Reverted the 1.1.62 slider change (Bubble's default — icon and name fade while dragging — kept at Will's request).
+
 ## 1.1.62 — 2026-11-23
 
 - PivIT ELAN Cameras: new **Events** button under the title opens Camera Events — UniFi Protect detections (person / vehicle / animal / package / ring) from every camera, newest first, with thumbnails; filter by type and camera, 24 hours or 7 days; tap to play the clip (full screen available). Each camera pop-up gets a strip of that camera's recent events. New `custom:pivit-events-card` (in this file; uses Home Assistant's media source, works for non-admin users). `camera_events: false` turns it off.
