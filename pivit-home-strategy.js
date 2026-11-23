@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.59";
+const VERSION = "1.1.60";
 
 const DEFAULTS = {
   title: "Home",
@@ -2158,13 +2158,16 @@ class PivitElanStrategy extends HTMLElement {
     const items = [{ name: "Home", icon: "mdi:home-outline", path: "home" }];
     if (ctx.alarms.length || locks.length || intercoms.length || garages.length) items.push({ name: "Security", icon: "mdi:lock-outline", path: "security" });
     if (climateZones.length) items.push({ name: "Climate", icon: "mdi:thermometer", path: "climate" });
+    const roomTiles = (savant.sections.find((sec) => (sec.cards || []).some((c) => c.type === "heading" && c.heading === "Rooms")) || { cards: [] }).cards.filter((c) => c.type !== "heading");
+    if (roomTiles.length && cfg.elan_rooms !== false) items.push({ name: "Rooms", icon: "mdi:floor-plan", path: "rooms" });
     if (lightRooms.length || shadeRooms.length) items.push({ name: "Lighting", icon: "mdi:lightbulb-outline", path: "lighting" });
     if (mediaRooms.length) items.push({ name: "Media", icon: "mdi:play-circle-outline", path: "media" });
     for (const sm of summaries) items.push({ name: /sprinkl/i.test(sm.name) ? "Irrigation" : sm.name, icon: /sprinkl/i.test(sm.name) ? "mdi:water-outline" : sm.icon || "mdi:dots-grid", path: slug(sm.name) });
     if (ctx.cameras.length) items.push({ name: "Cameras", icon: "mdi:cctv", path: "video" });
     for (const v of extra) items.push({ name: v.title, icon: v.icon || "mdi:view-dashboard", path: v.path });
     if ((cfg.elan_order || []).length) {
-      const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); return i < 0 ? 999 : i; };
+      // Pages missing from elan_order go last, except Rooms, which follows Climate unless placed explicitly.
+      const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); if (i < 0 && pth === "rooms" && cfg.elan_order.includes("climate")) return cfg.elan_order.indexOf("climate") + 0.5; return i < 0 ? 999 : i; };
       items.sort((a, b) => rank(a.path) - rank(b.path));
     }
     // Below 1000px the ELAN menu becomes a bar of square icon buttons along the bottom (every page fits, even on phones).
@@ -2412,6 +2415,36 @@ class PivitElanStrategy extends HTMLElement {
         )
       );
 
+    // ROOMS — the PivIT Home (Savant) room tiles in ELAN colours: live light / fan / lock / TV / audio / temperature icons,
+    // tap a tile for the room pop-up, tap an icon for that pop-up (lights, fans, locks, TV, audio, thermostat…).
+    // Pop-ups: every Savant pop-up the tiles link to, and the ones those link to in turn.
+    if (items.some((i) => i.path === "rooms")) {
+      const byHash = {};
+      for (const pp of popups) byHash[pp.hash] = pp;
+      const need = new Set();
+      const scan = (o) => (JSON.stringify(o).match(/"navigation_path":"(#[^"]+)"/g) || []).map((m) => m.slice(19, -1));
+      const queue = scan(roomTiles);
+      while (queue.length) {
+        const h = queue.shift();
+        if (need.has(h) || !byHash[h]) continue;
+        need.add(h);
+        queue.push(...scan(byHash[h]));
+      }
+      const ROOM_TILE_STYLE =
+        ` .bubble-button-card-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; }` +
+        " .bubble-button-background { opacity: .35 !important; } .bubble-main-icon-container { background: transparent !important; }" +
+        " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; }";
+      const tiles = roomTiles.map((t) => ({ ...t, grid_options: undefined, styles: ((t.styles || "") + ROOM_TILE_STYLE).trim() }));
+      const grid = (columns) => ({ type: "grid", columns, square: false, cards: tiles });
+      views.push(
+        view(
+          "rooms",
+          "Rooms",
+          { wide: [elanTitle("Rooms"), grid(2)], narrow: [elanTitle("Rooms"), grid(1)] },
+          [...need].map((h) => byHash[h]).filter((pp) => !intercoms.some((ic) => intercomHash(ic) === pp.hash))
+        )
+      );
+    }
     // LIGHTING — rooms with the number of devices on; shades follow (ELAN keeps shades under lighting).
     if (items.some((i) => i.path === "lighting")) {
       const content = [elanTitle("Lighting")];

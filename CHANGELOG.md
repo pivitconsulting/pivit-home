@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.60 — 2026-11-23
+
+- PivIT ELAN: new Rooms page in the menu, below Climate — the PivIT Home room tiles (live light / fan / lock / TV / audio / temperature icons) in ELAN colours, two per row (one on phones); tap a tile or icon for the same pop-ups as the Savant dashboard, in ELAN style. `elan_rooms: false` hides it.
+
 ## 1.1.59 — 2026-11-23
 
 - PivIT ELAN Lighting room pages: the red "<Room> All Off" button is dimmed (35%) and not tappable until at least one device in the room is on.
