@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.46";
+const VERSION = "1.1.47";
 
 const DEFAULTS = {
   title: "Home",
@@ -1450,7 +1450,7 @@ const ELAN_ROW_STYLE =
   " .bubble-button-background { opacity: 0 !important; }" +
   ` .bubble-main-icon-container { background: transparent !important; border-radius: 0 !important; box-shadow: inset 0 -3px 0 ${ELAN_ACCENT}; }` +
   " .bubble-icon { color: #e9eef7 !important; --mdc-icon-size: 26px; }" +
-  " .bubble-name { font-size: 19px !important; font-weight: 300 !important; letter-spacing: .01em; }" +
+  " .bubble-name { font-size: 19px !important; font-weight: 300 !important; letter-spacing: .01em; line-height: 1.35 !important; padding-bottom: 1px; }" +
   // Phones: smaller type, slimmer LOCK/UNLOCK, setpoints hidden (the row opens the full thermostat controls).
   " @media (max-width: 520px) { .bubble-name { font-size: 16px !important; } .bubble-sub-button-1::before { font-size: 20px !important; }" +
   " .bubble-sub-button-1 * { font-size: 20px !important; } .bubble-sub-button-container .bubble-sub-button[class*='bubble-sub-button-'] { min-width: 0; }" +
@@ -1529,7 +1529,7 @@ function elanNav(items, base, current) {
       ".bubble-button-background { opacity: 0 !important; }" +
       ` .bubble-button-card-container { background: ${it.path === current ? "rgba(255,255,255,.16)" : "rgba(10,12,20,.62)"} !important; border-radius: 4px !important; }` +
       " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; --mdc-icon-size: 28px; }" +
-      " .bubble-name { font-size: 19px !important; font-weight: 300 !important; }",
+      " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; padding-bottom: 1px; }",
     ...action({ action: "navigate", navigation_path: `${base}/${it.path}` }),
   }));
 }
