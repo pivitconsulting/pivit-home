@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.58";
+const VERSION = "1.1.59";
 
 const DEFAULTS = {
   title: "Home",
@@ -2502,7 +2502,10 @@ class PivitElanStrategy extends HTMLElement {
           grid_options: { columns: "full" },
           styles:
             ".bubble-button-card-container { background: rgba(140,22,22,.85) !important; border-radius: 4px !important; } .bubble-button-background, .bubble-main-icon-container { display: none !important; }" +
-            " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 18px !important; font-weight: 400 !important; } " + off.hook,
+            " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 18px !important; font-weight: 400 !important; } " + off.hook +
+            // Dimmed (and not clickable) until something in the room is on.
+            " ha-card { transition: opacity .2s; opacity: ${" + JSON.stringify(loads) + ".some((e) => hass.states[e] && ['on', 'open', 'opening'].includes(hass.states[e].state)) ? 1 : .35} !important;" +
+            " pointer-events: ${" + JSON.stringify(loads) + ".some((e) => hass.states[e] && ['on', 'open', 'opening'].includes(hass.states[e].state)) ? 'auto' : 'none'} !important; }",
           ...off.actions,
         });
         views.push(view(`lighting-${slug(r.name)}`, r.name, content, [], "lighting"));

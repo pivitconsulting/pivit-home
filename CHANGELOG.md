@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.59 — 2026-11-23
+
+- PivIT ELAN Lighting room pages: the red "<Room> All Off" button is dimmed (35%) and not tappable until at least one device in the room is on.
+
 ## 1.1.58 — 2026-11-23
 
 - PivIT ELAN Lighting room pages: lights with effects (e.g. the Pool room's Pool Lights and Spa Lights) get the same effect drop-down and current-effect text as on the Pool page (shared helpers).
