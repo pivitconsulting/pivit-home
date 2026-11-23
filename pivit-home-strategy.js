@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.64";
+const VERSION = "1.1.65";
 
 const DEFAULTS = {
   title: "Home",
@@ -1530,8 +1530,17 @@ function elanRow({ name, icon, sub, value, label, tap, extra = {} }) {
 }
 
 // Left-hand ELAN menu; the current page is highlighted with a lighter panel.
+// Keeps the ELAN menu in the vertical middle of the screen (wide layout): the menu's stack is fixed at 50% of the
+// window, lined up with its column (re-measured on resize). Added to the first menu button.
+const ELAN_MENU_CENTER =
+  " ${(card.__pvMenu || (card.__pvMenu = 1, (function pin(tries) { var n = card, stack = null; for (var i = 0; i < 40 && n; i++) { n = n.parentNode || n.host;" +
+  " if (n && n.tagName === 'HUI-VERTICAL-STACK-CARD') { stack = n; break; } }" +
+  " if (!stack || !stack.parentElement || !stack.parentElement.getBoundingClientRect().width) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
+  " var col = stack.parentElement; var place = function () { var r = col.getBoundingClientRect(); if (!r.width) return;" +
+  " stack.style.cssText += ';position:fixed;top:50%;transform:translateY(-50%);z-index:2;left:' + r.left + 'px;width:' + r.width + 'px;max-height:96vh;overflow:auto;'; };" +
+  " place(); window.addEventListener('resize', place); new ResizeObserver(place).observe(col); })(0)), '')}";
 function elanNav(items, base, current) {
-  return items.map((it) => ({
+  return items.map((it, idx) => ({
     type: "custom:bubble-card",
     card_type: "button",
     button_type: "name",
@@ -1542,7 +1551,8 @@ function elanNav(items, base, current) {
       ".bubble-button-background { opacity: 0 !important; }" +
       ` .bubble-button-card-container { background: ${it.path === current ? "rgba(255,255,255,.16)" : "rgba(10,12,20,.62)"} !important; border-radius: 4px !important; }` +
       " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; --mdc-icon-size: 28px; }" +
-      " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; padding-bottom: 1px; }",
+      " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; padding-bottom: 1px; }" +
+      (idx === 0 ? ELAN_MENU_CENTER : ""),
     ...action({ action: "navigate", navigation_path: `${base}/${it.path}` }),
   }));
 }
@@ -2462,8 +2472,7 @@ class PivitElanStrategy extends HTMLElement {
       const ROOM_TILE_STYLE =
         ` .bubble-button-card-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; }` +
         " .bubble-button-background { opacity: .35 !important; } .bubble-main-icon-container { background: transparent !important; }" +
-        " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; }" +
-        " .bubble-button-card-container { min-height: 112px; } .bubble-sub-button-container { gap: 10px !important; } .bubble-sub-button { min-width: 36px; }";
+        " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; }";
       // Cleaner tiles: each icon shows only while something it stands for is on — lights / fans on, TV on, audio
       // playing, a door unlocked (the "all locked" icon is dropped); temperature and the motion / open alerts stay.
       const anyIn = (ids, states) => ({ condition: "or", conditions: ids.map((e) => ({ condition: "state", entity: e, state: states })) });

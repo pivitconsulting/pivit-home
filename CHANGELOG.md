@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.65 — 2026-11-23
+
+- PivIT ELAN Rooms: tile size back to the original (the icons-only-when-on change stays).
+- PivIT ELAN menu (wide screens): held in the vertical middle of the screen, lined up with its column.
+
 ## 1.1.64 — 2026-11-23
 
 - PivIT ELAN Rooms: tiles are cleaner — each icon shows only while something it stands for is on (lights, fans, TV, audio playing, a door unlocked; the all-locked icon is gone); temperature and motion/open alerts stay. A little more room per tile.
