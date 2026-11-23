@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.67 — 2026-11-23
+
+- PivIT ELAN menu: vertical centring reworked — Home Assistant's view container breaks position: fixed (the menu was centred on the page, not the screen). The menu's grid cell now gets a top margin that centres it in the window and sticks at that height while scrolling.
+
 ## 1.1.66 — 2026-11-23
 
 - PivIT ELAN: temperatures in whole degrees everywhere the dashboard draws them — room tiles, Pool page readings, and every thermostat pop-up (Home Assistant's thermostat card and Bubble climate cards in pop-ups are replaced by the ELAN climate row with whole degrees and ▲ / ▼, mode buttons and a fan-mode drop-down).

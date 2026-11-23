@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.66";
+const VERSION = "1.1.67";
 
 const DEFAULTS = {
   title: "Home",
@@ -1532,13 +1532,20 @@ function elanRow({ name, icon, sub, value, label, tap, extra = {} }) {
 // Left-hand ELAN menu; the current page is highlighted with a lighter panel.
 // Keeps the ELAN menu in the vertical middle of the screen (wide layout): the menu's stack is fixed at 50% of the
 // window, lined up with its column (re-measured on resize). Added to the first menu button.
+// Keeps the ELAN menu in the vertical middle of the screen (wide layout). The menu's grid cell gets a top margin that
+// centres it in the window at the top of the page, and sticks at that height while the page scrolls (HA's view
+// container breaks position: fixed, so this uses margin + sticky). Re-measured on resize. Added to the first menu button.
 const ELAN_MENU_CENTER =
-  " ${(card.__pvMenu || (card.__pvMenu = 1, (function pin(tries) { var n = card, stack = null; for (var i = 0; i < 40 && n; i++) { n = n.parentNode || n.host;" +
-  " if (n && n.tagName === 'HUI-VERTICAL-STACK-CARD') { stack = n; break; } }" +
-  " if (!stack || !stack.parentElement || !stack.parentElement.getBoundingClientRect().width) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
-  " var col = stack.parentElement; var place = function () { var r = col.getBoundingClientRect(); if (!r.width) return;" +
-  " stack.style.cssText += ';position:fixed;top:50%;transform:translateY(-50%);z-index:2;left:' + r.left + 'px;width:' + r.width + 'px;max-height:96vh;overflow:auto;'; };" +
-  " place(); window.addEventListener('resize', place); new ResizeObserver(place).observe(col); })(0)), '')}";
+  " ${(card.__pvMenu || (card.__pvMenu = 1, (function pin(tries) {" +
+  " var up = function (n) { return n.parentElement || (n.parentNode && n.parentNode.host) || null; };" +
+  " var n = card, stack = null; for (var i = 0; i < 40 && n; i++) { n = up(n); if (n && n.tagName === 'HUI-VERTICAL-STACK-CARD') { stack = n; break; } }" +
+  " var item = stack; while (item && up(item) && getComputedStyle(up(item)).display !== 'grid') item = up(item);" +
+  " if (!item || !stack.getBoundingClientRect().height) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
+  " var place = function () { var h = stack.getBoundingClientRect().height; if (!h) return; item.style.marginTop = '0px';" +
+  " var top0 = item.getBoundingClientRect().top + (window.scrollY || 0); var want = Math.max(0, (window.innerHeight - h) / 2);" +
+  " item.style.alignSelf = 'start'; item.style.position = 'sticky'; item.style.top = want + 'px'; item.style.zIndex = '2';" +
+  " item.style.marginTop = Math.max(0, want - top0) + 'px'; };" +
+  " place(); setTimeout(place, 800); window.addEventListener('resize', place); })(0)), '')}";
 function elanNav(items, base, current) {
   return items.map((it, idx) => ({
     type: "custom:bubble-card",
