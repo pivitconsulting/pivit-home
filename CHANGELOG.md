@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.57 — 2026-11-23
+
+- PivIT ELAN Pool page: lights with effects (pool and spa lights) get an effect drop-down (palette button) at the right end of their button; the current effect shows next to the state.
+
 ## 1.1.56 — 2026-11-23
 
 - Both templates: new `camera_order` option — listed cameras come first (in that order) on the camera pages, the rest follow.

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.56";
+const VERSION = "1.1.57";
 
 const DEFAULTS = {
   title: "Home",
@@ -1612,6 +1612,8 @@ function elanPool(hass, cards, bodies) {
       grid_options: { columns: "full" },
       cards: toggles.map((c) => {
         const on = "(hass.states['" + c.entity + "'] && hass.states['" + c.entity + "'].state === 'on')";
+        // Lights with effects (e.g. pool/spa colour shows): effect drop-down at the right end; current effect under the name.
+        const fx = domainOf(c.entity) === "light" && ent(c.entity) && (ent(c.entity).attributes.effect_list || []).length;
         return {
           type: "custom:bubble-card",
           card_type: "button",
@@ -1619,7 +1621,17 @@ function elanPool(hass, cards, bodies) {
           entity: c.entity,
           name: nameOf(c),
           show_state: true,
+          ...(fx
+            ? {
+                sub_button: [{ entity: c.entity, select_attribute: "effect_list", icon: "mdi:palette", show_icon: true, show_name: false, show_state: false, show_attribute: false, show_arrow: true, show_background: true }],
+              }
+            : {}),
           styles:
+            (fx
+              ? " .bubble-sub-button-1 { background: rgba(255,255,255,.12) !important; border-radius: 4px !important; } .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 ha-svg-icon { color: #f2f5fa !important; }" +
+                " .bubble-state::after { content: \"${((s) => s && s.state === 'on' && s.attributes.effect ? ' · ' + s.attributes.effect : '')(hass.states['" + c.entity + "'])}\"; }" +
+                " .bubble-sub-button-1, .bubble-dropdown-container, mwc-list, ha-list-item, mwc-list-item { --mdc-theme-surface: #1d2244; --mdc-theme-text-primary-on-background: #f2f5fa; --primary-text-color: #f2f5fa; --mdc-theme-primary: " + ELAN_ACCENT + "; }"
+              : "") +
             ".bubble-button-background { opacity: 0 !important; }" +
             " .bubble-button-card-container { background: ${" + on + " ? '" + ELAN_ACCENT + "' : '" + ELAN_ROW_BG + "'} !important; border: 1px solid rgba(255,255,255,.08); border-radius: 4px !important; }" +
             " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; }" +
