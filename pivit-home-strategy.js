@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.63";
+const VERSION = "1.1.64";
 
 const DEFAULTS = {
   title: "Home",
@@ -2462,8 +2462,36 @@ class PivitElanStrategy extends HTMLElement {
       const ROOM_TILE_STYLE =
         ` .bubble-button-card-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; }` +
         " .bubble-button-background { opacity: .35 !important; } .bubble-main-icon-container { background: transparent !important; }" +
-        " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; }";
-      const tiles = roomTiles.map((t) => ({ ...t, grid_options: undefined, styles: ((t.styles || "") + ROOM_TILE_STYLE).trim() }));
+        " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; }" +
+        " .bubble-button-card-container { min-height: 112px; } .bubble-sub-button-container { gap: 10px !important; } .bubble-sub-button { min-width: 36px; }";
+      // Cleaner tiles: each icon shows only while something it stands for is on — lights / fans on, TV on, audio
+      // playing, a door unlocked (the "all locked" icon is dropped); temperature and the motion / open alerts stay.
+      const anyIn = (ids, states) => ({ condition: "or", conditions: ids.map((e) => ({ condition: "state", entity: e, state: states })) });
+      const NEVER = [{ condition: "state", entity: "sun.sun", state: "__never__" }];
+      const roomByName = Object.fromEntries(ctx.rooms.map((r) => [r.name, r]));
+      const onlyActive = (t) => {
+        const r = roomByName[t.name];
+        if (!r) return t;
+        const { tvs, audio } = roomMediaSplit(r, hass);
+        const subs = (t.sub_button || []).map((sb) => {
+          const h = (sb.tap_action && sb.tap_action.navigation_path) || "";
+          let vis = null;
+          if (h.endsWith("-lights")) vis = [anyIn(roomLights(r), ["on"])];
+          else if (h.endsWith("-fans")) vis = [anyIn(roomFans(r), ["on"])];
+          else if (h.endsWith("-tv")) vis = [anyIn(tvs, ["on", "playing", "paused", "buffering"])];
+          else if (h.endsWith("-audio")) vis = [anyIn(audio, ["playing"])];
+          else if (h.endsWith("-locks") && sb.icon === "mdi:door-closed-lock") vis = NEVER;
+          return vis ? { ...sb, visibility: vis } : sb;
+        });
+        return { ...t, sub_button: subs };
+      };
+      // Order: elan_room_order (room ids or names), the rest after.
+      const ro = (cfg.elan_room_order || []).map((x) => slug(x));
+      const rRank = (t) => { const r = roomByName[t.name]; const i = r ? Math.max(ro.indexOf(slug(r.id)), ro.indexOf(slug(r.name))) : -1; return i < 0 ? 999 : i; };
+      const tiles = roomTiles
+        .slice()
+        .sort((a, b) => rRank(a) - rRank(b))
+        .map((t) => onlyActive({ ...t, grid_options: undefined, styles: ((t.styles || "") + ROOM_TILE_STYLE).trim() }));
       const grid = (columns) => ({ type: "grid", columns, square: false, cards: tiles });
       views.push(
         view(

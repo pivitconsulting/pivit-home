@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.64 — 2026-11-23
+
+- PivIT ELAN Rooms: tiles are cleaner — each icon shows only while something it stands for is on (lights, fans, TV, audio playing, a door unlocked; the all-locked icon is gone); temperature and motion/open alerts stay. A little more room per tile.
+- New `elan_room_order` option (room ids or names) for the Rooms page order; rooms not listed follow.
+
 ## 1.1.63 — 2026-11-23
 
 - Camera Events: fixed an empty list with a single UniFi console (the media source lists the cameras at the top level).
