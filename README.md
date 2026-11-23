@@ -55,6 +55,7 @@ All options are optional and go under `strategy:`.
 | `hide_entities` | `[]` | Entity IDs never shown |
 | `extra_entities` | `[]` | Entity IDs added to their room even if their type or integration is normally left out – e.g. door unlock buttons (pressed with confirmation) or door sensors |
 | `entity_names` | `{}` | `entity_id: Display name` overrides |
+| `camera_order` | `[]` | Camera entity_ids shown first, in this order, on the camera pages; the rest follow |
 | `exclude_platforms` | network, NAS, UPS, Supervisor, backup, iBeacon, mobile app | Integrations whose entities are left out of rooms |
 | `room_domains` | climate, media_player, cover, light, fan, switch, lock, vacuum | Entity types shown in rooms |
 | `weather_entity` | first `weather.*` | Weather shown on the home screen |

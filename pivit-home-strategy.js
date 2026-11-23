@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.55";
+const VERSION = "1.1.56";
 
 const DEFAULTS = {
   title: "Home",
@@ -26,6 +26,7 @@ const DEFAULTS = {
   hide_entities: [], // entity_ids never shown
   extra_entities: [], // entity_ids added to their room even if their type or integration is normally left out (e.g. door unlock buttons)
   entity_names: {}, // entity_id -> display name on the dashboard
+  camera_order: [], // camera entity_ids shown first (in this order) on camera pages; the rest follow
   exclude_platforms: ["unifi", "unifiprotect", "synology_dsm", "hassio", "nut", "backup", "ibeacon", "mobile_app"],
   room_domains: ["climate", "media_player", "cover", "light", "fan", "switch", "lock", "vacuum"],
   weather_entity: null, // auto-detected when not set
@@ -201,6 +202,10 @@ function buildContext(cfg, hass) {
   const cameras = Object.values(entities)
     .filter((e) => domainOf(e.entity_id) === "camera" && hass.states[e.entity_id] && !e.hidden && !e.hidden_by && !hidden.has(e.entity_id))
     .map((e) => e.entity_id);
+  // camera_order: listed cameras first (in that order), then the rest as found.
+  const camOrder = cfg.camera_order || [];
+  const camRank = (id) => (camOrder.indexOf(id) === -1 ? camOrder.length : camOrder.indexOf(id));
+  cameras.sort((a, b) => camRank(a) - camRank(b));
 
   const climates = all.filter((e) => domainOf(e.entity_id) === "climate").map((e) => e.entity_id);
 

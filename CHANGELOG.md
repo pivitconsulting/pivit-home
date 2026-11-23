@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.56 — 2026-11-23
+
+- Both templates: new `camera_order` option — listed cameras come first (in that order) on the camera pages, the rest follow.
+
 ## 1.1.55 — 2026-11-23
 
 - PivIT ELAN: Home Assistant's own pop-up (more-info) — opened by light, LED, fan and pool/spa heat rows — now uses the ELAN navy panel and blue/red palette instead of grey while an ELAN dashboard is open (other dashboards keep the normal look).
