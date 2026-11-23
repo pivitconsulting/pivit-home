@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.48 — 2026-11-22
+
+- PivIT ELAN: the Video page is now called Cameras (menu label and page title; path stays /video).
+
 ## 1.1.47 — 2026-11-22
 
 - PivIT ELAN: menu and row labels use a taller line box so descenders (g, y, p, q) are no longer clipped ("Lighting", "Irrigation", "Living Room").
