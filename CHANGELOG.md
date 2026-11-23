@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.51 — 2026-11-22
+
+- PivIT ELAN Cameras: each live tile (now a picture-elements card) has a top bar with the camera name and, on the right, an icon for each detection on the camera seen in the last 5 minutes — motion, person (walk), vehicle (car), animal (paw), package — yellow while active, white for 5 minutes after it ends. Sensors are found on the camera's device by suffix (_motion, _person_detected, _vehicle_detected, _animal_detected, _package_detected). Taps still open the camera pop-up.
+
 ## 1.1.50 — 2026-11-22
 
 - Reverted 1.1.49 (menu spacer): the ELAN side menu starts at the top again, beside the page title.
