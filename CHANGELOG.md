@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.49 — 2026-11-22
+
+- PivIT ELAN: the side menu starts with an invisible spacer the height of the page title, so its top button lines up with the first row of each page (and the menu sits in the same place on every page).
+
 ## 1.1.48 — 2026-11-22
 
 - PivIT ELAN: the Video page is now called Cameras (menu label and page title; path stays /video).
