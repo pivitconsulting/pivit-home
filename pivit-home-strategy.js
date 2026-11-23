@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.53";
+const VERSION = "1.1.54";
 
 const DEFAULTS = {
   title: "Home",
@@ -2253,15 +2253,17 @@ class PivitElanStrategy extends HTMLElement {
           sub_button: chips.map((c) => ({ icon: c.icon, show_icon: true, show_name: false, show_background: true, tap_action: c.tap, ...(c.visibility ? { visibility: c.visibility } : {}) })),
           styles:
             ".bubble-button-card-container { background: none !important; height: auto !important; min-height: 48px; } .bubble-button-background, .bubble-main-icon-container, .bubble-name-container { display: none !important; }" +
+            " @media (max-width: 999px) { .bubble-button-card-container { margin-bottom: 90px; } }" +
             " .bubble-button-card { justify-content: center !important; height: auto !important; padding: 0 !important; }" +
-            " .bubble-sub-button-container { position: static !important; display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; margin: 0 !important; }" +
-            " .bubble-sub-button { width: auto !important; height: 38px !important; padding: 0 14px 0 10px !important; gap: 8px !important; border-radius: 4px !important; flex-direction: row !important; align-items: center !important;" +
+            " .bubble-sub-button-container { position: static !important; display: flex !important; flex-wrap: wrap !important; justify-content: center !important; gap: 8px !important; width: 100% !important; max-width: 100% !important; box-sizing: border-box; padding: 0 8px !important; margin: 0 !important; overflow: visible !important; }" +
+            " .bubble-button-card-container, .bubble-button-card, ha-card { overflow: visible !important; }" +
+            " .bubble-sub-button { width: auto !important; max-width: 100% !important; box-sizing: border-box; height: auto !important; min-height: 38px !important; padding: 0 14px 0 10px !important; gap: 8px !important; border-radius: 4px !important; flex-direction: row !important; align-items: center !important;" +
             ` background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.14); }` +
             chips
               .map(
                 (c, i) =>
-                  ` .bubble-sub-button-${i + 1} ha-icon { color: \${${c.colour}} !important; --mdc-icon-size: 18px; order: 0; }` +
-                  ` .bubble-sub-button-${i + 1}::after { content: "\${${c.text}}"; font-size: 14px; white-space: nowrap; color: #f2f5fa; order: 1; }`
+                  ` .bubble-sub-button-${i + 1} ha-icon { color: \${${c.colour}} !important; --mdc-icon-size: 18px; order: 0; flex-shrink: 0; }` +
+                  ` .bubble-sub-button-${i + 1}::after { content: "\${${c.text}}"; font-size: 14px; white-space: normal; overflow-wrap: anywhere; text-align: left; line-height: 1.3; padding: 6px 0; min-width: 0; color: #f2f5fa; order: 1; }`
               )
               .join(""),
           tap_action: { action: "none" },
@@ -2281,7 +2283,7 @@ class PivitElanStrategy extends HTMLElement {
           button_type: "name",
           name: (cfg.elan_brand || cfg.title || "Home").toUpperCase(),
           show_icon: false,
-          grid_options: { columns: "full", rows: 6 },
+          grid_options: { columns: "full", rows: "auto" },
           tap_action: { action: "none" },
           button_action: { tap_action: { action: "none" } },
           styles:
@@ -2290,7 +2292,10 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-name { font-size: 30px !important; font-weight: 300 !important; letter-spacing: .35em; opacity: .95; line-height: 1.4 !important; overflow: visible !important; }" +
             " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
             " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + ' · ' + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
-            " position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font-size: 18px; opacity: .7; }",
+            " position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font-size: 18px; opacity: .7; }" +
+            // Phones: shorter hero and smaller clock so the alert chips underneath stay on screen above the bottom bar.
+            " @media (max-width: 999px) { .bubble-button-card-container { height: 36vh !important; min-height: 250px; } .bubble-name { font-size: 22px !important; }" +
+            " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }",
         },
         ...homeAlerts(),
       ])

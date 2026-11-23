@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.54 — 2026-11-22
+
+- PivIT ELAN Home (phones): alert chips no longer run off the screen — the clock area is shorter on narrow screens (36vh, smaller clock), chip text wraps instead of overflowing the edge, and there is room above the bottom menu bar so it never covers the last chip.
+
 ## 1.1.53 — 2026-11-22
 
 - Both templates: when Kiosk Mode (NemesisRE/kiosk-mode) is installed, the Home Assistant header and sidebar are hidden for non-admin users (`kiosk_mode` option; default `{ non_admin_settings: { hide_header: true, hide_sidebar: true } }`, `false` to turn off). Admins keep the menus.
