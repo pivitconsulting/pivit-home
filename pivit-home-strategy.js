@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.65";
+const VERSION = "1.1.66";
 
 const DEFAULTS = {
   title: "Home",
@@ -1658,7 +1658,7 @@ function elanPool(hass, cards, bodies) {
       elanRow({
         name: nameOf(c),
         icon: (ent(c.entity) && ent(c.entity).attributes.icon) || (domainOf(c.entity) === "sensor" ? "mdi:thermometer" : "mdi:information-outline"),
-        value: "((s) => s ? s.state + (s.attributes.unit_of_measurement ? ' ' + s.attributes.unit_of_measurement : '') : '--')(hass.states['" + c.entity + "'])",
+        value: "((s) => !s ? '--' : /°|temperature/.test((s.attributes.unit_of_measurement || '') + (s.attributes.device_class || '')) && !isNaN(parseFloat(s.state)) ? Math.round(parseFloat(s.state)) + '°' : s.state + (s.attributes.unit_of_measurement ? ' ' + s.attributes.unit_of_measurement : ''))(hass.states['" + c.entity + "'])",
         tap: { action: "more-info" },
         extra: { entity: c.entity },
       })
@@ -1691,6 +1691,48 @@ const ELAN_POPUP_STYLE =
 // Sliders inside pop-ups fill with ELAN blue (not the bulb's own colour), like the ELAN rows.
 const ELAN_SLIDER_STYLE =
   ` .bubble-range-fill { background: rgba(47,127,224,.35) !important; border-right: 2px solid ${ELAN_ACCENT}; opacity: 1 !important; }`;
+// Home Assistant's own thermostat card shows decimals (e.g. "Currently 70.9 °F"); on ELAN every thermostat in a pop-up
+// becomes the ELAN climate row (whole degrees, ▲ / ▼) plus mode buttons and a fan-mode drop-down.
+let ELAN_HASS = null;
+function elanThermostat(id, name) {
+  const st = ELAN_HASS && ELAN_HASS.states[id];
+  const label = name || NAMES[id] || (st && st.attributes.friendly_name) || "Thermostat";
+  const MODE_NAME = { off: "Off", heat: "Heat", cool: "Cool", heat_cool: "Auto", auto: "Auto", dry: "Dry", fan_only: "Fan" };
+  const modes = (st && st.attributes.hvac_modes) || [];
+  const cards = [elanClimateRow(id, label, thermostatHash(id))];
+  if (modes.length)
+    cards.push({
+      type: "grid",
+      columns: Math.min(modes.length, 5),
+      square: false,
+      cards: modes.map((m) => ({
+        type: "custom:bubble-card",
+        card_type: "button",
+        button_type: "name",
+        name: MODE_NAME[m] || m,
+        show_icon: false,
+        styles:
+          ".bubble-button-background, .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin: 0 auto !important; align-items: center !important; }" +
+          " .bubble-button-card-container { border-radius: 4px !important; border: 1px solid rgba(255,255,255,.1); background: ${(hass.states['" + id + "'] || {}).state === '" + m + "' ? '" +
+          (m === "heat" ? ELAN_HEAT : m === "off" ? "rgba(255,255,255,.28)" : ELAN_ACCENT) + "' : 'rgba(255,255,255,.08)'} !important; }",
+        ...action({ action: "perform-action", perform_action: "climate.set_hvac_mode", target: { entity_id: id }, data: { hvac_mode: m } }),
+      })),
+    });
+  if (st && (st.attributes.fan_modes || []).length)
+    cards.push({
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: "Fan",
+      icon: "mdi:fan",
+      entity: id,
+      show_state: false,
+      sub_button: [{ entity: id, select_attribute: "fan_modes", show_attribute: true, attribute: "fan_mode", show_arrow: true, show_background: true }],
+      styles: ELAN_ROW_STYLE + " .bubble-sub-button-1 { background: rgba(255,255,255,.12) !important; border-radius: 4px !important; }",
+      ...action({ action: "none" }),
+    });
+  return { type: "vertical-stack", cards, grid_options: { columns: "full" } };
+}
 function elanCards(cards) {
   return (cards || []).map((c) => {
     if (!c || typeof c !== "object") return c;
@@ -1699,6 +1741,8 @@ function elanCards(cards) {
       out.use_art_colors = false; // ELAN palette, not album colours
       out.action = out.action || { tap_action: { action: "none" } }; // already in the room's pop-up: no grey media dialog
     }
+    if (out.type === "thermostat" && out.entity) return elanThermostat(out.entity, out.name);
+    if (out.type === "custom:bubble-card" && out.card_type === "climate" && out.entity && !/pool|spa/i.test(out.entity)) return elanThermostat(out.entity, out.name);
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
       out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
     if (Array.isArray(out.cards)) out.cards = elanCards(out.cards);
@@ -2145,6 +2189,7 @@ class PivitElanStrategy extends HTMLElement {
     const base = ctx.basePath;
     const bg = cfg.elan_background || ELAN_BACKGROUND;
     elanDialogTheme(base);
+    ELAN_HASS = hass;
     const label = (id) => NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
     const go = (h) => ({ action: "navigate", navigation_path: h });
 
@@ -2492,7 +2537,15 @@ class PivitElanStrategy extends HTMLElement {
           else if (h.endsWith("-locks") && sb.icon === "mdi:door-closed-lock") vis = NEVER;
           return vis ? { ...sb, visibility: vis } : sb;
         });
-        return { ...t, sub_button: subs };
+        // Temperature in whole degrees (the attribute text would show e.g. "70.9 °F").
+        let extraStyle = "";
+        subs.forEach((sb, i) => {
+          if (sb.attribute === "current_temperature" && sb.entity) {
+            subs[i] = { ...sb, show_attribute: false, show_name: false, show_state: false };
+            extraStyle += ` .bubble-sub-button-${i + 1}::after { content: "\${((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '')(hass.states['${sb.entity}'])}"; font-size: 14px; }`;
+          }
+        });
+        return { ...t, sub_button: subs, styles: (t.styles || "") + extraStyle };
       };
       // Order: elan_room_order (room ids or names), the rest after.
       const ro = (cfg.elan_room_order || []).map((x) => slug(x));

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.66 — 2026-11-23
+
+- PivIT ELAN: temperatures in whole degrees everywhere the dashboard draws them — room tiles, Pool page readings, and every thermostat pop-up (Home Assistant's thermostat card and Bubble climate cards in pop-ups are replaced by the ELAN climate row with whole degrees and ▲ / ▼, mode buttons and a fan-mode drop-down).
+
 ## 1.1.65 — 2026-11-23
 
 - PivIT ELAN Rooms: tile size back to the original (the icons-only-when-on change stays).
