@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.48";
+const VERSION = "1.1.50";
 
 const DEFAULTS = {
   title: "Home",

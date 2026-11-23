@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.50 — 2026-11-22
+
+- Reverted 1.1.49 (menu spacer): the ELAN side menu starts at the top again, beside the page title.
+
 ## 1.1.49 — 2026-11-22
 
 - PivIT ELAN: the side menu starts with an invisible spacer the height of the page title, so its top button lines up with the first row of each page (and the menu sits in the same place on every page).
