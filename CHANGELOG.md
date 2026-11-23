@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.43–1.1.46 — 2026-11-22
+
+- PivIT ELAN Home: alert chips under the date, each shown only while active and tappable — alarm state (always; red when armed/triggered) → Security; doors/windows open (every visible door/window/opening/garage_door sensor, gate sensors excluded; "Front Door open" or "N doors/windows open") → Security; doors unlocked → Security; gate held open with time left / gate open → gate pop-up; sprinklers (summary groups) running with the zone name or count → Irrigation; pool/spa heater switches on (from the extra pages) → Pool. Hold countdown treats an end time more than 12 h in the past as tomorrow (midnight holds) and anything else past as finished.
+
 ## 1.1.42 — 2026-11-22
 
 - PivIT ELAN locks: unlocked doors show only a red padlock icon and red "Unlocked" text (no red row fill or edge); LOCK, UNLOCK and LOCK ALL share one outlined style with gold padlock icons.
