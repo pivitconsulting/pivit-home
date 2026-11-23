@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.61";
+const VERSION = "1.1.62";
 
 const DEFAULTS = {
   title: "Home",
@@ -1456,8 +1456,12 @@ const ELAN_WIDE = "(min-width: 1000px)";
 const ELAN_NARROW = "(max-width: 999px)";
 const ELAN_ROW_BG = "rgba(12,14,22,.72)";
 
+// Bubble fades the icon and name while a slider is dragged; on ELAN they stay, and the live value sits at the right end.
+const ELAN_DRAG_STYLE =
+  " .is-dragging > :not(.bubble-range-slider):not(style) { opacity: 1 !important; }" +
+  " .is-dragging .bubble-range-value { left: auto !important; right: 14px !important; transform: translateY(-50%) !important; justify-content: flex-end !important; }";
 // Translucent ELAN row look, shared by the row helpers below.
-const ELAN_ROW_STYLE =
+const ELAN_ROW_STYLE = ELAN_DRAG_STYLE +
   `.bubble-button-card-container, .bubble-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; --bubble-border-radius: 6px; --bubble-button-border-radius: 6px; --bubble-card-type-border-radius: 6px; --bubble-media-player-border-radius: 6px; --bubble-sub-slider-border-radius: 4px; --bubble-select-button-border-radius: 4px; }` +
   " .bubble-range-slider, .bubble-background { border-radius: 6px !important; }" +
   " .bubble-button-background { opacity: 0 !important; }" +
@@ -1679,7 +1683,7 @@ const ELAN_POPUP_STYLE =
   " .bubble-pop-up-background { background: linear-gradient(175deg, rgba(42,47,92,.97) 0%, rgba(23,26,51,.97) 55%, rgba(13,15,30,.97) 100%) !important; }" +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
 // Sliders inside pop-ups fill with ELAN blue (not the bulb's own colour), like the ELAN rows.
-const ELAN_SLIDER_STYLE =
+const ELAN_SLIDER_STYLE = ELAN_DRAG_STYLE +
   ` .bubble-range-fill { background: rgba(47,127,224,.35) !important; border-right: 2px solid ${ELAN_ACCENT}; opacity: 1 !important; }`;
 function elanCards(cards) {
   return (cards || []).map((c) => {
@@ -2311,7 +2315,7 @@ class PivitElanStrategy extends HTMLElement {
             "mdi:cctv",
             "((r) => r.length ? r[0][0][1] + ' at ' + r[0][0][2] + (r.length > 1 ? ' +' + (r.length - 1) : '') : '')(" + recent + ")",
             "((r) => r.length && r[0][1].state === 'on' ? '#f5c518' : '#f2f5fa')(" + recent + ")",
-            toPage("video"),
+            go(`${base}/video#camera-events`),
             null,
             "(" + recent + ".length > 0)"
           );
@@ -2764,12 +2768,29 @@ class PivitElanStrategy extends HTMLElement {
         },
         grid_options: { columns: "full" },
       });
+      // Protect name of each camera (its device name) for the event clips.
+      const protectName = (id) => { const dev = hass.entities && hass.entities[id] && hass.entities[id].device_id; return (dev && hass.devices && hass.devices[dev] && (hass.devices[dev].name_by_user || hass.devices[dev].name)) || camName(id); };
+      const useEvents = cfg.camera_events !== false && Object.values(hass.entities || {}).some((e) => e.platform === "unifiprotect");
       const camPopups = ctx.cameras.map((id) =>
         ({ ...popupShell(camHash(id), camName(id), "mdi:cctv", [
           hasCameraCard ? camCard(id) : { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
+          ...(useEvents && (hass.entities[id] || {}).platform === "unifiprotect"
+            ? [{ type: "custom:pivit-events-card", compact: true, limit: 20, cameras: [{ name: camName(id), match: protectName(id) }], grid_options: { columns: "full" } }]
+            : []),
         ]), width_desktop: "960px" })
       );
-      views.push(view("video", "Cameras", { wide: [elanTitle("Cameras"), grid(2)], narrow: [elanTitle("Cameras"), grid(1)] }, camPopups));
+      // Events: a button under the title opens every camera's recent detections (filter by type / camera, tap to play).
+      const eventsButton = useEvents
+        ? [elanRow({ name: "Events", icon: "mdi:filmstrip-box-multiple", sub: { expr: "'Person · vehicle · animal · package · ring'" }, tap: go("#camera-events") })]
+        : [];
+      if (useEvents)
+        camPopups.push({
+          ...popupShell("#camera-events", "Camera Events", "mdi:filmstrip-box-multiple", [
+            { type: "custom:pivit-events-card", cameras: ctx.cameras.filter((id) => (hass.entities[id] || {}).platform === "unifiprotect").map((id) => ({ name: camName(id), match: protectName(id) })), grid_options: { columns: "full" } },
+          ]),
+          width_desktop: "1100px",
+        });
+      views.push(view("video", "Cameras", { wide: [elanTitle("Cameras"), ...eventsButton, grid(2)], narrow: [elanTitle("Cameras"), ...eventsButton, grid(1)] }, camPopups));
     }
 
     // Extra views (e.g. Pool) keep their own content, inside the ELAN frame.
@@ -2783,6 +2804,186 @@ class PivitElanStrategy extends HTMLElement {
 
     return { title: cfg.title, views, kiosk_mode: kioskMode(cfg) };
   }
+}
+
+/* ------------------------------------------------------------------ */
+// custom:pivit-events-card — UniFi Protect event clips (through Home Assistant's media source): filter chips
+// (All / Person / Vehicle / Animal / Package / Ring), 24 h or 7 days, an optional camera list, thumbnails newest first;
+// tap one to play its clip in the player at the top (native controls, full screen). Works for non-admin users.
+// Config: cameras: [{ name, match }] (match = the camera's name in Protect; all Protect cameras when omitted),
+// limit (default 60), compact: true for a one-row strip (camera pop-ups), types (filter chips to show).
+class PivitEventsCard extends HTMLElement {
+  setConfig(config) {
+    this._cfg = { limit: 60, compact: false, ...config };
+    this._filter = "all";
+    this._days = 1;
+    this._cam = "";
+    this._items = null;
+    this._loadedAt = 0;
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    this._renderShell();
+  }
+  set hass(hass) {
+    this._hass = hass;
+    // (Re)load when first shown and then at most once a minute while open.
+    if (this.isConnected && Date.now() - this._loadedAt > 60000) this._load();
+  }
+  connectedCallback() { if (this._hass && Date.now() - this._loadedAt > 60000) this._load(); }
+  getCardSize() { return this._cfg && this._cfg.compact ? 2 : 8; }
+  getGridOptions() { return { columns: "full", rows: "auto" }; }
+  static _kind(title) {
+    const t = (title || "").toLowerCase();
+    if (/ring/.test(t)) return "Ring";
+    if (/package/.test(t)) return "Package";
+    if (/animal|dog|cat|deer|bird|pet/.test(t)) return "Animal";
+    if (/vehicle|car|suv|truck|van|license|motorcycle|bike/.test(t)) return "Vehicle";
+    if (/person|face|people/.test(t)) return "Person";
+    if (/audio|sound|bark|alarm|glass|siren|speak/.test(t)) return "Sound";
+    return "Motion";
+  }
+  _renderShell() {
+    const c = this._cfg;
+    const chips = (c.types || ["all", "Person", "Vehicle", "Animal", "Package", "Ring"])
+      .map((k) => `<button class="chip" data-k="${k}">${k === "all" ? "All" : k}</button>`)
+      .join("");
+    this.shadowRoot.innerHTML = `
+      <style>
+        :host { display: block; color: #f2f5fa; font-family: inherit; }
+        .wrap { background: rgba(12,14,22,.72); border: 1px solid rgba(255,255,255,.06); border-radius: 6px; padding: 12px; box-sizing: border-box; }
+        .player { display: none; margin-bottom: 12px; } .player.on { display: block; }
+        .player video { width: 100%; max-height: 62vh; background: #000; border-radius: 4px; display: block; }
+        .pbar { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 14px; }
+        .pbar .t { flex: 1; opacity: .85; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        button { font: inherit; color: #f2f5fa; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+        button.sel { background: #2f7fe0; border-color: #2f7fe0; }
+        .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 10px; }
+        .bar .sp { flex: 1; }
+        select { font: inherit; color: #f2f5fa; background: #1d2244; border: 1px solid rgba(255,255,255,.12); border-radius: 4px; padding: 6px 8px; }
+        .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+        .compact .list { grid-auto-flow: column; grid-auto-columns: 160px; grid-template-columns: none; overflow-x: auto; padding-bottom: 4px; }
+        .ev { position: relative; cursor: pointer; border-radius: 4px; overflow: hidden; background: #0b0d1a; aspect-ratio: 16 / 9; border: 1px solid rgba(255,255,255,.08); }
+        .ev.playing { outline: 2px solid #2f7fe0; }
+        .ev img { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .ev .cap { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 7px 4px; font-size: 12px; line-height: 1.3; background: linear-gradient(transparent, rgba(0,0,0,.8)); }
+        .ev .k { position: absolute; top: 5px; left: 5px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; background: rgba(12,14,22,.8); }
+        .k.Person { color: #f5c518; } .k.Vehicle { color: #6fb2ff; } .k.Animal { color: #7ddc8a; } .k.Package { color: #f0a020; } .k.Ring { color: #ff7a7a; }
+        .msg { opacity: .65; padding: 14px 4px; font-size: 14px; }
+        @media (max-width: 520px) { .list { grid-template-columns: repeat(2, 1fr); } .compact .list { grid-template-columns: none; grid-auto-columns: 140px; } }
+      </style>
+      <div class="wrap ${c.compact ? "compact" : ""}">
+        <div class="player"><video controls playsinline></video>
+          <div class="pbar"><span class="t"></span><button class="fs">Full screen</button><button class="x">Close</button></div></div>
+        <div class="bar">${c.compact ? `<span>Recent events</span>` : chips}<span class="sp"></span>
+          ${c.compact ? "" : `<select class="cam"><option value="">All cameras</option></select>`}
+          <button class="days">${this._days === 1 ? "24 hours" : "7 days"}</button></div>
+        <div class="list"><div class="msg">Loading events…</div></div>
+      </div>`;
+    const r = this.shadowRoot;
+    r.querySelectorAll(".chip").forEach((b) => b.addEventListener("click", () => { this._filter = b.dataset.k; this._draw(); }));
+    r.querySelector(".days").addEventListener("click", () => { this._days = this._days === 1 ? 7 : 1; r.querySelector(".days").textContent = this._days === 1 ? "24 hours" : "7 days"; this._load(); });
+    const cam = r.querySelector(".cam");
+    if (cam) cam.addEventListener("change", () => { this._cam = cam.value; this._draw(); });
+    r.querySelector(".x").addEventListener("click", () => this._stop());
+    r.querySelector(".fs").addEventListener("click", () => {
+      const v = r.querySelector("video");
+      if (v.requestFullscreen) v.requestFullscreen().catch(() => v.webkitEnterFullscreen && v.webkitEnterFullscreen());
+      else if (v.webkitEnterFullscreen) v.webkitEnterFullscreen();
+    });
+  }
+  async _load() {
+    const hass = this._hass;
+    if (!hass || this._busy) return;
+    this._busy = true;
+    this._loadedAt = Date.now();
+    try {
+      const norm = (x) => (x || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const root = await hass.callWS({ type: "media_source/browse_media", media_content_id: "media-source://unifiprotect" });
+      const nvrs = (root.children || []).filter((n) => n.can_expand);
+      const want = (this._cfg.cameras || []).map((c) => (typeof c === "string" ? { name: c, match: c } : c));
+      const jobs = [];
+      for (const nvr of nvrs) {
+        const top = await hass.callWS({ type: "media_source/browse_media", media_content_id: nvr.media_content_id });
+        for (const camNode of (top.children || []).filter((x) => !/:browse:all$/.test(x.media_content_id))) {
+          const w = want.length ? want.find((c) => norm(c.match || c.name) === norm(camNode.title)) : { name: camNode.title };
+          if (!w) continue;
+          const id = camNode.media_content_id;
+          for (const kind of ["smart", "ring"])
+            jobs.push(
+              hass.callWS({ type: "media_source/browse_media", media_content_id: `${id}:${kind}:recent:${this._days}` })
+                .then((r) => (r.children || []).map((e) => ({ ...e, cam: w.name || camNode.title })))
+                .catch(() => [])
+            );
+        }
+      }
+      const all = (await Promise.all(jobs)).flat();
+      const items = all.map((e) => {
+        const m = (e.title || "").match(/^(\d+\/\d+\/\d+)\s+(\d+:\d+):\d+\s+(\d+s)?\s*(.*)$/);
+        const desc = m ? m[4].replace(/^(Object Detection|Ring Event|Smart Detection)\s*-?\s*/i, "") : e.title;
+        return { id: e.media_content_id, thumb: e.thumbnail, cam: e.cam, kind: PivitEventsCard._kind(e.title), when: m ? `${m[1]} ${m[2]}` : "", desc, sort: e.title || "" };
+      });
+      // Newest first (titles start with the date/time); drop near-duplicates (same camera and minute and kind).
+      const key = (i) => { const m = i.sort.match(/^(\d+)\/(\d+)\/(\d+)\s+(\d+):(\d+):(\d+)/); return m ? `${m[3]}${m[1].padStart(2, "0")}${m[2].padStart(2, "0")}${m[4].padStart(2, "0")}${m[5]}${m[6]}` : ""; };
+      items.sort((a, b) => (key(b) > key(a) ? 1 : -1));
+      const seen = new Set();
+      this._items = items.filter((i) => { const k = i.cam + i.kind + key(i).slice(0, 12) + i.desc; if (seen.has(k)) return false; seen.add(k); return true; });
+      const sel = this.shadowRoot.querySelector(".cam");
+      if (sel) {
+        const cams = [...new Set(this._items.map((i) => i.cam))].sort();
+        const cur = this._cam;
+        sel.innerHTML = `<option value="">All cameras</option>` + cams.map((c) => `<option ${c === cur ? "selected" : ""}>${c}</option>`).join("");
+      }
+      this._draw();
+    } catch (e) {
+      this.shadowRoot.querySelector(".list").innerHTML = `<div class="msg">Camera events aren't available (UniFi Protect media).</div>`;
+    } finally {
+      this._busy = false;
+    }
+  }
+  async _draw() {
+    const r = this.shadowRoot;
+    r.querySelectorAll(".chip").forEach((b) => b.classList.toggle("sel", b.dataset.k === this._filter));
+    const list = r.querySelector(".list");
+    if (!this._items) return;
+    const rows = this._items.filter((i) => (this._filter === "all" || i.kind === this._filter) && (!this._cam || i.cam === this._cam)).slice(0, this._cfg.limit);
+    if (!rows.length) { list.innerHTML = `<div class="msg">No events in the last ${this._days === 1 ? "24 hours" : "7 days"}.</div>`; return; }
+    list.innerHTML = rows
+      .map((i, n) => `<div class="ev" data-n="${n}"><img loading="lazy" alt=""><span class="k ${i.kind}">${i.kind}</span><div class="cap">${this._cfg.compact ? "" : i.cam + " · "}${i.when.split(" ")[1] || ""} ${i.when.split(" ")[0] || ""}<br>${i.desc || ""}</div></div>`)
+      .join("");
+    list.querySelectorAll(".ev").forEach((el) => el.addEventListener("click", () => this._play(rows[+el.dataset.n], el)));
+    // Thumbnails need a signed path (an <img> can't send the login token).
+    const imgs = list.querySelectorAll(".ev img");
+    rows.forEach(async (i, n) => {
+      if (!i.thumb) return;
+      try {
+        if (!i.signed) i.signed = (await this._hass.callWS({ type: "auth/sign_path", path: i.thumb, expires: 3600 })).path;
+        if (imgs[n]) imgs[n].src = i.signed;
+      } catch (e) { /* no thumbnail */ }
+    });
+  }
+  async _play(item, el) {
+    const r = this.shadowRoot;
+    try {
+      const res = await this._hass.callWS({ type: "media_source/resolve_media", media_content_id: item.id });
+      const v = r.querySelector("video");
+      v.src = res.url;
+      r.querySelector(".player").classList.add("on");
+      r.querySelector(".pbar .t").textContent = `${item.kind} · ${item.cam} · ${item.when}${item.desc ? " · " + item.desc : ""}`;
+      r.querySelectorAll(".ev").forEach((x) => x.classList.toggle("playing", x === el));
+      v.play().catch(() => {});
+      r.querySelector(".player").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    } catch (e) { /* clip not available */ }
+  }
+  _stop() {
+    const r = this.shadowRoot;
+    const v = r.querySelector("video");
+    v.pause(); v.removeAttribute("src"); v.load();
+    r.querySelector(".player").classList.remove("on");
+    r.querySelectorAll(".ev").forEach((x) => x.classList.remove("playing"));
+  }
+}
+if (!customElements.get("pivit-events-card")) {
+  customElements.define("pivit-events-card", PivitEventsCard);
+  (window.customCards = window.customCards || []).push({ type: "pivit-events-card", name: "PivIT Events", description: "UniFi Protect event clips (person, vehicle, animal, package, ring)" });
 }
 
 /* ------------------------------------------------------------------ */

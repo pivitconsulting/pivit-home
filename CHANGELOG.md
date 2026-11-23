@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.62 — 2026-11-23
+
+- PivIT ELAN Cameras: new **Events** button under the title opens Camera Events — UniFi Protect detections (person / vehicle / animal / package / ring) from every camera, newest first, with thumbnails; filter by type and camera, 24 hours or 7 days; tap to play the clip (full screen available). Each camera pop-up gets a strip of that camera's recent events. New `custom:pivit-events-card` (in this file; uses Home Assistant's media source, works for non-admin users). `camera_events: false` turns it off.
+- PivIT ELAN Home: the camera detections chip opens Camera Events.
+- PivIT ELAN sliders: the icon and name stay visible while dragging (the value shows at the right end).
+
 ## 1.1.61 — 2026-11-23
 
 - PivIT ELAN Home: new alert chip for recent camera detections — person / vehicle / animal / package seen in the last 5 minutes, showing the latest and its camera ("Person at Front Door", "+2" for more); the icon is yellow while the detection is still active. Tap for the Cameras page.
