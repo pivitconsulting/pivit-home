@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.54";
+const VERSION = "1.1.55";
 
 const DEFAULTS = {
   title: "Home",
@@ -2080,6 +2080,33 @@ function elanShadePopup(hass, id, label) {
   return popupShell(shadeHash(id), label, "mdi:roller-shade", cards);
 }
 
+// Home Assistant's own more-info dialog (opened by light, fan and pool/spa heat rows) in ELAN colours instead of grey,
+// only while an ELAN dashboard is open: a style in <home-assistant>'s shadow root that is switched on and off as the
+// path changes. The dialog's panel colour comes from --ha-dialog-surface-background (dialog and phone bottom sheet).
+function elanDialogTheme(base) {
+  try {
+    const ha = document.querySelector("home-assistant");
+    if (!ha || !ha.shadowRoot) return;
+    let st = ha.shadowRoot.getElementById("pv-elan-dialog");
+    if (!st) {
+      st = document.createElement("style");
+      st.id = "pv-elan-dialog";
+      const vars = ELAN_POPUP_STYLE.slice(ELAN_POPUP_STYLE.indexOf("{") + 1, ELAN_POPUP_STYLE.indexOf("}"));
+      st.textContent =
+        "ha-more-info-dialog, ha-dialog, ha-adaptive-dialog {" + vars +
+        "; --ha-dialog-surface-background: #1d2244; --mdc-theme-surface: #1d2244; --ha-color-surface-default: #1d2244; --card-background-color: #1d2244;" +
+        " --ha-card-background: rgba(255,255,255,.06); --primary-text-color: #f2f5fa; --secondary-text-color: rgba(242,245,250,.65);" +
+        " --ha-more-info-control-background: rgba(255,255,255,.08); --control-select-background: rgba(255,255,255,.08); --control-button-background-color: rgba(255,255,255,.08);" +
+        " --ha-color-fill-neutral-quiet-resting: rgba(255,255,255,.08); --input-fill-color: rgba(255,255,255,.06); }";
+      ha.shadowRoot.appendChild(st);
+    }
+    window.__pvElanBases = Array.from(new Set([...(window.__pvElanBases || []), base]));
+    const sync = () => { st.disabled = !window.__pvElanBases.some((b) => location.pathname === b || location.pathname.startsWith(b + "/")); };
+    sync();
+    if (!window.__pvElanDlgWatch) { window.__pvElanDlgWatch = 1; window.addEventListener("location-changed", () => setTimeout(sync, 0)); window.addEventListener("popstate", sync); }
+  } catch (e) { /* not in a browser (e.g. config check) */ }
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -2090,6 +2117,7 @@ class PivitElanStrategy extends HTMLElement {
     SPEAKERS = ctx.rooms.flatMap((r) => roomMediaSplit(r, hass).audio);
     const base = ctx.basePath;
     const bg = cfg.elan_background || ELAN_BACKGROUND;
+    elanDialogTheme(base);
     const label = (id) => NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
     const go = (h) => ({ action: "navigate", navigation_path: h });
 

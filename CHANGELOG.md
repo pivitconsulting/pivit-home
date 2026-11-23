@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.55 — 2026-11-23
+
+- PivIT ELAN: Home Assistant's own pop-up (more-info) — opened by light, LED, fan and pool/spa heat rows — now uses the ELAN navy panel and blue/red palette instead of grey while an ELAN dashboard is open (other dashboards keep the normal look).
+
 ## 1.1.54 — 2026-11-22
 
 - PivIT ELAN Home (phones): alert chips no longer run off the screen — the clock area is shorter on narrow screens (36vh, smaller clock), chip text wraps instead of overflowing the edge, and there is room above the bottom menu bar so it never covers the last chip.
