@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.57";
+const VERSION = "1.1.58";
 
 const DEFAULTS = {
   title: "Home",
@@ -1550,6 +1550,15 @@ function elanNav(items, base, current) {
 const titleCase = (x) => "(((" + x + ") || '') + '').replace(/_/g, ' ').replace(/\\b\\w/g, (c) => c.toUpperCase())";
 
 
+// Effect drop-down for lights that have effects (e.g. pool/spa colour shows): a palette sub-button with the light's
+// effect list, ELAN-coloured, plus the current effect after the state. n = the sub-button's 1-based position.
+const hasEffects = (hass, id) => domainOf(id) === "light" && hass.states[id] && (hass.states[id].attributes.effect_list || []).length > 0;
+const effectSubButton = (id) => ({ entity: id, select_attribute: "effect_list", icon: "mdi:palette", show_icon: true, show_name: false, show_state: false, show_attribute: false, show_arrow: true, show_background: true });
+const effectStyles = (id, n) =>
+  ` .bubble-sub-button-${n} { background: rgba(255,255,255,.12) !important; border-radius: 4px !important; } .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} ha-svg-icon { color: #f2f5fa !important; }` +
+  " .bubble-state::after { content: \"${((s) => s && s.state === 'on' && s.attributes.effect ? ' · ' + s.attributes.effect : '')(hass.states['" + id + "'])}\"; }" +
+  ` .bubble-sub-button-${n}, .bubble-dropdown-container, mwc-list, ha-list-item, mwc-list-item { --mdc-theme-surface: #1d2244; --mdc-theme-text-primary-on-background: #f2f5fa; --primary-text-color: #f2f5fa; --mdc-theme-primary: ${ELAN_ACCENT}; }`;
+
 // ELAN pool/spa page: one panel per body of water (big water temperature, red heat setpoint with − / +, heater
 // on/off), then every pump, light and water feature as a large toggle (blue when on), then remaining readings.
 function elanPool(hass, cards, bodies) {
@@ -1612,8 +1621,7 @@ function elanPool(hass, cards, bodies) {
       grid_options: { columns: "full" },
       cards: toggles.map((c) => {
         const on = "(hass.states['" + c.entity + "'] && hass.states['" + c.entity + "'].state === 'on')";
-        // Lights with effects (e.g. pool/spa colour shows): effect drop-down at the right end; current effect under the name.
-        const fx = domainOf(c.entity) === "light" && ent(c.entity) && (ent(c.entity).attributes.effect_list || []).length;
+        const fx = hasEffects(hass, c.entity);
         return {
           type: "custom:bubble-card",
           card_type: "button",
@@ -1621,17 +1629,9 @@ function elanPool(hass, cards, bodies) {
           entity: c.entity,
           name: nameOf(c),
           show_state: true,
-          ...(fx
-            ? {
-                sub_button: [{ entity: c.entity, select_attribute: "effect_list", icon: "mdi:palette", show_icon: true, show_name: false, show_state: false, show_attribute: false, show_arrow: true, show_background: true }],
-              }
-            : {}),
+          ...(fx ? { sub_button: [effectSubButton(c.entity)] } : {}),
           styles:
-            (fx
-              ? " .bubble-sub-button-1 { background: rgba(255,255,255,.12) !important; border-radius: 4px !important; } .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 ha-svg-icon { color: #f2f5fa !important; }" +
-                " .bubble-state::after { content: \"${((s) => s && s.state === 'on' && s.attributes.effect ? ' · ' + s.attributes.effect : '')(hass.states['" + c.entity + "'])}\"; }" +
-                " .bubble-sub-button-1, .bubble-dropdown-container, mwc-list, ha-list-item, mwc-list-item { --mdc-theme-surface: #1d2244; --mdc-theme-text-primary-on-background: #f2f5fa; --primary-text-color: #f2f5fa; --mdc-theme-primary: " + ELAN_ACCENT + "; }"
-              : "") +
+            (fx ? effectStyles(c.entity, 1) : "") +
             ".bubble-button-background { opacity: 0 !important; }" +
             " .bubble-button-card-container { background: ${" + on + " ? '" + ELAN_ACCENT + "' : '" + ELAN_ROW_BG + "'} !important; border: 1px solid rgba(255,255,255,.08); border-radius: 4px !important; }" +
             " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; }" +
@@ -2466,6 +2466,10 @@ class PivitElanStrategy extends HTMLElement {
             " " + ELAN_ROW_STYLE +
             " .bubble-range-fill { background: rgba(47,127,224,.28) !important; border-right: 2px solid " + ELAN_ACCENT + "; }" +
             " .bubble-state { font-size: 13px !important; opacity: .7; }";
+          if (hasEffects(hass, id)) {
+            c.sub_button = [...(c.sub_button || []), effectSubButton(id)];
+            c.styles += effectStyles(id, c.sub_button.length);
+          }
           content.push(c);
         }
         if (scenes.length) {
