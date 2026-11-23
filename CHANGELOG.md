@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.53 — 2026-11-22
+
+- Both templates: when Kiosk Mode (NemesisRE/kiosk-mode) is installed, the Home Assistant header and sidebar are hidden for non-admin users (`kiosk_mode` option; default `{ non_admin_settings: { hide_header: true, hide_sidebar: true } }`, `false` to turn off). Admins keep the menus.
+
 ## 1.1.52 — 2026-11-22
 
 - PivIT ELAN Cameras: tapping a feed opens its pop-up again (picture-elements cards only react to taps on elements, so each tile has an invisible full-size tap area under the name bar).

@@ -73,6 +73,7 @@ All options are optional and go under `strategy:`.
 | `shared_entities` | none | `{ area_id: [entity ids] }` — also show these devices in that room (e.g. a Sonos amp shared by kitchen and dining) |
 | `corner_alarm` | false | Pin a round alarm button to the top-right corner of the Rooms page |
 | `audio_card` | default | `mediocre` uses the Mediocre Media Player Card (install `antontanderup/mediocre-hass-media-player-cards` first) for speakers |
+| `kiosk_mode` | hide header + sidebar for non-admins | Kiosk Mode (`NemesisRE/kiosk-mode`) settings for this dashboard; `false` turns it off. Admins keep the menus; add `?disable_km` to a URL to show them |
 | `hide_room_tiles` | none | Area ids whose room tile is hidden on the Rooms page; unlike `hide_areas`, their devices still appear in counts, pop-ups and other pages |
 | `climate_zones` | none | Climate entities (or `{ entity, name }`) for the Rooms-page **Climate** button (live "N cooling / heating" status; opens all their controls) |
 | `floor_thermostats` | none | Map of floor id → thermostat, e.g. `{ upstairs: climate.upstairs }`. Room tiles on that floor with no thermostat of their own show its temperature |

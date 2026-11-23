@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.52";
+const VERSION = "1.1.53";
 
 const DEFAULTS = {
   title: "Home",
@@ -131,7 +131,7 @@ class PivitHomeStrategy extends HTMLElement {
     // Intercom pop-ups go on every page so a ring can open them wherever the iPad is.
     if ((cfg.intercoms || []).length)
       for (const v of views) v.sections = [...(v.sections || []), { type: "grid", cards: cfg.intercoms.map(intercomPopup) }];
-    return { title: cfg.title, views };
+    return { title: cfg.title, views, kiosk_mode: kioskMode(cfg) };
   }
 }
 
@@ -715,6 +715,14 @@ function intercomHash(ic) {
 // Resolve what the hold-open picker needs: the UniFi Access device behind the lock-rule select (custom durations go
 // through unifi_access.set_lock_rule) and an input_datetime that records when the hold ends (for the countdown):
 // `hold_end_entity`, or input_datetime.pivit_<gate name>_open_until when it exists.
+// Kiosk Mode (NemesisRE/kiosk-mode, when installed) reads `kiosk_mode` from the dashboard config: by default the
+// Home Assistant header and sidebar are hidden for non-admin users (e.g. a wall iPad or family phones); admins keep
+// them. Override with the `kiosk_mode` option, or `kiosk_mode: false` to turn it off. `?disable_km` shows the menus.
+function kioskMode(cfg) {
+  if (cfg.kiosk_mode === false) return undefined;
+  return cfg.kiosk_mode || { non_admin_settings: { hide_header: true, hide_sidebar: true } };
+}
+
 function enrichIntercoms(intercoms, hass) {
   return (intercoms || []).map((ic) => {
     const ent = ic.lock_rule && hass.entities && hass.entities[ic.lock_rule];
@@ -2654,7 +2662,7 @@ class PivitElanStrategy extends HTMLElement {
       views.push(view(v.path, v.title, bodies.length ? [elanTitle(v.title), ...elanPool(hass, cards, bodies)] : [elanTitle(v.title), ...cards]));
     }
 
-    return { title: cfg.title, views };
+    return { title: cfg.title, views, kiosk_mode: kioskMode(cfg) };
   }
 }
 
