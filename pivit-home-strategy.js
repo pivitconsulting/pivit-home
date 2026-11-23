@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.51";
+const VERSION = "1.1.52";
 
 const DEFAULTS = {
   title: "Home",
@@ -2595,6 +2595,14 @@ class PivitElanStrategy extends HTMLElement {
           tap_action: { action: "navigate", navigation_path: camHash(id) },
           hold_action: { action: "none" },
           elements: [
+            // Invisible full-size tap area (a picture-elements card only reacts to taps on its elements).
+            {
+              type: "image",
+              image: "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEAAAAALAAAAAABAAEAAAIBRAA7",
+              tap_action: { action: "navigate", navigation_path: camHash(id) },
+              hold_action: { action: "none" },
+              style: { top: "0", left: "0", width: "100%", height: "100%", transform: "none", opacity: "0" },
+            },
             {
               type: overlay.type,
               ...overlay,
