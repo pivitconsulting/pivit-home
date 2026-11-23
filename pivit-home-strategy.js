@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.50";
+const VERSION = "1.1.51";
 
 const DEFAULTS = {
   title: "Home",
@@ -2542,16 +2542,67 @@ class PivitElanStrategy extends HTMLElement {
         }
         return id;
       };
-      const tile = (id) => ({
-        type: "picture-entity",
-        entity: gridStream(id),
-        name: camName(id),
-        camera_view: "live",
-        show_state: false,
-        aspect_ratio: "16:9",
-        tap_action: { action: "navigate", navigation_path: camHash(id) },
-        hold_action: { action: "none" },
-      });
+      // Detection sensors on the camera's device (UniFi Protect: …_motion, …_person_detected, …_vehicle_detected,
+      // …_animal_detected, …_package_detected).
+      const DETECT = [
+        ["motion", "mdi:motion-sensor"],
+        ["person_detected", "mdi:walk"],
+        ["vehicle_detected", "mdi:car"],
+        ["animal_detected", "mdi:paw"],
+        ["package_detected", "mdi:package-variant-closed"],
+      ];
+      const detectors = (id) => {
+        const dev = hass.entities && hass.entities[id] && hass.entities[id].device_id;
+        if (!dev) return [];
+        const mine = Object.values(hass.entities).filter((e) => e.device_id === dev && e.entity_id.startsWith("binary_sensor.") && !e.hidden && hass.states[e.entity_id]);
+        return DETECT.map(([suffix, icon]) => {
+          const e = mine.find((x) => x.entity_id.endsWith("_" + suffix));
+          return e ? { entity: e.entity_id, icon } : null;
+        }).filter(Boolean);
+      };
+      // Camera tile: live feed, name along the bottom, and — top right — an icon for each kind of detection seen in
+      // the last 5 minutes (yellow while it's happening, white for the rest of the 5 minutes). Taps go to the pop-up.
+      const tile = (id) => {
+        const dets = detectors(id);
+        const overlay = {
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          name: camName(id),
+          show_icon: false,
+          sub_button: dets.map((d) => ({ entity: d.entity, icon: d.icon, show_icon: true, show_state: false, show_background: true, tap_action: { action: "none" } })),
+          styles:
+            ".bubble-button-card-container { background: linear-gradient(to bottom, rgba(0,0,0,.55), rgba(0,0,0,0)) !important; border: none !important; border-radius: 0 !important; height: 44px !important; }" +
+            " .bubble-button-background, .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; }" +
+            " .bubble-name { font-size: 14px !important; font-weight: 500 !important; text-shadow: 0 1px 2px rgba(0,0,0,.8); }" +
+            " .bubble-sub-button { width: 28px !important; height: 28px !important; min-width: 28px !important; border-radius: 4px !important; background: rgba(0,0,0,.55) !important; pointer-events: none !important; }" +
+            dets
+              .map(
+                (d, i) =>
+                  // Shown if detected now or ended within 5 minutes (last_changed of the "off" state).
+                  ` .bubble-sub-button-${i + 1} { display: \${((s) => s && (s.state === 'on' || (s.state === 'off' && Date.now() - new Date(s.last_changed).getTime() < 300000)) ? 'flex' : 'none')(hass.states['${d.entity}'])} !important; }` +
+                  ` .bubble-sub-button-${i + 1} ha-icon { --mdc-icon-size: 18px; color: \${hass.states['${d.entity}'] && hass.states['${d.entity}'].state === 'on' ? '#f2c12e' : '#ffffff'} !important; }`
+              )
+              .join(""),
+          tap_action: { action: "none" },
+          button_action: { tap_action: { action: "none" } },
+        };
+        return {
+          type: "picture-elements",
+          camera_image: gridStream(id),
+          camera_view: "live",
+          aspect_ratio: "16:9",
+          tap_action: { action: "navigate", navigation_path: camHash(id) },
+          hold_action: { action: "none" },
+          elements: [
+            {
+              type: overlay.type,
+              ...overlay,
+              style: { top: "0", left: "0", width: "100%", transform: "none", "pointer-events": "none" },
+            },
+          ],
+        };
+      };
       const grid = (columns) => ({ type: "grid", columns, square: false, cards: ctx.cameras.map(tile) });
       // Installed? Check the dashboard resources (the card's script may not have loaded yet when this runs).
       const resources = await hass.connection.sendMessagePromise({ type: "lovelace/resources" }).catch(() => []);
