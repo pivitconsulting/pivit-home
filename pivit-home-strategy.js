@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.47";
+const VERSION = "1.1.48";
 
 const DEFAULTS = {
   title: "Home",
@@ -2108,7 +2108,7 @@ class PivitElanStrategy extends HTMLElement {
     if (lightRooms.length || shadeRooms.length) items.push({ name: "Lighting", icon: "mdi:lightbulb-outline", path: "lighting" });
     if (mediaRooms.length) items.push({ name: "Media", icon: "mdi:play-circle-outline", path: "media" });
     for (const sm of summaries) items.push({ name: /sprinkl/i.test(sm.name) ? "Irrigation" : sm.name, icon: /sprinkl/i.test(sm.name) ? "mdi:water-outline" : sm.icon || "mdi:dots-grid", path: slug(sm.name) });
-    if (ctx.cameras.length) items.push({ name: "Video", icon: "mdi:cctv", path: "video" });
+    if (ctx.cameras.length) items.push({ name: "Cameras", icon: "mdi:cctv", path: "video" });
     for (const v of extra) items.push({ name: v.title, icon: v.icon || "mdi:view-dashboard", path: v.path });
     if ((cfg.elan_order || []).length) {
       const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); return i < 0 ? 999 : i; };
@@ -2583,7 +2583,7 @@ class PivitElanStrategy extends HTMLElement {
           hasCameraCard ? camCard(id) : { type: "picture-entity", entity: id, name: camName(id), camera_view: "live", show_state: false, show_name: false, aspect_ratio: "16:9", tap_action: { action: "none" }, hold_action: { action: "none" }, grid_options: { columns: "full" } },
         ]), width_desktop: "960px" })
       );
-      views.push(view("video", "Video", { wide: [elanTitle("Video"), grid(2)], narrow: [elanTitle("Video"), grid(1)] }, camPopups));
+      views.push(view("video", "Cameras", { wide: [elanTitle("Cameras"), grid(2)], narrow: [elanTitle("Cameras"), grid(1)] }, camPopups));
     }
 
     // Extra views (e.g. Pool) keep their own content, inside the ELAN frame.
