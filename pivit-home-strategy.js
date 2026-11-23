@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.60";
+const VERSION = "1.1.61";
 
 const DEFAULTS = {
   title: "Home",
@@ -2225,7 +2225,7 @@ class PivitElanStrategy extends HTMLElement {
         "((l) => l.length ? l[0][1] : '')(" + JSON.stringify(ids.map((e) => [e, label(e)])) + ".filter((x) => " + JSON.stringify(states) + ".includes(" + "(hass.states[x[0]] || {}).state)))";
       const count = (ids, states) => "(" + JSON.stringify(ids) + ".filter((e) => hass.states[e] && " + JSON.stringify(states) + ".includes(hass.states[e].state)).length)";
       const toPage = (path) => go(`${base}/${path}`);
-      const chip = (icon, text, colour, tap, visibility) => chips.push({ icon, text, colour, tap, visibility });
+      const chip = (icon, text, colour, tap, visibility, showExpr) => chips.push({ icon, text, colour, tap, visibility, showExpr });
       // Alarm: always shown; red while armed or triggered.
       for (const id of ctx.alarms)
         chip(
@@ -2289,6 +2289,34 @@ class PivitElanStrategy extends HTMLElement {
         for (const e of heaters)
           chip("mdi:fire", "'" + label(e).replace(/'/g, "") + " on'", "'" + ELAN_HEAT + "'", toPage(v.path), [{ condition: "state", entity: e, state: "on" }]);
       }
+      // Recent camera detections (person / vehicle / animal / package in the last 5 minutes): the latest one and its
+      // camera ("Person at Front Door", "+2" when there are more); tap for the Cameras page. Shown by a JS check (time-based).
+      {
+        const KINDS = { person_detected: "Person", vehicle_detected: "Vehicle", animal_detected: "Animal", package_detected: "Package" };
+        const dets = [];
+        for (const cam of ctx.cameras) {
+          const dev = hass.entities && hass.entities[cam] && hass.entities[cam].device_id;
+          if (!dev) continue;
+          for (const e of Object.values(hass.entities))
+            if (e.device_id === dev && e.entity_id.startsWith("binary_sensor.") && !e.hidden && hass.states[e.entity_id]) {
+              const k = Object.keys(KINDS).find((x) => e.entity_id.endsWith("_" + x));
+              if (k) dets.push([e.entity_id, KINDS[k], label(cam).replace(/'/g, "")]);
+            }
+        }
+        if (dets.length) {
+          const recent =
+            "(" + JSON.stringify(dets) + ".map((d) => [d, hass.states[d[0]]]).filter((x) => x[1] && (x[1].state === 'on' || Date.now() - new Date(x[1].last_changed).getTime() < 300000))" +
+            ".sort((a, b) => new Date(b[1].last_changed) - new Date(a[1].last_changed)))";
+          chip(
+            "mdi:cctv",
+            "((r) => r.length ? r[0][0][1] + ' at ' + r[0][0][2] + (r.length > 1 ? ' +' + (r.length - 1) : '') : '')(" + recent + ")",
+            "((r) => r.length && r[0][1].state === 'on' ? '#f5c518' : '#f2f5fa')(" + recent + ")",
+            toPage("video"),
+            null,
+            "(" + recent + ".length > 0)"
+          );
+        }
+      }
       if (!chips.length) return [];
       return [
         {
@@ -2311,6 +2339,7 @@ class PivitElanStrategy extends HTMLElement {
               .map(
                 (c, i) =>
                   ` .bubble-sub-button-${i + 1} ha-icon { color: \${${c.colour}} !important; --mdc-icon-size: 18px; order: 0; flex-shrink: 0; }` +
+                  (c.showExpr ? ` .bubble-sub-button-${i + 1} { display: \${${c.showExpr} ? 'flex' : 'none'} !important; }` : "") +
                   ` .bubble-sub-button-${i + 1}::after { content: "\${${c.text}}"; font-size: 14px; white-space: normal; overflow-wrap: anywhere; text-align: left; line-height: 1.3; padding: 6px 0; min-width: 0; color: #f2f5fa; order: 1; }`
               )
               .join(""),

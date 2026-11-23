@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.61 — 2026-11-23
+
+- PivIT ELAN Home: new alert chip for recent camera detections — person / vehicle / animal / package seen in the last 5 minutes, showing the latest and its camera ("Person at Front Door", "+2" for more); the icon is yellow while the detection is still active. Tap for the Cameras page.
+
 ## 1.1.60 — 2026-11-23
 
 - PivIT ELAN: new Rooms page in the menu, below Climate — the PivIT Home room tiles (live light / fan / lock / TV / audio / temperature icons) in ELAN colours, two per row (one on phones); tap a tile or icon for the same pop-ups as the Savant dashboard, in ELAN style. `elan_rooms: false` hides it.
