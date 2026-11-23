@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.49";
+const VERSION = "1.1.48";
 
 const DEFAULTS = {
   title: "Home",
@@ -2144,10 +2144,8 @@ class PivitElanStrategy extends HTMLElement {
           type: "grid",
           column_span: 2,
           cards: [
-            { type: "vertical-stack", cards: [{ ...elanTitle(" "), styles: elanTitle(" ").styles + " .bubble-button-card-container { border-bottom-color: transparent !important; }" }, ...elanNav(items, base, navPath)], grid_options: { columns: 6, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
+            { type: "vertical-stack", cards: elanNav(items, base, navPath), grid_options: { columns: 6, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
             // Beside the menu on wide screens; full width (menu replaced by the bottom bar) on narrower ones.
-            // The menu starts with an invisible spacer the height of the page title, so its first button lines up with
-            // the first row of the page.
             // content may be { wide, narrow } when a page lays out differently on phones (e.g. Video's camera grid).
             { type: "vertical-stack", cards: content.wide || content, grid_options: { columns: 18, rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_WIDE }] },
             { type: "vertical-stack", cards: content.narrow || content, grid_options: { columns: "full", rows: "auto" }, visibility: [{ condition: "screen", media_query: ELAN_NARROW }] },
