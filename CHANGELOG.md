@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.72 — 2026-11-23
+
+- PivIT ELAN pop-ups: title-bar lock icons use the gold padlocks of the ELAN lock buttons (were green / red).
+- PivIT ELAN climate rows: long names wrap (and shrink slightly on iPad widths) instead of scrolling under the temperature.
+
 ## 1.1.71 — 2026-11-23
 
 - PivIT ELAN Rooms: the temperature's colour shows the system status — blue while cooling, red while heating, white when idle or off.

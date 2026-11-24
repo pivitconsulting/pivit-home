@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.71";
+const VERSION = "1.1.72";
 
 const DEFAULTS = {
   title: "Home",
@@ -1772,7 +1772,11 @@ function elanCards(cards) {
   });
 }
 function elanPopup(pp) {
-  return { ...pp, cards: elanCards(pp.cards), bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE).trim() };
+  // Title-bar lock icons (room pop-ups): the same gold padlocks as the ELAN lock buttons, instead of green / red.
+  const lockIcons = (pp.sub_button || [])
+    .map((sb, i) => (/^mdi:lock(-open-variant)?$/.test(sb.icon || "") ? ` .bubble-sub-button-${i + 1} ha-icon, .bubble-sub-button-${i + 1} .bubble-sub-button-icon { color: #f2c12e !important; }` : ""))
+    .join("");
+  return { ...pp, cards: elanCards(pp.cards), bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE + lockIcons).trim() };
 }
 
 // ELAN climate row (as on the ELAN climate screen): name, big current temperature, a setpoint block — cool (navy) over
@@ -1845,7 +1849,11 @@ function elanClimateRow(id, name, hash) {
     styles:
       ELAN_ROW_STYLE +
       " .bubble-button-card-container { height: 110px !important; } .bubble-main-icon-container { display: none !important; }" +
-      " .bubble-name-container { margin-left: 16px !important; } .bubble-name { font-size: 22px !important; }" +
+      // Long names wrap onto two lines (and shrink a little) instead of scrolling under the temperature.
+      " .bubble-name-container { margin-left: 16px !important; min-width: 0 !important; flex: 1 1 auto !important; overflow: hidden; }" +
+      " .bubble-name { font-size: 22px !important; white-space: normal !important; overflow: visible !important; line-height: 1.2 !important; word-break: normal; }" +
+      " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }" +
+      " @media (max-width: 1400px) { .bubble-name { font-size: 19px !important; } }" +
       elanSubtitle({ expr: titleCase(A + ".hvac_action || " + ST) }) +
       " .bubble-sub-button-container { display: grid !important; grid-template-columns: auto 104px 58px 34px; grid-template-rows: 1fr 1fr; gap: 2px 0;" +
       " height: 98px !important; align-self: center; margin-right: 4px; }" +
