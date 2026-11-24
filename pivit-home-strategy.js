@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.92";
+const VERSION = "1.1.93";
 
 const DEFAULTS = {
   title: "Home",
@@ -1638,14 +1638,17 @@ function elanPool(hass, cards, bodies) {
       ...(mode ? [btn(mode, `${title} Mode`, "mdi:pump", modeOn, ELAN_ACCENT, "#9cc5f5")] : []),
       ...(heater ? [btn(heater, "Heater", "mdi:fire", heaterOn, "rgba(200,40,40,.85)", "#f5a442")] : []),
     ];
-    out.push({
-      type: "vertical-stack",
-      grid_options: { columns: "full" },
-      cards: [
-        elanClimateRow(b.entity, title, "", { cur: tempExpr, sub: status, alwaysSet: true, noChevron: true }),
-        ...(buttons.length ? [{ type: "grid", columns: buttons.length, square: false, cards: buttons }] : []),
-      ],
-    });
+    out.push(
+      elanClimateRow(b.entity, title, "", {
+        cur: tempExpr,
+        alwaysSet: true,
+        noChevron: true,
+        buttons: [
+          ...(mode ? [{ entity: mode, name: `${title} Mode`, icon: "mdi:pump", on: modeOn, onBg: ELAN_ACCENT, offIcon: "#9cc5f5" }] : []),
+          ...(heater ? [{ entity: heater, name: "Heater", icon: "mdi:fire", on: heaterOn, onBg: "rgba(200,40,40,.85)", offIcon: "#f5a442" }] : []),
+        ],
+      })
+    );
   }
   // "All Pool Off" (like Media's All Zones Off): turns off every pump, light, feature and heater on the card that is on.
   const offIds = [...new Set(cards.map((c) => c.entity).filter((e) => e && ["switch", "light", "fan", "input_boolean"].includes(domainOf(e))))];
@@ -1871,7 +1874,9 @@ function elanPopup(pp) {
 // Tap the cool or heat box to choose which one the arrows change. Arrow taps are added up and sent as one
 // climate.set_temperature about 0.8 s after the last tap; the box shows the new value straight away.
 // opts (pool / spa): cur — expression for the big current temperature (e.g. the water sensor); sub — subtitle expression;
-// alwaysSet — the setpoint box is always red and adjustable (the heater is switched separately); noChevron.
+// alwaysSet — the setpoint box is always red and adjustable (the heater is switched separately); noChevron;
+// buttons — [{ entity, name, icon, on (expression), onBg, offIcon }] toggles shown under the name in place of the
+// subtitle (e.g. Pool Mode and Heater).
 function elanClimateRow(id, name, hash, opts = {}) {
   const S = "hass.states['" + id + "']";
   const A = "(" + S + " || { attributes: {} }).attributes";
@@ -1934,6 +1939,7 @@ function elanClimateRow(id, name, hash, opts = {}) {
       { icon: "mdi:menu-up", show_icon: true, show_background: true, tap_action: none },
       { icon: "mdi:menu-down", show_icon: true, show_background: true, tap_action: none },
       { icon: "mdi:chevron-right", show_background: false, tap_action: nav },
+      ...(opts.buttons || []).map((b) => ({ entity: b.entity, name: b.name, icon: b.icon, show_name: true, show_icon: true, show_state: false, show_background: true, tap_action: { action: "toggle" } })),
     ],
     styles:
       ELAN_ROW_STYLE +
@@ -1943,7 +1949,24 @@ function elanClimateRow(id, name, hash, opts = {}) {
       " .bubble-name { font-size: 22px !important; white-space: normal !important; overflow: visible !important; line-height: 1.2 !important; word-break: normal; }" +
       " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }" +
       " @media (max-width: 1400px) { .bubble-name { font-size: 19px !important; } }" +
-      elanSubtitle({ expr: opts.sub || titleCase(A + ".hvac_action || " + ST) }) +
+      (opts.buttons ? "" : elanSubtitle({ expr: opts.sub || titleCase(A + ".hvac_action || " + ST) })) +
+      (opts.buttons
+        ? // Name at the top-left, the toggles under it (absolute, inside the card); the temperature block stays on the right.
+          " .bubble-button-card-container { position: relative !important; height: 124px !important; } .bubble-sub-button-container { position: static !important; }" +
+          " .bubble-name-container { align-self: flex-start !important; margin-top: 16px !important; }" +
+          opts.buttons
+            .map(
+              (b, i) =>
+                ` .bubble-sub-button-${7 + i} { position: absolute !important; left: ${16 + i * 128}px; bottom: 14px; width: 120px !important; height: 38px !important; padding: 0 10px !important; gap: 6px !important;` +
+                ` border-radius: 4px !important; justify-content: flex-start !important; grid-column: auto !important; grid-row: auto !important; border: 1px solid rgba(255,255,255,.12);` +
+                ` background: \${${b.on} ? '${b.onBg}' : 'rgba(255,255,255,.08)'} !important; }` +
+                ` .bubble-sub-button-${7 + i} ha-icon, .bubble-sub-button-${7 + i} .bubble-sub-button-icon { color: \${${b.on} ? '#fff' : '${b.offIcon}'} !important; --mdc-icon-size: 18px; display: inline-flex !important; }` +
+                ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { display: block !important; font-size: 12px !important; letter-spacing: .04em; color: #fff !important; opacity: 1 !important; white-space: nowrap; }` +
+                ` @media (max-width: 520px) { .bubble-sub-button-${7 + i} { left: ${10 + i * 104}px; width: 98px !important; } .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; } }`
+            )
+            .join("") +
+          " @media (max-width: 520px) { .bubble-button-card-container { height: 118px !important; } }"
+        : "") +
       " .bubble-sub-button-container { display: grid !important; grid-template-columns: auto 104px 58px 34px; grid-template-rows: 1fr 1fr; gap: 2px 0;" +
       " height: 98px !important; align-self: center; margin-right: 4px; }" +
       " .bubble-sub-button { height: auto !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; margin: 0 !important; border-radius: 0 !important; padding: 0 !important; }" +

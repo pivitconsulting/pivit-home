@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.93 — 2026-11-23
+
+- PivIT ELAN Pool / Spa: the Mode and Heater buttons sit inside the Pool and Spa panels under the name, in place of the status text (`elanClimateRow` option `buttons`).
+
 ## 1.1.92 — 2026-11-23
 
 - PivIT ELAN Scenes: `alarm_code: <alarm panel>` on a scene — RUN opens a keypad pop-up (the alarm keypad) with a RUN button that calls the script with the code as its `code` field, then closes. The code isn't stored.
