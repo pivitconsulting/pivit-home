@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.105 — 2026-11-24
+
+- TV touchpad: the hint label is centred.
+
 ## 1.1.104 — 2026-11-24
 
 - ELAN TV remote: the arrows and OK are replaced by a touchpad — swipe to move (about one step per 60px, up to 5), tap to select; a brief blue flash confirms.
