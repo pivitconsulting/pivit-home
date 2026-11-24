@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.68 — 2026-11-23
+
+- PivIT ELAN Home: the clock, date and alert chips are centred vertically in the window (same method as the menu; re-centres as chips come and go). Shared `elanCenterHook` for both.
+
 ## 1.1.67 — 2026-11-23
 
 - PivIT ELAN menu: vertical centring reworked — Home Assistant's view container breaks position: fixed (the menu was centred on the page, not the screen). The menu's grid cell now gets a top margin that centres it in the window and sticks at that height while scrolling.

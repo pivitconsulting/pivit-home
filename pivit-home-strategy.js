@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.67";
+const VERSION = "1.1.68";
 
 const DEFAULTS = {
   title: "Home",
@@ -1535,17 +1535,21 @@ function elanRow({ name, icon, sub, value, label, tap, extra = {} }) {
 // Keeps the ELAN menu in the vertical middle of the screen (wide layout). The menu's grid cell gets a top margin that
 // centres it in the window at the top of the page, and sticks at that height while the page scrolls (HA's view
 // container breaks position: fixed, so this uses margin + sticky). Re-measured on resize. Added to the first menu button.
-const ELAN_MENU_CENTER =
-  " ${(card.__pvMenu || (card.__pvMenu = 1, (function pin(tries) {" +
+// Vertical centring hook: the card's vertical-stack (menu or page content) is centred in the window by a top margin on
+// its grid cell; with sticky, it also stays there while the page scrolls (menu). Re-measured on resize and whenever the
+// stack changes height (e.g. Home alert chips appearing). HA's view container breaks position: fixed, hence margin.
+const elanCenterHook = (flag, sticky) =>
+  " ${(card." + flag + " || (card." + flag + " = 1, (function pin(tries) {" +
   " var up = function (n) { return n.parentElement || (n.parentNode && n.parentNode.host) || null; };" +
   " var n = card, stack = null; for (var i = 0; i < 40 && n; i++) { n = up(n); if (n && n.tagName === 'HUI-VERTICAL-STACK-CARD') { stack = n; break; } }" +
   " var item = stack; while (item && up(item) && getComputedStyle(up(item)).display !== 'grid') item = up(item);" +
   " if (!item || !stack.getBoundingClientRect().height) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
   " var place = function () { var h = stack.getBoundingClientRect().height; if (!h) return; item.style.marginTop = '0px';" +
   " var top0 = item.getBoundingClientRect().top + (window.scrollY || 0); var want = Math.max(0, (window.innerHeight - h) / 2);" +
-  " item.style.alignSelf = 'start'; item.style.position = 'sticky'; item.style.top = want + 'px'; item.style.zIndex = '2';" +
+  " item.style.alignSelf = 'start';" + (sticky ? " item.style.position = 'sticky'; item.style.top = want + 'px'; item.style.zIndex = '2';" : "") +
   " item.style.marginTop = Math.max(0, want - top0) + 'px'; };" +
-  " place(); setTimeout(place, 800); window.addEventListener('resize', place); })(0)), '')}";
+  " place(); setTimeout(place, 800); window.addEventListener('resize', place); if (window.ResizeObserver) new ResizeObserver(place).observe(stack); })(0)), '')}";
+const ELAN_MENU_CENTER = elanCenterHook("__pvMenu", true);
 function elanNav(items, base, current) {
   return items.map((it, idx) => ({
     type: "custom:bubble-card",
@@ -2432,6 +2436,8 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-name-container::after { content: \"${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}\"; display: block; font-size: 84px; font-weight: 200; line-height: 1.15; opacity: .85; }" +
             " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + ' · ' + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
             " position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font-size: 18px; opacity: .7; }" +
+            // Home content (clock, date, alert chips) centred vertically in the window, like the menu.
+            elanCenterHook("__pvHomeC", false) +
             // Phones: shorter hero and smaller clock so the alert chips underneath stay on screen above the bottom bar.
             " @media (max-width: 999px) { .bubble-button-card-container { height: 36vh !important; min-height: 250px; } .bubble-name { font-size: 22px !important; }" +
             " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }",
