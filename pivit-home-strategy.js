@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.72";
+const VERSION = "1.1.73";
 
 const DEFAULTS = {
   title: "Home",
@@ -1713,7 +1713,7 @@ const ELAN_POPUP_STYLE =
 const ELAN_SLIDER_STYLE =
   ` .bubble-range-fill { background: rgba(47,127,224,.35) !important; border-right: 2px solid ${ELAN_ACCENT}; opacity: 1 !important; }`;
 // Home Assistant's own thermostat card shows decimals (e.g. "Currently 70.9 °F"); on ELAN every thermostat in a pop-up
-// becomes the ELAN climate row (whole degrees, ▲ / ▼) plus mode buttons and a fan-mode drop-down.
+// becomes the ELAN climate row (whole degrees, ▲ / ▼) plus mode buttons (no system-fan control: left on Auto).
 let ELAN_HASS = null;
 function elanThermostat(id, name) {
   const st = ELAN_HASS && ELAN_HASS.states[id];
@@ -1738,19 +1738,6 @@ function elanThermostat(id, name) {
           (m === "heat" ? ELAN_HEAT : m === "off" ? "rgba(255,255,255,.28)" : ELAN_ACCENT) + "' : 'rgba(255,255,255,.08)'} !important; }",
         ...action({ action: "perform-action", perform_action: "climate.set_hvac_mode", target: { entity_id: id }, data: { hvac_mode: m } }),
       })),
-    });
-  if (st && (st.attributes.fan_modes || []).length)
-    cards.push({
-      type: "custom:bubble-card",
-      card_type: "button",
-      button_type: "name",
-      name: "Fan",
-      icon: "mdi:fan",
-      entity: id,
-      show_state: false,
-      sub_button: [{ entity: id, select_attribute: "fan_modes", show_attribute: true, attribute: "fan_mode", show_arrow: true, show_background: true }],
-      styles: ELAN_ROW_STYLE + " .bubble-sub-button-1 { background: rgba(255,255,255,.12) !important; border-radius: 4px !important; }",
-      ...action({ action: "none" }),
     });
   return { type: "vertical-stack", cards, grid_options: { columns: "full" } };
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.73 — 2026-11-23
+
+- PivIT ELAN thermostat pop-ups: removed the system fan-mode (air handler blower) row — it stays on Auto.
+
 ## 1.1.72 — 2026-11-23
 
 - PivIT ELAN pop-ups: title-bar lock icons use the gold padlocks of the ELAN lock buttons (were green / red).
