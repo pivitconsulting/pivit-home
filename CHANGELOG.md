@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.112 — 2026-11-24
+
+- PivIT ELAN Lighting: LET'S PARTY button at the right end of the title line (rainbow while a party runs) when `script.pivit_party_*` scripts exist — opens a pop-up of party modes (lit with 'Partying…' while running) and Stop the Party.
+
 ## 1.1.111 — 2026-11-24
 
 - ELAN TV remote: volume row is now Mute, Volume down, Volume up, Menu.

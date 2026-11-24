@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.111";
+const VERSION = "1.1.112";
 
 const DEFAULTS = {
   title: "Home",
@@ -3139,7 +3139,54 @@ class PivitElanStrategy extends HTMLElement {
     }
     // LIGHTING — rooms with the number of devices on; shades follow (ELAN keeps shades under lighting).
     if (items.some((i) => i.path === "lighting")) {
-      const content = [elanTitle("Lighting")];
+      // LET'S PARTY (when the PivIT party scripts exist): a button at the right end of the title line that opens the party
+      // modes — each a LED light show (script.pivit_party_*), lit while running — and Stop the Party (restores the LEDs).
+      const partyModes = Object.keys(hass.states).filter((e) => /^script\.pivit_party_/.test(e) && e !== "script.pivit_party_stop");
+      const partyOn = "((hass.states['input_boolean.pivit_party'] || {}).state === 'on')";
+      const lightTitle = elanTitle("Lighting");
+      const partyPopups = [];
+      if (partyModes.length && hass.states["script.pivit_party_stop"]) {
+        lightTitle.sub_button = [{ name: "Let's Party", icon: "mdi:party-popper", show_name: true, show_icon: true, show_background: true, tap_action: go("#party") }];
+        lightTitle.styles +=
+          " .bubble-sub-button-container { position: absolute !important; right: 0; top: 50%; transform: translateY(-50%); }" +
+          " .bubble-sub-button-1 { height: 34px !important; padding: 0 14px !important; gap: 8px !important; border-radius: 4px !important; border: 1px solid rgba(255,255,255,.35);" +
+          " background: ${" + partyOn + " ? 'linear-gradient(90deg,#ff2d75,#ffb400,#2fd36b,#2f7fe0,#a34bff)' : 'rgba(255,255,255,.08)'} !important; }" +
+          " .bubble-sub-button-1 ha-icon { color: #fff !important; --mdc-icon-size: 18px; }" +
+          " .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; }" +
+          " @media (max-width: 520px) { .bubble-sub-button-1 .bubble-sub-button-name-container { display: none !important; } .bubble-sub-button-1 { padding: 0 10px !important; } }";
+        const modeBtn = (id) => {
+          const st = hass.states[id];
+          const nm = (st.attributes.friendly_name || id).replace(/^Party · /, "");
+          const run = "((hass.states['" + id + "'] || {}).state === 'on')";
+          return {
+            type: "custom:bubble-card", card_type: "button", button_type: "name", entity: id, name: nm, icon: st.attributes.icon || "mdi:party-popper", show_state: false,
+            styles:
+              ".bubble-button-background { opacity: 0 !important; }" +
+              " .bubble-button-card-container { height: 64px !important; border-radius: 6px !important; border: 1px solid rgba(255,255,255,.12);" +
+              " background: ${" + run + " ? 'linear-gradient(120deg,#ff2d75,#a34bff 50%,#2f7fe0)' : '" + ELAN_ROW_BG + "'} !important; }" +
+              " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: ${" + run + " ? '#fff' : '#f2c12e'} !important; --mdc-icon-size: 24px; }" +
+              " .bubble-name { font-size: 15px !important; font-weight: 500 !important; color: #fff !important; }" +
+              " .bubble-name-container::after { content: \"${" + run + " ? 'Partying…' : ''}\"; display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }",
+            tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: id } },
+            button_action: { tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: id } } },
+          };
+        };
+        const stopBtn = {
+          type: "custom:bubble-card", card_type: "button", button_type: "name", name: "Stop the Party", icon: "mdi:stop-circle-outline", grid_options: { columns: "full" },
+          styles:
+            ELAN_ROW_STYLE +
+            " .bubble-button-card-container { height: 60px !important; background: ${" + partyOn + " ? 'rgba(140,22,22,.9)' : 'rgba(255,255,255,.06)'} !important; }" +
+            " .bubble-name { font-size: 16px !important; letter-spacing: .1em; text-transform: uppercase; }" +
+            " .bubble-name-container::after { content: \"${" + partyOn + " ? 'Puts the LEDs back how they were' : 'No party running'}\"; display: block; font-size: 11px; letter-spacing: .06em; opacity: .7; text-transform: none; }",
+          tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: "script.pivit_party_stop" } },
+          button_action: { tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: "script.pivit_party_stop" } } },
+        };
+        partyPopups.push(popupShell("#party", "Let's Party", "mdi:party-popper", [
+          { type: "grid", columns: 3, square: false, grid_options: { columns: "full" }, cards: partyModes.map(modeBtn) },
+          stopBtn,
+        ]));
+      }
+      const content = [lightTitle];
       const shadePopups = [];
       for (const r of lightRooms) {
         const n = lightsOnExpr(roomLights(r));
@@ -3153,7 +3200,7 @@ class PivitElanStrategy extends HTMLElement {
             shadePopups.push(elanShadePopup(hass, id, label(id)));
           }
       }
-      views.push(view("lighting", "Lighting", content, [...popupsWhere((h) => h.endsWith("-lights")), ...shadePopups]));
+      views.push(view("lighting", "Lighting", content, [...popupsWhere((h) => h.endsWith("-lights")), ...shadePopups, ...partyPopups]));
     }
 
     // LIGHTING ROOM PAGES — "◀ Room ▶" switcher, a wide slider per dimmer, on/off loads, the room's scenes,
