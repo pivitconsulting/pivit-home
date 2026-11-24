@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.70";
+const VERSION = "1.1.71";
 
 const DEFAULTS = {
   title: "Home",
@@ -2561,7 +2561,9 @@ class PivitElanStrategy extends HTMLElement {
           styles.push(
             ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { display: none !important; }` +
               ` .bubble-sub-button-${n} { width: auto !important; min-width: 52px; padding: 0 4px 0 8px !important; justify-content: flex-end !important; }` +
-              ` .bubble-sub-button-${n}::after { content: "\${((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '')(hass.states['${climate}'])}"; font-size: 22px; font-weight: 300; color: #f2f5fa; }`
+              ` .bubble-sub-button-${n}::after { content: "\${((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '')(hass.states['${climate}'])}"; font-size: 22px; font-weight: 300;` +
+              // Colour shows what the system is doing: blue cooling, red heating, white otherwise.
+              ` color: \${((a) => a === 'cooling' ? '${ELAN_ACCENT}' : a === 'heating' ? '${ELAN_HEAT}' : '#f2f5fa')((hass.states['${climate}'] || { attributes: {} }).attributes.hvac_action)} !important; }`
           );
         }
         return {

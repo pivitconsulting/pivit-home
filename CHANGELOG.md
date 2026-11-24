@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.71 — 2026-11-23
+
+- PivIT ELAN Rooms: the temperature's colour shows the system status — blue while cooling, red while heating, white when idle or off.
+
 ## 1.1.70 — 2026-11-23
 
 - PivIT ELAN Rooms: tiles rebuilt as one row — room icon and name on the left; temperature (whole degrees) at the far right with the active icons to its left (lights, fans, unlocked door in red, TV, audio playing). Motion / open-door alerts removed. Fixes the temperature not showing (Bubble hid the sub-button when it had nothing of its own to show).
