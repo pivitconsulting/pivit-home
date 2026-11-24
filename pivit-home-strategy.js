@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.115";
+const VERSION = "1.1.116";
 
 const DEFAULTS = {
   title: "Home",
@@ -2362,17 +2362,37 @@ function lockStateExpr(id) {
 function lockColorExpr(id) {
   return "((s) => (" + JSON.stringify(LOCK_COLORS) + ")[s] || '#f2f5fa')(hass.states['" + id + "'] && hass.states['" + id + "'].state)";
 }
+// LOCK / UNLOCK: handled by lockPendingHook (the locks take a while to report): LOCK sends at once and reads "Locking…";
+// UNLOCK asks for a second tap ("Confirm?") and then reads "Unlocking…" — until the lock reports a new state (or 60 s).
 function lockActionButtons(id, label) {
   const isUnlocked = { condition: "state", entity: id, state: ["unlocked", "open", "jammed"] };
   const isLocked = { condition: "state", entity: id, state_not: ["unlocked", "open", "jammed"] };
   return [
-    { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, visibility: [isUnlocked],
-      tap_action: { action: "perform-action", perform_action: "lock.lock", target: { entity_id: id } } },
-    { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true, visibility: [isLocked],
-      tap_action: { action: "perform-action", perform_action: "lock.unlock", target: { entity_id: id }, confirmation: { text: `Unlock ${label}?` } } },
+    { name: "Lock", icon: "mdi:lock", show_name: true, show_icon: true, show_background: true, visibility: [isUnlocked], tap_action: { action: "none" } },
+    { name: "Unlock", icon: "mdi:lock-open-variant", show_name: true, show_icon: true, show_background: true, visibility: [isLocked], tap_action: { action: "none" } },
   ];
 }
-function lockButtonStyles(h, w, wPhone) {
+function lockPendingHook(id) {
+  const I = JSON.stringify(id);
+  return (
+    " ${(card.__pvH = hass, card.__pvLk && card.__pvLk(), card.__pvLkC || (card.__pvLkC = 1, (function () {" +
+    " var q = function (n) { return card.querySelector('.bubble-sub-button-' + n) || card.getRootNode().querySelector('.bubble-sub-button-' + n); };" +
+    " var lbl = function (n, t) { var el = q(n); if (!el) return; if (t) el.style.setProperty('--pv-lbl', '\"' + t + '\"'); else el.style.removeProperty('--pv-lbl'); };" +
+    " var P = null, armT = 0;" +
+    " card.__pvLk = function () { if (!P) return; var s = card.__pvH.states[" + I + "]; if (!s || s.state !== P.from || Date.now() - P.t > 60000) { P = null; lbl(1, ''); lbl(2, ''); } };" +
+    " var send = function (svc) { card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+    "   { action: 'perform-action', perform_action: 'lock.' + svc, target: { entity_id: " + I + " } } } } })); };" +
+    " card.addEventListener('click', function (ev) { var path = ev.composedPath(); var hit = function (n) { var el = q(n); return el && path.indexOf(el) >= 0; };" +
+    "   var s = card.__pvH.states[" + I + "]; if (!s) return;" +
+    "   if (hit(1)) { ev.stopPropagation(); if (P) return; send('lock'); P = { from: s.state, t: Date.now() }; lbl(1, 'Locking…'); return; }" +
+    "   if (hit(2)) { ev.stopPropagation(); if (P) return;" +
+    "     if (Date.now() - armT > 4000) { armT = Date.now(); lbl(2, 'Confirm?'); setTimeout(function () { if (!P && Date.now() - armT >= 3900) lbl(2, ''); }, 4000); return; }" +
+    "     armT = 0; send('unlock'); P = { from: s.state, t: Date.now() }; lbl(2, 'Unlocking…'); }" +
+    " }, true);" +
+    " })()), '')}"
+  );
+}
+function lockButtonStyles(h, w, wPhone, id) {
   const base = (n) =>
     ` .bubble-sub-button-${n} { width: ${w}px !important; height: ${h}px !important; border-radius: 3px !important; justify-content: center !important; gap: 8px !important; }` +
     ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { --mdc-icon-size: 17px; display: inline-flex !important; }` +
@@ -2382,7 +2402,14 @@ function lockButtonStyles(h, w, wPhone) {
     base(1) + base(2) +
     // LOCK and UNLOCK look the same: outlined, gold padlock.
     " .bubble-sub-button-1, .bubble-sub-button-2 { background: rgba(255,255,255,.04) !important; border: 1px solid rgba(255,255,255,.35); }" +
-    " .bubble-sub-button-1 ha-icon, .bubble-sub-button-2 ha-icon { color: #f2c12e !important; }"
+    " .bubble-sub-button-1 ha-icon, .bubble-sub-button-2 ha-icon { color: #f2c12e !important; }" +
+    // Pending text ("Locking…", "Confirm?", "Unlocking…") replaces the label while set.
+    " .bubble-sub-button-1 .bubble-sub-button-name-container, .bubble-sub-button-2 .bubble-sub-button-name-container { font-size: 0 !important; letter-spacing: 0 !important; }" +
+    " .bubble-sub-button-1 .bubble-sub-button-name-container::after { content: var(--pv-lbl, 'Lock'); }" +
+    " .bubble-sub-button-2 .bubble-sub-button-name-container::after { content: var(--pv-lbl, 'Unlock'); }" +
+    " .bubble-sub-button-1 .bubble-sub-button-name-container::after, .bubble-sub-button-2 .bubble-sub-button-name-container::after { font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: #fff; }" +
+    ` @media (max-width: 520px) { .bubble-sub-button-1 .bubble-sub-button-name-container::after, .bubble-sub-button-2 .bubble-sub-button-name-container::after { font-size: 10px; letter-spacing: .04em; } }` +
+    (id ? lockPendingHook(id) : "")
   );
 }
 function elanLockRow(hass, id, label, tap) {
@@ -2400,7 +2427,7 @@ function elanLockRow(hass, id, label, tap) {
       // State on its own line under the name, in colour; unlocked rows get a red edge and tint.
       " .bubble-name-container::after { content: \"${" + lockStateExpr(id) + "}\"; display: block; font-size: 15px; font-weight: 500; letter-spacing: .04em; margin-top: 2px; color: ${" + col + "}; }" +
       " .bubble-icon { color: ${" + col + "} !important; }" +
-      lockButtonStyles(38, 112, 82),
+      lockButtonStyles(38, 112, 82, id),
     ...action(tap),
   };
 }
@@ -2444,7 +2471,7 @@ function elanLockPopup(hass, id, label) {
       ELAN_ROW_STYLE +
       " .bubble-button-card-container { height: 84px !important; } .bubble-name { display: none !important; } .bubble-icon { color: ${" + col + "} !important; --mdc-icon-size: 34px; }" +
       " .bubble-name-container::after { content: \"${" + lockStateExpr(id) + "}\"; display: block; font-size: 30px; font-weight: 300; color: ${" + col + "}; }" +
-      lockButtonStyles(46, 140, 110),
+      lockButtonStyles(46, 140, 110, id),
     tap_action: { action: "none" },
     button_action: { tap_action: { action: "none" } },
   };
@@ -3384,31 +3411,18 @@ class PivitElanStrategy extends HTMLElement {
       const content = [
         elanTitle("Media Zones"),
         { type: "custom:bubble-card", card_type: "button", button_type: "name", name: "All Zones Off", icon: "mdi:power", grid_options: { columns: "full" }, styles: ELAN_ROW_STYLE + " " + off.hook, ...off.actions },
-        // Now playing: one card per speaker, shown only while it plays.
-        ...[...new Set(allAudio)].map((id) => ({
-          type: "conditional",
-          conditions: [{ condition: "state", entity: id, state: "playing" }],
-          card: AUDIO_CARD === "mediocre"
-            ? {
-                type: "custom:mediocre-media-player-card",
-                entity_id: id,
-                use_art_colors: false,
-                tap_opens_popup: false,
-                options: { show_volume_step_buttons: true },
-                // Tapping the artwork opens the room's ELAN audio pop-up, not Home Assistant's grey media dialog.
-                action: { tap_action: audioRoomOf[id] ? go("#" + slug(audioRoomOf[id]) + "-audio") : { action: "none" } },
-              }
-            : { type: "media-control", entity: id },
-          grid_options: { columns: "full" },
-        })),
       ];
       for (const r of mediaRooms) {
         const m = roomMediaSplit(r, hass);
         const id = m.audio[0] || m.tvs[0];
         const players = [...m.audio, ...m.tvs];
+        // What's playing: the track title (e.g. "Something in the Orange"), else the source / app; "Paused · title"; "TV"; "Off".
         const src =
           "((() => { const p = " + JSON.stringify(players) + ".map((e) => hass.states[e]).filter(Boolean); const a = p.find((s) => s.state === 'playing');" +
-          " if (a) return (a.attributes.source || a.attributes.app_name || 'Music') + ''; if (p.some((s) => ['on', 'idle'].includes(s.state) && " + JSON.stringify(m.tvs) + ".includes(s.entity_id))) return 'TV'; return 'Off'; })())";
+          " const t = (s) => (s.attributes.media_title || s.attributes.source || s.attributes.app_name || 'Music') + '';" +
+          " if (a) return t(a); const z = p.find((s) => s.state === 'paused' && s.attributes.media_title); if (z) return 'Paused · ' + t(z);" +
+          " if (p.some((s) => ['on', 'idle'].includes(s.state) && " + JSON.stringify(m.tvs) + ".includes(s.entity_id))) return 'TV'; return 'Off'; })())";
+        const zoneHash = "#" + slug(r.name) + (m.audio.length ? "-audio" : "-tv");
         content.push({
           type: "custom:bubble-card",
           card_type: "button",
@@ -3418,8 +3432,14 @@ class PivitElanStrategy extends HTMLElement {
           icon: r.icon,
           show_state: false,
           grid_options: { columns: "full" },
-          sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: go("#" + slug(r.name) + (m.audio.length ? "-audio" : "-tv")) }],
-          styles: ELAN_ROW_STYLE + elanSubtitle({ expr: src }) + " .bubble-range-fill { background: rgba(47,127,224,.22) !important; border-right: 2px solid #2f7fe0; }",
+          sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: go(zoneHash) }],
+          // Volume bar works as before (drag); a tap — on the icon, the name or anywhere without dragging — opens the zone's player.
+          tap_to_slide: false,
+          tap_action: go(zoneHash),
+          button_action: { tap_action: go(zoneHash) },
+          styles:
+            ELAN_ROW_STYLE + elanSubtitle({ expr: src }) + " .bubble-range-fill { background: rgba(47,127,224,.22) !important; border-right: 2px solid #2f7fe0; }" +
+            " .bubble-state, .bubble-name-container::after { max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
         });
       }
       views.push(view("media", "Media", content, popupsWhere((h) => h.endsWith("-audio") || h.endsWith("-tv"))));

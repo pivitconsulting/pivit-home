@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.116 — 2026-11-24
+
+- PivIT ELAN Media: each zone shows what's playing (track title; "Paused · title"; source/app; TV; Off) instead of "Music"; the now-playing cards are gone from the page — tapping a zone (without dragging the volume) opens its player pop-up.
+- ELAN lock buttons: LOCK reads "Locking…" and UNLOCK (tap twice — "Confirm?" then) "Unlocking…" until the lock reports its new state (or 60 s).
+
 ## 1.1.115 — 2026-11-24
 
 - LED sync picker: target names wrap instead of scrolling; the source LED at the top no longer gets its own Sync button.
