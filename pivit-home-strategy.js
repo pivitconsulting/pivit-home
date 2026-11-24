@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.87";
+const VERSION = "1.1.88";
 
 const DEFAULTS = {
   title: "Home",
@@ -2569,7 +2569,7 @@ class PivitElanStrategy extends HTMLElement {
         " var nm = (card.querySelector && card.querySelector('.bubble-name-container')) || root.querySelector('.bubble-name-container'); var subs = (card.querySelector && card.querySelector('.bubble-sub-button-container')) || root.querySelector('.bubble-sub-button-container');" +
         " if (!box || !nm || !subs || !box.getBoundingClientRect().height) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
         " var place = function () { var b = box.getBoundingClientRect(), n = nm.getBoundingClientRect(); if (!b.height) return; var cs = getComputedStyle(box, '::after');" +
-        " var fs = parseFloat(cs.fontSize) || 18; var bottomPct = parseFloat(cs.bottom) || b.height * 0.08; var dateTop = b.height - bottomPct - fs * 1.3; var clockBottom = n.bottom - b.top;" +
+        " var fs = parseFloat(cs.fontSize) || 18; var bottomPct = parseFloat(cs.bottom) || b.height * 0.08; var dateTop = b.height - bottomPct - fs * 1.3 + fs * 0.3; var cfs = parseFloat(getComputedStyle(nm, '::after').fontSize) || 84; var clockBottom = n.bottom - b.top - cfs * 0.24;" +
         " var chipH = subs.getBoundingClientRect().height || 34; box.style.setProperty('--pv-chip-top', Math.max(clockBottom, (clockBottom + dateTop) / 2 - chipH / 2) + 'px'); };" +
         " place(); setTimeout(place, 600); window.addEventListener('resize', place); if (window.ResizeObserver) new ResizeObserver(place).observe(box); })(0)), '')}"
       : "";

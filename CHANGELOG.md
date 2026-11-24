@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.88 — 2026-11-23
+
+- Home alarm chip: centred on the visible digits and date text (ignores the clock line's empty space below the digits).
+
 ## 1.1.87 — 2026-11-23
 
 - PivIT ELAN Pool: Pool Mode and Spa Mode (the pool / spa pump switches) are buttons inside the Pool and Spa panels beside Heater (blue when on), no longer in the button grid.
