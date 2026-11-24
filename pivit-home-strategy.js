@@ -1885,6 +1885,9 @@ function elanTvRemote(remoteId) {
     " { action: 'perform-action', perform_action: 'remote.send_command', target: { entity_id: " + JSON.stringify(remoteId) + " }, data: { command: c } } } } })); }, i * 140); };" +
     " var flash = function () { card.style.setProperty('--pv-tp', 'rgba(47,127,224,.35)'); setTimeout(function () { card.style.removeProperty('--pv-tp'); }, 180); };" +
     " card.style.touchAction = 'none';" +
+    // Keep swipes on the pad from reaching the pop-up (Bubble closes a pop-up on a downward swipe).
+    " ['touchstart', 'touchmove', 'touchend', 'mousedown', 'mousemove'].forEach(function (t) { card.addEventListener(t, function (e) { e.stopPropagation(); }, { passive: true }); });" +
+    " card.addEventListener('pointermove', function (e) { if (down) e.stopPropagation(); });" +
     " card.addEventListener('pointerdown', function (e) { down = true; x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); e.preventDefault(); });" +
     " card.addEventListener('pointerup', function (e) { if (!down) return; down = false; var dx = e.clientX - x0, dy = e.clientY - y0, ax = Math.abs(dx), ay = Math.abs(dy);" +
     "   if (ax < 18 && ay < 18) { send('DPAD_CENTER', 1); flash(); return; }" +
