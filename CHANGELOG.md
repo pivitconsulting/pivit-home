@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.85 — 2026-11-23
+
+- Narrow effect-light buttons: name wraps instead of scrolling ("Pool Lights" in the Pool pop-up).
+
 ## 1.1.84 — 2026-11-23
 
 - PivIT ELAN room pop-ups: rooms without their own thermostat also get one from `room_thermostats` (Kitchen, Dining Room, Office → Living Room's), as well as `floor_thermostats`.

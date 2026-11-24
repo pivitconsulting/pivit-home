@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.84";
+const VERSION = "1.1.85";
 
 const DEFAULTS = {
   title: "Home",
@@ -1587,7 +1587,8 @@ const hasEffects = (hass, id) => domainOf(id) === "light" && hass.states[id] && 
 const effectSubButton = (id) => ({ entity: id, select_attribute: "effect_list", icon: "mdi:palette", show_icon: true, show_name: false, show_state: false, show_attribute: false, show_arrow: true, show_background: true });
 const effectStyles = (id, n) =>
   // Narrow buttons (e.g. three across in a pop-up): drop the bulb icon so the name has room beside the drop-down.
-  " .bubble-button-card-container { container-type: inline-size; } @container (max-width: 210px) { .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; } }" +
+  " .bubble-button-card-container { container-type: inline-size; } @container (max-width: 240px) { .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; min-width: 0 !important; }" +
+  " .bubble-name { white-space: normal !important; line-height: 1.15 !important; overflow: visible !important; } .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; } }" +
   ` .bubble-sub-button-${n} { background: rgba(255,255,255,.12) !important; border-radius: 4px !important; } .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} ha-svg-icon { color: #f2f5fa !important; }` +
   " .bubble-state::after { content: \"${((s) => s && s.state === 'on' && s.attributes.effect ? ' · ' + s.attributes.effect : '')(hass.states['" + id + "'])}\"; }" +
   ` .bubble-sub-button-${n}, .bubble-dropdown-container, mwc-list, ha-list-item, mwc-list-item { --mdc-theme-surface: #1d2244; --mdc-theme-text-primary-on-background: #f2f5fa; --primary-text-color: #f2f5fa; --mdc-theme-primary: ${ELAN_ACCENT}; }`;
