@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.118 — 2026-11-24
+
+- PivIT ELAN Media: a zone grouped with another room's speaker (e.g. Kitchen joined to Living Room) reads "Linked to Living Room".
+
 ## 1.1.117 — 2026-11-24
 
 - PivIT ELAN Media: zones with a TV get a TV button inside the row showing the TV's status (Off / the app that's open, gold when on); tapping it opens the room's TV remote pop-up.

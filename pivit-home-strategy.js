@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.117";
+const VERSION = "1.1.118";
 
 const DEFAULTS = {
   title: "Home",
@@ -3420,6 +3420,8 @@ class PivitElanStrategy extends HTMLElement {
         const src =
           "((() => { const p = " + JSON.stringify(players) + ".map((e) => hass.states[e]).filter(Boolean); const a = p.find((s) => s.state === 'playing');" +
           " const t = (s) => (s.attributes.media_title || s.attributes.source || s.attributes.app_name || 'Music') + '';" +
+          " const g = p.map((s) => s.attributes.group_members || []).find((x) => x.length > 1 && !" + JSON.stringify(players) + ".includes(x[0]));" +
+          " if (g) { const rm = " + JSON.stringify(audioRoomOf) + "; const c = hass.states[g[0]]; return 'Linked to ' + (rm[g[0]] || (c && c.attributes.friendly_name) || 'another room'); }" +
           " if (a) return t(a); const z = p.find((s) => s.state === 'paused' && s.attributes.media_title); if (z) return 'Paused · ' + t(z);" +
           " if (p.some((s) => ['on', 'idle'].includes(s.state) && " + JSON.stringify(m.tvs) + ".includes(s.entity_id))) return 'TV'; return 'Off'; })())";
         const zoneHash = "#" + slug(r.name) + (m.audio.length ? "-audio" : "-tv");
