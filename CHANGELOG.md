@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.98 — 2026-11-24
+
+- Night clock: the wake tap is swallowed completely (down, up and click) and the clock fades out just after, so it can't press anything underneath.
+
 ## 1.1.97 — 2026-11-24
 
 - PivIT ELAN wall-panel idle (`elan_idle`, non-admin users by default): after 2 minutes without a touch it returns to the Home screen and closes any pop-up; at night (21:00–06:00) after 5 minutes it covers the screen with a dim drifting clock — a tap brings the dashboard back (that tap does nothing else).

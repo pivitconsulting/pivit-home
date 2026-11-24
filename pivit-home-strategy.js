@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.97";
+const VERSION = "1.1.98";
 
 const DEFAULTS = {
   title: "Home",
@@ -2398,8 +2398,12 @@ function elanIdle(base, cfg, hass) {
       draw(); tick = setInterval(draw, 15000);
       // Slow drift so the clock doesn't sit on the same pixels all night.
       let k = 0; const drift = setInterval(() => { if (!overlay) return clearInterval(drift); k++; overlay.style.paddingTop = (k % 2 ? 6 : 0) + "vh"; overlay.style.paddingLeft = (k % 3) * 4 + "vw"; }, 60000);
-      const wake = (ev) => { ev.preventDefault(); ev.stopPropagation(); I.last = Date.now(); hide(); };
-      overlay.addEventListener("pointerdown", wake, true); overlay.addEventListener("click", wake, true); overlay.addEventListener("touchstart", wake, { capture: true, passive: false });
+      // Swallow the whole wake tap (down, up and the click that follows) and remove the clock just after, so the tap
+      // can't press whatever is underneath.
+      const eat = (ev) => { ev.preventDefault(); ev.stopPropagation(); I.last = Date.now(); };
+      const wake = (ev) => { eat(ev); const el = overlay; if (el && !el.__going) { el.__going = 1; el.style.transition = "opacity .25s"; el.style.opacity = "0"; setTimeout(hide, 400); } };
+      ["pointerdown", "mousedown", "touchstart", "click"].forEach((t) => overlay.addEventListener(t, eat, { capture: true, passive: false }));
+      ["pointerup", "touchend"].forEach((t) => overlay.addEventListener(t, wake, { capture: true, passive: false }));
       document.body.appendChild(overlay);
     };
     const activity = () => { I.last = Date.now(); };
