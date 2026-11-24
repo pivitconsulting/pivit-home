@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.105";
+const VERSION = "1.1.106";
 
 const DEFAULTS = {
   title: "Home",
@@ -2576,8 +2576,23 @@ class PivitElanStrategy extends HTMLElement {
         .filter((e) => (e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id) === r.id)
         .map((e) => e.entity_id);
       if (!pp || !remotes.length || JSON.stringify(pp.cards || []).includes('"Remote"')) continue;
-      // Keep the TV's now-playing card; the ELAN remote replaces the PivIT Home power button and d-pad.
-      pp.cards = [...(pp.cards || []).filter((c) => c.card_type === "media-player"), ...remotes.map((id) => elanTvRemote(id))];
+      // Keep the TV's now-playing card (only while something is casting, and without its power button — "turning on" a
+      // Chromecast starts Home Assistant's own cast app); the ELAN remote replaces the power button and d-pad.
+      const playing = (c) => ({
+        ...c,
+        show_power_button: false,
+        styles: ((c.styles || "") + " .bubble-power-button, .power-button { display: none !important; }").trim(),
+        visibility: [{ condition: "state", entity: c.entity, state: ["playing", "paused", "buffering"] }],
+      });
+      pp.cards = [...(pp.cards || []).filter((c) => c.card_type === "media-player").map(playing), ...remotes.map((id) => elanTvRemote(id))];
+    }
+    // Room pop-ups: TV rows go to the bottom, below the audio.
+    for (const r of ctx.rooms) {
+      const pp = popups.find((x) => x.hash === "#" + slug(r.name));
+      if (!pp || !pp.cards) continue;
+      const { tvs } = roomMediaSplit(r, hass);
+      const isTv = (c) => (c.entity && tvs.includes(c.entity)) || (c.entity_id && tvs.includes(c.entity_id)) || JSON.stringify(c).includes('"#' + slug(r.name) + '-tv"');
+      pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...pp.cards.filter(isTv)];
     }
     // Rooms without a thermostat of their own get the one that covers them in their pop-up: room_thermostats (e.g.
     // Kitchen → Living Room's), else floor_thermostats (e.g. upstairs bedrooms).
