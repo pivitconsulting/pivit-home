@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.89";
+const VERSION = "1.1.90";
 
 const DEFAULTS = {
   title: "Home",
@@ -2735,6 +2735,9 @@ class PivitElanStrategy extends HTMLElement {
             ELAN_ROW_STYLE +
             " .bubble-sub-button-container { position: static !important; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; margin-left: auto !important; margin-right: 10px !important; height: 100% !important; }" +
             " .bubble-sub-button { height: 36px !important; min-width: 32px; }" +
+            // When several icons are showing, the name wraps instead of scrolling.
+            " .bubble-name-container { min-width: 0 !important; flex: 1 1 auto !important; } .bubble-name { white-space: normal !important; line-height: 1.15 !important; overflow: visible !important; }" +
+            " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }" +
             styles.join(""),
           tap_action: go(hash),
           button_action: { tap_action: go(hash) },

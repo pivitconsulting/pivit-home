@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.90 — 2026-11-23
+
+- PivIT ELAN Rooms tiles: the room name wraps instead of scrolling when several icons are showing.
+
 ## 1.1.89 — 2026-11-23
 
 - PivIT ELAN Home: the alarm chip is back with the alerts, alone on its own centred line just below the date.
