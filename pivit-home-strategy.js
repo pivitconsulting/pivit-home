@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.103";
+const VERSION = "1.1.104";
 
 const DEFAULTS = {
   title: "Home",
@@ -1877,6 +1877,37 @@ function elanTvRemote(remoteId) {
     styles: key(name, icon, tap).styles.replace(".bubble-name-container { display: none !important; } .bubble-button-card { justify-content: center !important; }", "") +
       " .bubble-main-icon-container { margin: 0 !important; } .bubble-name { font-size: 13px !important; color: #f2f5fa !important; }",
   });
+  // Touchpad: swipe to move (one step per ~60px of swipe, up to 5), tap to select (OK).
+  const tpHook =
+    "${(card.__pvTp || (card.__pvTp = 1, (function () {" +
+    " var x0 = 0, y0 = 0, t0 = 0, down = false;" +
+    " var send = function (c, n) { for (var i = 0; i < n; i++) setTimeout(function () { card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+    " { action: 'perform-action', perform_action: 'remote.send_command', target: { entity_id: " + JSON.stringify(remoteId) + " }, data: { command: c } } } } })); }, i * 140); };" +
+    " var flash = function () { card.style.setProperty('--pv-tp', 'rgba(47,127,224,.35)'); setTimeout(function () { card.style.removeProperty('--pv-tp'); }, 180); };" +
+    " card.style.touchAction = 'none';" +
+    " card.addEventListener('pointerdown', function (e) { down = true; x0 = e.clientX; y0 = e.clientY; t0 = Date.now(); e.preventDefault(); });" +
+    " card.addEventListener('pointerup', function (e) { if (!down) return; down = false; var dx = e.clientX - x0, dy = e.clientY - y0, ax = Math.abs(dx), ay = Math.abs(dy);" +
+    "   if (ax < 18 && ay < 18) { send('DPAD_CENTER', 1); flash(); return; }" +
+    "   var n = Math.min(5, Math.max(1, Math.round(Math.max(ax, ay) / 60)));" +
+    "   send(ax > ay ? (dx > 0 ? 'DPAD_RIGHT' : 'DPAD_LEFT') : (dy > 0 ? 'DPAD_DOWN' : 'DPAD_UP'), n); flash(); });" +
+    " card.addEventListener('pointercancel', function () { down = false; });" +
+    " })()), '')}";
+  const touchpad = {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    name: "Swipe to move · tap to select",
+    show_icon: false,
+    styles:
+      ".bubble-button-background { opacity: 0 !important; } .bubble-main-icon-container { display: none !important; }" +
+      " .bubble-button-card-container { height: 230px !important; border-radius: 10px !important; border: 1px solid rgba(255,255,255,.14);" +
+      " background: var(--pv-tp, radial-gradient(circle at 50% 45%, rgba(255,255,255,.10), rgba(255,255,255,.03) 70%)) !important; transition: background .15s; cursor: pointer; }" +
+      " .bubble-button-card { justify-content: center !important; align-items: flex-end !important; padding-bottom: 14px !important; }" +
+      " .bubble-name-container { margin: 0 auto !important; } .bubble-name { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; opacity: .45; }" +
+      " " + tpHook,
+    tap_action: { action: "none" },
+    button_action: { tap_action: { action: "none" } },
+  };
   return {
     type: "vertical-stack",
     grid_options: { columns: "full" },
@@ -1888,13 +1919,7 @@ function elanTvRemote(remoteId) {
         key("Home", "mdi:home-outline", cmd("HOME")),
         key("Back", "mdi:arrow-u-left-top", cmd("BACK")),
       ] },
-      { type: "grid", columns: 3, square: false, cards: [
-        blank, key("Up", "mdi:chevron-up", cmd("DPAD_UP")), blank,
-        key("Left", "mdi:chevron-left", cmd("DPAD_LEFT")),
-        key("OK", "mdi:circle-medium", cmd("DPAD_CENTER"), " .bubble-button-card-container { background: rgba(47,127,224,.35) !important; }"),
-        key("Right", "mdi:chevron-right", cmd("DPAD_RIGHT")),
-        blank, key("Down", "mdi:chevron-down", cmd("DPAD_DOWN")), blank,
-      ] },
+      touchpad,
       { type: "grid", columns: 4, square: false, cards: [
         key("Volume down", "mdi:volume-minus", cmd("VOLUME_DOWN")),
         key("Mute", "mdi:volume-mute", cmd("VOLUME_MUTE")),

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.104 — 2026-11-24
+
+- ELAN TV remote: the arrows and OK are replaced by a touchpad — swipe to move (about one step per 60px, up to 5), tap to select; a brief blue flash confirms.
+
 ## 1.1.103 — 2026-11-24
 
 - ELAN TV pop-ups with an Android TV remote: the PivIT Home power button and d-pad are replaced by the ELAN remote (the now-playing card stays), so there's one remote.
