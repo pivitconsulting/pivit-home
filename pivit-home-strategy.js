@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.76";
+const VERSION = "1.1.77";
 
 const DEFAULTS = {
   title: "Home",
@@ -1710,7 +1710,13 @@ const ELAN_POPUP_STYLE =
   " .bubble-pop-up-background { background: linear-gradient(175deg, rgba(42,47,92,.97) 0%, rgba(23,26,51,.97) 55%, rgba(13,15,30,.97) 100%) !important; }" +
   " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; line-height: 1.35 !important; height: auto !important; padding-bottom: 1px; }" +
   // Bubble's 18px line box clips descenders (g, y) at 19px: give the title room.
-  " .bubble-header-container .bubble-name-container { line-height: 1.35 !important; height: auto !important; }";
+  " .bubble-header-container .bubble-name-container { line-height: 1.35 !important; height: auto !important; min-width: 0 !important; }" +
+  // Phones: smaller title so it clears the title-bar buttons (All Off, lock).
+  " @media (max-width: 520px) { .bubble-header-container .bubble-name { font-size: 16px !important; white-space: nowrap; overflow: hidden !important; text-overflow: ellipsis; } }";
+// Phones: names in pop-up buttons wrap onto two lines instead of scrolling (e.g. "Master Bedroom LEDs" in a half-width button).
+const ELAN_PHONE_NAME_STYLE =
+  " @media (max-width: 520px) { .bubble-name { white-space: normal !important; line-height: 1.2 !important; overflow: visible !important; }" +
+  " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; } }";
 // Sliders inside pop-ups fill with ELAN blue (not the bulb's own colour), like the ELAN rows.
 const ELAN_SLIDER_STYLE =
   ` .bubble-range-fill { background: rgba(47,127,224,.35) !important; border-right: 2px solid ${ELAN_ACCENT}; opacity: 1 !important; }`;
@@ -1802,6 +1808,7 @@ function elanCards(cards) {
     if (out.type === "custom:bubble-card" && out.card_type === "climate" && out.entity && !/pool|spa/i.test(out.entity)) return elanThermostat(out.entity, out.name);
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
       out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
+    if (out.type === "custom:bubble-card" && out.card_type === "button") out.styles = ((out.styles || "") + ELAN_PHONE_NAME_STYLE).trim();
     if (Array.isArray(out.cards)) out.cards = elanCards(out.cards);
     if (out.card && typeof out.card === "object") out.card = elanCards([out.card])[0];
     return out;

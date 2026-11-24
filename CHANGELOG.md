@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.77 — 2026-11-23
+
+- PivIT ELAN pop-ups on phones: smaller title (clears All Off / lock), and button names wrap onto two lines instead of scrolling (e.g. Master Bedroom LEDs).
+
 ## 1.1.76 — 2026-11-23
 
 - PivIT ELAN: ceiling fans on the Lighting room pages use the OFF / LOW / MED / HIGH row.
