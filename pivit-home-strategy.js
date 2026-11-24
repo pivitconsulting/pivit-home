@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.100";
+const VERSION = "1.1.101";
 
 const DEFAULTS = {
   title: "Home",
@@ -1843,6 +1843,69 @@ function elanFanCard(id, name) {
   ELAN_FAN_CARDS.add(card);
   return card;
 }
+// ELAN TV remote for an Android TV / Google TV (androidtv_remote integration's remote.* entity): power, home, back,
+// input, menu; a D-pad with OK; volume down / mute / up; and app buttons (remote.turn_on with the app's link).
+const TV_APPS = [
+  ["Netflix", "mdi:netflix", "https://www.netflix.com/title"],
+  ["YouTube", "mdi:youtube", "https://www.youtube.com"],
+  ["Prime Video", "mdi:filmstrip", "https://app.primevideo.com"],
+  ["Disney+", "mdi:castle", "https://www.disneyplus.com"],
+];
+function elanTvRemote(remoteId) {
+  const cmd = (c) => ({ action: "perform-action", perform_action: "remote.send_command", target: { entity_id: remoteId }, data: { command: c } });
+  const on = "((hass.states['" + remoteId + "'] || {}).state === 'on')";
+  const key = (name, icon, tap, extra = "") => ({
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    name,
+    icon,
+    styles:
+      ".bubble-button-background { opacity: 0 !important; }" +
+      " .bubble-button-card-container { background: rgba(255,255,255,.08) !important; border: 1px solid rgba(255,255,255,.12); border-radius: 6px !important; height: 52px !important; }" +
+      " .bubble-button-card-container:active { background: " + ELAN_ACCENT + " !important; }" +
+      " .bubble-main-icon-container { background: transparent !important; margin: 0 auto !important; } .bubble-icon { color: #f2f5fa !important; --mdc-icon-size: 24px; }" +
+      " .bubble-name-container { display: none !important; } .bubble-button-card { justify-content: center !important; }" +
+      extra,
+    tap_action: tap,
+    button_action: { tap_action: tap },
+  });
+  const blank = { type: "custom:bubble-card", card_type: "empty-column" };
+  const label = (name, icon, tap) => ({
+    ...key(name, icon, tap),
+    styles: key(name, icon, tap).styles.replace(".bubble-name-container { display: none !important; } .bubble-button-card { justify-content: center !important; }", "") +
+      " .bubble-main-icon-container { margin: 0 !important; } .bubble-name { font-size: 13px !important; color: #f2f5fa !important; }",
+  });
+  return {
+    type: "vertical-stack",
+    grid_options: { columns: "full" },
+    cards: [
+      elanSubhead("Remote"),
+      { type: "grid", columns: 4, square: false, cards: [
+        key("Power", "mdi:power", { action: "toggle", entity: remoteId }, " .bubble-icon { color: ${" + on + " ? '" + ELAN_ACCENT + "' : '#f2f5fa'} !important; }"),
+        key("Input", "mdi:import", cmd("TV_INPUT")),
+        key("Home", "mdi:home-outline", cmd("HOME")),
+        key("Back", "mdi:arrow-u-left-top", cmd("BACK")),
+      ] },
+      { type: "grid", columns: 3, square: false, cards: [
+        blank, key("Up", "mdi:chevron-up", cmd("DPAD_UP")), blank,
+        key("Left", "mdi:chevron-left", cmd("DPAD_LEFT")),
+        key("OK", "mdi:circle-medium", cmd("DPAD_CENTER"), " .bubble-button-card-container { background: rgba(47,127,224,.35) !important; }"),
+        key("Right", "mdi:chevron-right", cmd("DPAD_RIGHT")),
+        blank, key("Down", "mdi:chevron-down", cmd("DPAD_DOWN")), blank,
+      ] },
+      { type: "grid", columns: 4, square: false, cards: [
+        key("Volume down", "mdi:volume-minus", cmd("VOLUME_DOWN")),
+        key("Mute", "mdi:volume-mute", cmd("VOLUME_MUTE")),
+        key("Volume up", "mdi:volume-plus", cmd("VOLUME_UP")),
+        key("Menu", "mdi:menu", cmd("MENU")),
+      ] },
+      { type: "grid", columns: 2, square: false, cards: TV_APPS.map(([n, i, url]) =>
+        label(n, i, { action: "perform-action", perform_action: "remote.turn_on", target: { entity_id: remoteId }, data: { activity: url } })) },
+    ],
+  };
+}
+
 function elanCards(cards) {
   return (cards || []).map((c) => {
     if (!c || typeof c !== "object") return c;
@@ -2464,6 +2527,16 @@ class PivitElanStrategy extends HTMLElement {
     const savant = roomsView(cfg, ctx, { type: "markdown", content: " " });
     const popups = savant.sections.flatMap((sec) => sec.cards).filter((c) => c.card_type === "pop-up");
     const popupsWhere = (test) => popups.filter((pp) => test(pp.hash || ""));
+    // TV pop-ups get an ELAN remote for each Android TV / Google TV remote in the room (androidtv_remote).
+    for (const r of ctx.rooms) {
+      const pp = popups.find((x) => x.hash === "#" + slug(r.name) + "-tv");
+      const remotes = Object.values(hass.entities || {})
+        .filter((e) => e.entity_id.startsWith("remote.") && e.platform === "androidtv_remote" && !e.hidden && hass.states[e.entity_id])
+        .filter((e) => (e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id) === r.id)
+        .map((e) => e.entity_id);
+      if (!pp || !remotes.length || JSON.stringify(pp.cards || []).includes('"Remote"')) continue;
+      pp.cards = [...(pp.cards || []), ...remotes.map((id) => elanTvRemote(id))];
+    }
     // Rooms without a thermostat of their own get the one that covers them in their pop-up: room_thermostats (e.g.
     // Kitchen → Living Room's), else floor_thermostats (e.g. upstairs bedrooms).
     for (const r of ctx.rooms) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.101 — 2026-11-24
+
+- PivIT ELAN TV pop-ups: an ELAN remote for each Android TV / Google TV in the room (androidtv_remote `remote.*`) — power, input, home, back; D-pad with OK; volume down / mute / up, menu; Netflix / YouTube / Prime Video / Disney+ buttons.
+
 ## 1.1.100 — 2026-11-24
 
 - PivIT ELAN Cameras: the EVENTS button's icon is white, matching its text.
