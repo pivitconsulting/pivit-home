@@ -3,6 +3,7 @@
 ## 1.1.93 — 2026-11-23
 
 - PivIT ELAN Pool / Spa: the Mode and Heater buttons sit inside the Pool and Spa panels under the name, in place of the status text (`elanClimateRow` option `buttons`).
+- PivIT ELAN Pool readings (e.g. Outside Temp): the value is large, at the right end of the button.
 
 ## 1.1.92 — 2026-11-23
 

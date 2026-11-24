@@ -1679,11 +1679,16 @@ function elanPool(hass, cards, bodies) {
             button_type: "name",
             name: nameOf(c),
             icon: (ent(c.entity) && ent(c.entity).attributes.icon) || "mdi:thermometer",
+            // The value, large, at the right end (a sub-button keeps an icon so Bubble doesn't hide it; the icon is hidden).
+            sub_button: [{ entity: c.entity, icon: "mdi:thermometer", show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: { action: "none" } }],
             styles:
               ".bubble-button-background { opacity: 0 !important; }" +
               " .bubble-button-card-container { background: " + ELAN_ROW_BG + " !important; border: 1px solid rgba(255,255,255,.08); border-radius: 4px !important; }" +
               " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; }" +
-              " .bubble-name { font-size: 15px !important; } .bubble-name-container::after { content: \"${" + val + "}\"; display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }" +
+              " .bubble-name { font-size: 15px !important; }" +
+              " .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { display: none !important; } .bubble-sub-button-1 { width: auto !important; padding: 0 10px 0 4px !important; pointer-events: none; }" +
+              " .bubble-sub-button-1::after { content: \"${" + val + "}\"; font-size: 26px; font-weight: 300; color: #f2f5fa; }" +
+              " @media (max-width: 520px) { .bubble-sub-button-1::after { font-size: 20px; } }" +
               " @media (max-width: 520px) { .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; } .bubble-name { font-size: 13px !important; } }",
             tap_action: { action: "none" },
             button_action: { tap_action: { action: "none" } },
@@ -1919,6 +1924,24 @@ function elanClimateRow(id, name, hash, opts = {}) {
     "   { action: 'perform-action', perform_action: 'climate.set_temperature', target: { entity_id: " + JSON.stringify(id) + " }, data: data } } } }));" +
     " }, 800);" +
     " })), '')}";
+  const buttonsCss =
+    (opts.buttons
+        ? // Name at the top-left, the toggles under it (absolute, inside the card); the temperature block stays on the right.
+          " .bubble-button-card-container { position: relative !important; height: 124px !important; } .bubble-sub-button-container { position: static !important; }" +
+          " .bubble-name-container { align-self: flex-start !important; margin-top: 16px !important; }" +
+          opts.buttons
+            .map(
+              (b, i) =>
+                ` .bubble-sub-button-${7 + i} { position: absolute !important; left: ${16 + i * 128}px; bottom: 14px; width: 120px !important; height: 38px !important; padding: 0 10px !important; gap: 6px !important;` +
+                ` border-radius: 4px !important; justify-content: flex-start !important; grid-column: auto !important; grid-row: auto !important; border: 1px solid rgba(255,255,255,.12);` +
+                ` background: \${${b.on} ? '${b.onBg}' : 'rgba(255,255,255,.08)'} !important; }` +
+                ` .bubble-sub-button-${7 + i} ha-icon, .bubble-sub-button-${7 + i} .bubble-sub-button-icon { color: \${${b.on} ? '#fff' : '${b.offIcon}'} !important; --mdc-icon-size: 18px; display: inline-flex !important; }` +
+                ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { display: block !important; font-size: 12px !important; letter-spacing: .04em; color: #fff !important; opacity: 1 !important; white-space: nowrap; }` +
+                ` @media (max-width: 520px) { .bubble-sub-button-${7 + i} { left: ${10 + i * 104}px; width: 98px !important; } .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; } }`
+            )
+            .join("") +
+          " @media (max-width: 520px) { .bubble-button-card-container { height: 118px !important; } }"
+        : "");
   const box = (n) =>
     ` .bubble-sub-button-${n} { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; line-height: 1.1;` +
     ` align-self: stretch !important; justify-self: stretch !important; height: 100% !important; box-sizing: border-box; }` +
@@ -1950,23 +1973,7 @@ function elanClimateRow(id, name, hash, opts = {}) {
       " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }" +
       " @media (max-width: 1400px) { .bubble-name { font-size: 19px !important; } }" +
       (opts.buttons ? "" : elanSubtitle({ expr: opts.sub || titleCase(A + ".hvac_action || " + ST) })) +
-      (opts.buttons
-        ? // Name at the top-left, the toggles under it (absolute, inside the card); the temperature block stays on the right.
-          " .bubble-button-card-container { position: relative !important; height: 124px !important; } .bubble-sub-button-container { position: static !important; }" +
-          " .bubble-name-container { align-self: flex-start !important; margin-top: 16px !important; }" +
-          opts.buttons
-            .map(
-              (b, i) =>
-                ` .bubble-sub-button-${7 + i} { position: absolute !important; left: ${16 + i * 128}px; bottom: 14px; width: 120px !important; height: 38px !important; padding: 0 10px !important; gap: 6px !important;` +
-                ` border-radius: 4px !important; justify-content: flex-start !important; grid-column: auto !important; grid-row: auto !important; border: 1px solid rgba(255,255,255,.12);` +
-                ` background: \${${b.on} ? '${b.onBg}' : 'rgba(255,255,255,.08)'} !important; }` +
-                ` .bubble-sub-button-${7 + i} ha-icon, .bubble-sub-button-${7 + i} .bubble-sub-button-icon { color: \${${b.on} ? '#fff' : '${b.offIcon}'} !important; --mdc-icon-size: 18px; display: inline-flex !important; }` +
-                ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { display: block !important; font-size: 12px !important; letter-spacing: .04em; color: #fff !important; opacity: 1 !important; white-space: nowrap; }` +
-                ` @media (max-width: 520px) { .bubble-sub-button-${7 + i} { left: ${10 + i * 104}px; width: 98px !important; } .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; } }`
-            )
-            .join("") +
-          " @media (max-width: 520px) { .bubble-button-card-container { height: 118px !important; } }"
-        : "") +
+
       " .bubble-sub-button-container { display: grid !important; grid-template-columns: auto 104px 58px 34px; grid-template-rows: 1fr 1fr; gap: 2px 0;" +
       " height: 98px !important; align-self: center; margin-right: 4px; }" +
       " .bubble-sub-button { height: auto !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; margin: 0 !important; border-radius: 0 !important; padding: 0 !important; }" +
@@ -1996,6 +2003,7 @@ function elanClimateRow(id, name, hash, opts = {}) {
       " .bubble-sub-button-1 { padding: 0 10px !important; } .bubble-sub-button-1::before { font-size: 28px !important; }" +
       " .bubble-sub-button-2::after, .bubble-sub-button-3::after { font-size: 16px; } .bubble-sub-button-3::before { font-size: 14px; }" +
       " .bubble-sub-button-4 ha-icon, .bubble-sub-button-5 ha-icon { --mdc-icon-size: 26px; } }" +
+      buttonsCss +
       " " + hook,
     ...action(nav),
   };
