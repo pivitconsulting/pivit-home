@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.96";
+const VERSION = "1.1.97";
 
 const DEFAULTS = {
   title: "Home",
@@ -2370,6 +2370,53 @@ function elanDialogTheme(base) {
   } catch (e) { /* not in a browser (e.g. config check) */ }
 }
 
+// Wall-panel idle behaviour (ELAN): after a while without a touch, go back to the Home screen (closing any pop-up);
+// at night, after a longer idle, cover the screen with a dim clock — a tap brings the dashboard back (that tap does
+// nothing else). Applies to non-admin users (the wall iPad) unless elan_idle.users is "all". elan_idle: false turns
+// it off. Options: home_after (s, 120), night_after (s, 300), night_start ("21:00"), night_end ("06:00"),
+// night_always (dim after night_after at any hour), users ("non_admin" | "all").
+function elanIdle(base, cfg, hass) {
+  try {
+    const o = cfg.elan_idle === false ? null : { home_after: 120, night_after: 300, night_start: "21:00", night_end: "06:00", night_always: false, users: "non_admin", ...(cfg.elan_idle || {}) };
+    window.__pvIdleCfg = o && (o.users === "all" || !(hass.user && hass.user.is_admin)) ? { ...o, base } : null;
+    if (window.__pvIdle) return;
+    window.__pvIdle = { last: Date.now() };
+    const I = window.__pvIdle;
+    const mins = (t) => { const m = String(t || "0:0").split(":"); return (+m[0] || 0) * 60 + (+m[1] || 0); };
+    const isNight = (c) => { if (c.night_always) return true; const d = new Date(); const n = d.getHours() * 60 + d.getMinutes(); const a = mins(c.night_start), b = mins(c.night_end); return a <= b ? n >= a && n < b : n >= a || n < b; };
+    const onElan = (c) => location.pathname === c.base || location.pathname.startsWith(c.base + "/");
+    let overlay = null, tick = null;
+    const hide = () => { if (overlay) { overlay.remove(); overlay = null; } if (tick) { clearInterval(tick); tick = null; } };
+    const show = () => {
+      if (overlay) return;
+      overlay = document.createElement("div");
+      overlay.style.cssText = "position:fixed;inset:0;z-index:2147483000;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;" +
+        "color:rgba(255,255,255,.32);font-family:inherit;user-select:none;-webkit-user-select:none;cursor:none;";
+      overlay.innerHTML = '<div class="t" style="font-size:min(22vw,180px);font-weight:200;letter-spacing:.02em;line-height:1"></div><div class="d" style="font-size:min(4vw,26px);font-weight:300;margin-top:18px;letter-spacing:.08em"></div>';
+      const draw = () => { const d = new Date(); overlay.querySelector(".t").textContent = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }).replace(/\s?[AP]M$/i, "");
+        overlay.querySelector(".d").textContent = d.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" }); };
+      draw(); tick = setInterval(draw, 15000);
+      // Slow drift so the clock doesn't sit on the same pixels all night.
+      let k = 0; const drift = setInterval(() => { if (!overlay) return clearInterval(drift); k++; overlay.style.paddingTop = (k % 2 ? 6 : 0) + "vh"; overlay.style.paddingLeft = (k % 3) * 4 + "vw"; }, 60000);
+      const wake = (ev) => { ev.preventDefault(); ev.stopPropagation(); I.last = Date.now(); hide(); };
+      overlay.addEventListener("pointerdown", wake, true); overlay.addEventListener("click", wake, true); overlay.addEventListener("touchstart", wake, { capture: true, passive: false });
+      document.body.appendChild(overlay);
+    };
+    const activity = () => { I.last = Date.now(); };
+    ["pointerdown", "keydown", "touchstart", "wheel"].forEach((t) => window.addEventListener(t, activity, { capture: true, passive: true }));
+    setInterval(() => {
+      const c = window.__pvIdleCfg; if (!c || !onElan(c)) { hide(); return; }
+      const idle = (Date.now() - I.last) / 1000;
+      const home = c.base + "/home";
+      if (c.home_after && idle >= c.home_after && (location.pathname !== home || location.hash)) {
+        history.replaceState(null, "", home); window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: true } }));
+      }
+      if (c.night_after && idle >= c.night_after && isNight(c)) show();
+      else if (overlay && !isNight(c)) hide();
+    }, 5000);
+  } catch (e) { /* not in a browser */ }
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -2381,6 +2428,7 @@ class PivitElanStrategy extends HTMLElement {
     const base = ctx.basePath;
     const bg = cfg.elan_background || ELAN_BACKGROUND;
     elanDialogTheme(base);
+    elanIdle(base, cfg, hass);
     ELAN_HASS = hass;
     const label = (id) => NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
     const go = (h) => ({ action: "navigate", navigation_path: h });
