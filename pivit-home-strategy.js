@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.119";
+const VERSION = "1.1.120";
 
 const DEFAULTS = {
   title: "Home",
@@ -1980,19 +1980,49 @@ function elanTvRemote(remoteId) {
   };
 }
 
-// LED colour sync: a Sync button on colour LED rows opens "#led-sync-<led>" — pick other LEDs (All / Clear), then
-// Sync colour copies this LED's current colour and brightness to them. Selection lives in window.__pvSync.
-let ELAN_LEDS = []; // colour-capable, visible lights (set per generate)
+// LED color: the eyedropper button on color LED rows opens "#led-sync-<led>" — a full color picker, popular solid colors
+// and presets for this LED (and any other LEDs picked under "Also apply to"), plus Sync Color, which copies this LED's
+// current color and brightness to the picked LEDs. Selection lives in window.__pvSync.
+let ELAN_LEDS = []; // color-capable, visible lights (set per generate)
 const ledSyncHash = (id) => "#led-sync-" + slug(id.split(".")[1]);
-const ledSyncSub = (id) => ({ icon: "mdi:palette-swatch-variant", show_icon: true, show_background: true, tap_action: { action: "navigate", navigation_path: ledSyncHash(id) } });
+const ledSyncSub = (id) => ({ icon: "mdi:eyedropper-variant", show_icon: true, show_background: true, tap_action: { action: "navigate", navigation_path: ledSyncHash(id) } });
 const ledSyncStyle = (n) =>
   ` .bubble-sub-button-${n} { width: 40px !important; height: 36px !important; border-radius: 6px !important; justify-content: center !important; background: rgba(255,255,255,.10) !important; border: 1px solid rgba(255,255,255,.14); }` +
   ` .bubble-sub-button-${n} ha-icon { color: #fff !important; --mdc-icon-size: 19px; }`;
+// [name, rgb] — solid colors.
+const LED_COLORS = [
+  ["Red", [255, 0, 0]], ["Orange", [255, 110, 0]], ["Amber", [255, 170, 0]], ["Yellow", [255, 230, 0]],
+  ["Green", [0, 255, 40]], ["Teal", [0, 255, 170]], ["Cyan", [0, 220, 255]], ["Blue", [0, 60, 255]],
+  ["Purple", [130, 0, 255]], ["Magenta", [255, 0, 220]], ["Pink", [255, 80, 150]], ["White", [255, 255, 255]],
+];
+// [name, icon, colors] — presets; with several LEDs the colors alternate across them (this LED first).
+const LED_PRESETS = [
+  ["Warm White", "mdi:white-balance-incandescent", [{ color_temp_kelvin: 2700 }]],
+  ["Daylight", "mdi:white-balance-sunny", [{ color_temp_kelvin: 5000 }]],
+  ["Sunset", "mdi:weather-sunset", [[255, 70, 0], [255, 0, 90], [255, 150, 0]]],
+  ["Ocean", "mdi:waves", [[0, 80, 255], [0, 220, 255], [0, 255, 170]]],
+  ["Christmas", "mdi:pine-tree", [[255, 0, 0], [0, 255, 40]]],
+  ["USA", "mdi:flag", [[255, 0, 0], [255, 255, 255], [0, 60, 255]]],
+  ["Halloween", "mdi:halloween", [[255, 90, 0], [130, 0, 255]]],
+  ["Boomer Sooner", "mdi:football", [[160, 0, 20], [255, 230, 200]]],
+  ["Romance", "mdi:heart", [[255, 0, 60], [255, 60, 160]]],
+  ["Movie Night", "mdi:movie-open", [[60, 0, 255]], 40],
+];
 function ledSyncPopup(src, label) {
   const targets = ELAN_LEDS.filter((t) => t !== src);
   const store = "(window.__pvSync = window.__pvSync || {})";
   const K = JSON.stringify(src);
   const swatch = "((s) => { if (!s || s.state !== 'on') return 'rgba(255,255,255,.08)'; var c = s.attributes.rgb_color; return c ? 'rgb(' + c.join(',') + ')' : 'rgba(255,255,255,.3)'; })(hass.states['" + src + "'])";
+  // JS (as text) that sets this LED + the picked LEDs: colors = [rgb | {color_temp_kelvin}] alternating; bri 0-100 (optional).
+  const apply = (colorsExpr, bri) =>
+    " var A = " + store + "; var S = A[" + K + "] || {}; var ids = [" + K + "].concat(Object.keys(S).filter(function (k) { return S[k]; })); var C = " + colorsExpr + ";" +
+    " ids.forEach(function (id, i) { var c = C[i % C.length]; var d = Array.isArray(c) ? { rgb_color: c } : Object.assign({}, c);" + (bri ? " d.brightness_pct = " + bri + ";" : "") +
+    " card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action: { action: 'perform-action', perform_action: 'light.turn_on', target: { entity_id: id }, data: d } } } })); });";
+  const btn = (name, icon, cols, style, onClick) => ({
+    type: "custom:bubble-card", card_type: "button", button_type: "name", name, icon, grid_options: { columns: cols },
+    styles: ELAN_ROW_STYLE + style + " ${(card.__pvC || (card.__pvC = 1, card.addEventListener('click', function () {" + onClick + " })), '')}",
+    tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
+  });
   const row = (t) => ({
     type: "custom:bubble-card", card_type: "button", button_type: "name", name: label(t), icon: "mdi:led-strip-variant", grid_options: { columns: 6 },
     styles:
@@ -2009,37 +2039,52 @@ function ledSyncPopup(src, label) {
       " })()), '')}",
     tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
   });
-  const allClear = (name, icon, all) => ({
-    type: "custom:bubble-card", card_type: "button", button_type: "name", name, icon, grid_options: { columns: 6 },
-    styles:
-      ELAN_ROW_STYLE + " .bubble-button-card-container { height: 46px !important; } .bubble-name { font-size: 13px !important; letter-spacing: .1em; text-transform: uppercase; }" +
-      " ${(card.__pvC || (card.__pvC = 1, card.addEventListener('click', function () { var A = " + store + "; var S = A[" + K + "] = {};" +
-      (all ? " " + JSON.stringify(targets) + ".forEach(function (t) { S[t] = true; });" : "") +
-      " (A.__paint || []).forEach(function (f) { try { f(); } catch (e) {} }); })), '')}",
-    tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
-  });
-  const go = {
-    type: "custom:bubble-card", card_type: "button", button_type: "name", name: "Sync colour", icon: "mdi:palette-swatch-variant", grid_options: { columns: "full" },
-    styles:
-      ELAN_ROW_STYLE +
-      " .bubble-button-card-container { height: 60px !important; background: " + ELAN_ACCENT + " !important; } .bubble-icon { color: #fff !important; }" +
-      " .bubble-name { font-size: 16px !important; letter-spacing: .12em; text-transform: uppercase; }" +
-      " ${(card.__pvH = hass, card.__pvC || (card.__pvC = 1, card.addEventListener('click', function () { var A = " + store + "; var S = A[" + K + "] || {};" +
-      " var ids = Object.keys(S).filter(function (k) { return S[k]; }); var s = card.__pvH.states[" + K + "]; if (!ids.length || !s) return;" +
-      " var a = s.attributes; var data = s.state !== 'on' ? null : a.color_mode === 'color_temp' && a.color_temp_kelvin ? { color_temp_kelvin: a.color_temp_kelvin, brightness: a.brightness || 255 } : a.hs_color ? { hs_color: a.hs_color, brightness: a.brightness || 255 } : { brightness: a.brightness || 255 };" +
-      " card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
-      " data ? { action: 'perform-action', perform_action: 'light.turn_on', target: { entity_id: ids }, data: data } : { action: 'perform-action', perform_action: 'light.turn_off', target: { entity_id: ids } } } } }));" +
-      " A[" + K + "] = {}; (A.__paint || []).forEach(function (f) { try { f(); } catch (e) {} });" +
-      " history.replaceState(null, '', location.pathname); window.dispatchEvent(new Event('location-changed')); })), '')}",
-    tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
-  };
+  const allClear = (name, icon, all) => btn(name, icon, 6,
+    " .bubble-button-card-container { height: 46px !important; } .bubble-name { font-size: 13px !important; letter-spacing: .1em; text-transform: uppercase; }",
+    " var A = " + store + "; var S = A[" + K + "] = {};" + (all ? " " + JSON.stringify(targets) + ".forEach(function (t) { S[t] = true; });" : "") +
+    " (A.__paint || []).forEach(function (f) { try { f(); } catch (e) {} });");
+  // Full color picker: the current-color row holds an invisible native color input over the whole row — tap it, pick.
   const head = {
-    type: "custom:bubble-card", card_type: "button", button_type: "name", entity: src, name: label(src), icon: "mdi:palette", show_state: true, grid_options: { columns: "full" },
-    styles: "/*pv-nosync*/" + ELAN_ROW_STYLE + " .bubble-icon { color: #fff !important; } .bubble-main-icon-container { background: ${" + swatch + "} !important; border-radius: 50% !important; }" +
-      " .bubble-name-container::after { content: 'Copy this colour to…'; display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }",
+    type: "custom:bubble-card", card_type: "button", button_type: "name", entity: src, name: label(src), icon: "mdi:eyedropper-variant", show_state: false, grid_options: { columns: "full" },
+    styles: "/*pv-nosync*/" + ELAN_ROW_STYLE + " .bubble-button-card-container { height: 60px !important; } .bubble-icon { color: #fff !important; } .bubble-main-icon-container { background: ${" + swatch + "} !important; border-radius: 50% !important; }" +
+      " .bubble-name-container::after { content: 'Tap to pick any color'; display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }" +
+      " ${(card.__pvH = hass, card.__pvC || (card.__pvC = 1, (function () { var i = document.createElement('input'); i.type = 'color';" +
+      " i.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0;z-index:5;';" +
+      " var s0 = card.__pvH.states[" + K + "]; var c0 = s0 && s0.attributes.rgb_color; if (c0) i.value = '#' + c0.map(function (v) { return ('0' + v.toString(16)).slice(-2); }).join('');" +
+      " i.addEventListener('change', function () { var h = i.value; var rgb = [1, 3, 5].map(function (k) { return parseInt(h.substr(k, 2), 16); });" + apply("[rgb]") + " });" +
+      " card.style.position = 'relative'; card.appendChild(i); })()), '')}",
     tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
   };
-  return popupShell(ledSyncHash(src), "Sync colour", "mdi:palette-swatch-variant", [head, allClear("All", "mdi:checkbox-multiple-marked-outline", true), allClear("Clear", "mdi:checkbox-multiple-blank-outline", false), ...targets.map(row), go]);
+  const colorBtn = ([name, rgb]) => btn(name, "mdi:circle", 3,
+    " .bubble-button-card-container { height: 46px !important; } .bubble-main-icon-container { background: transparent !important; }" +
+    " .bubble-icon { color: rgb(" + rgb.join(",") + ") !important; --mdc-icon-size: 22px; filter: drop-shadow(0 0 4px rgba(" + rgb.join(",") + ",.8)); }" +
+    " .bubble-name { font-size: 12px !important; letter-spacing: .06em; text-transform: uppercase; }",
+    apply(JSON.stringify([rgb]), 100));
+  const presetBtn = ([name, icon, colors, bri]) => {
+    const grad = colors.map((c) => (Array.isArray(c) ? "rgb(" + c.join(",") + ")" : c.color_temp_kelvin < 4000 ? "#ffc27a" : "#eef4ff"));
+    return btn(name, icon, 6,
+      " .bubble-button-card-container { height: 50px !important; } .bubble-icon { color: #fff !important; }" +
+      " .bubble-main-icon-container { background: " + (grad.length > 1 ? "linear-gradient(135deg," + grad.join(",") + ")" : grad[0]) + " !important; border-radius: 50% !important; }" +
+      " .bubble-name { font-size: 14px !important; }",
+      apply(JSON.stringify(colors), bri || 100));
+  };
+  const go = btn("Sync Color", "mdi:sync", "full",
+    " .bubble-button-card-container { height: 56px !important; background: " + ELAN_ACCENT + " !important; } .bubble-icon { color: #fff !important; }" +
+    " .bubble-name { font-size: 16px !important; letter-spacing: .12em; text-transform: uppercase; }" +
+    " ${(card.__pvH = hass, '')}",
+    " var A = " + store + "; var S = A[" + K + "] || {};" +
+    " var ids = Object.keys(S).filter(function (k) { return S[k]; }); var s = card.__pvH.states[" + K + "]; if (!ids.length || !s) return;" +
+    " var a = s.attributes; var data = s.state !== 'on' ? null : a.color_mode === 'color_temp' && a.color_temp_kelvin ? { color_temp_kelvin: a.color_temp_kelvin, brightness: a.brightness || 255 } : a.hs_color ? { hs_color: a.hs_color, brightness: a.brightness || 255 } : { brightness: a.brightness || 255 };" +
+    " card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+    " data ? { action: 'perform-action', perform_action: 'light.turn_on', target: { entity_id: ids }, data: data } : { action: 'perform-action', perform_action: 'light.turn_off', target: { entity_id: ids } } } } }));" +
+    " A[" + K + "] = {}; (A.__paint || []).forEach(function (f) { try { f(); } catch (e) {} });" +
+    " history.replaceState(null, '', location.pathname); window.dispatchEvent(new Event('location-changed'));");
+  return popupShell(ledSyncHash(src), "LED Color", "mdi:eyedropper-variant", [
+    head,
+    elanSubhead("Colors"), ...LED_COLORS.map(colorBtn),
+    elanSubhead("Presets"), ...LED_PRESETS.map(presetBtn),
+    ...(targets.length ? [elanSubhead("Also apply to"), allClear("All", "mdi:checkbox-multiple-marked-outline", true), allClear("Clear", "mdi:checkbox-multiple-blank-outline", false), ...targets.map(row), go] : []),
+  ]);
 }
 
 function elanCards(cards) {
@@ -2056,7 +2101,7 @@ function elanCards(cards) {
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
       out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
     if (out.type === "custom:bubble-card" && out.card_type === "button") out.styles = ((out.styles || "") + ELAN_PHONE_NAME_STYLE).trim();
-    if (out.type === "custom:bubble-card" && out.card_type === "button" && out.entity && ELAN_LEDS.includes(out.entity) && !(out.styles || "").includes("/*pv-nosync*/") && !(out.sub_button || []).some((b) => b.icon === "mdi:palette-swatch-variant")) {
+    if (out.type === "custom:bubble-card" && out.card_type === "button" && out.entity && ELAN_LEDS.includes(out.entity) && !(out.styles || "").includes("/*pv-nosync*/") && !(out.sub_button || []).some((b) => b.icon === "mdi:eyedropper-variant")) {
       out.sub_button = [...(out.sub_button || []), ledSyncSub(out.entity)];
       out.styles = (out.styles || "") + ledSyncStyle(out.sub_button.length);
     }

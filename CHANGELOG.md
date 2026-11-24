@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.120 — 2026-11-24
+
+- PivIT ELAN LEDs: the palette button is now an eyedropper that opens "LED Color": tap the top row for a full color picker; 12 solid colors (Red … White); presets (Warm White, Daylight, Sunset, Ocean, Christmas, USA, Halloween, Boomer Sooner, Romance, Movie Night — multi-color presets alternate across LEDs); "Also apply to" other LEDs, and Sync Color. US spelling ("color") throughout.
+
 ## 1.1.119 — 2026-11-24
 
 - PivIT ELAN Media: the › arrows are gone from the zone rows (tapping the row still opens the player).
