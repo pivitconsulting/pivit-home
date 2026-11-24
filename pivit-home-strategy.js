@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.95";
+const VERSION = "1.1.96";
 
 const DEFAULTS = {
   title: "Home",
@@ -1943,8 +1943,10 @@ function elanClimateRow(id, name, hash, opts = {}) {
                 ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { display: block !important; font-size: 12px !important; letter-spacing: .04em; color: #fff !important; opacity: 1 !important; white-space: nowrap; }` +
                 ` @media (max-width: 520px) { .bubble-sub-button-${7 + i} { left: ${10 + i * 104}px; width: 98px !important; } .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; } }` +
                 // Narrow panels (e.g. the Pool pop-up): smaller buttons so the current temperature has room.
-                ` @container (max-width: 600px) { .bubble-sub-button-${7 + i} { left: ${12 + i * 96}px; width: 90px !important; height: 34px !important; padding: 0 6px !important; gap: 4px !important; }` +
-                ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; letter-spacing: 0 !important; } .bubble-sub-button-${7 + i} ha-icon { --mdc-icon-size: 15px; } }`
+                ` @container (max-width: 600px) { .bubble-sub-button-${7 + i} { left: ${12 + i * 110}px; width: 104px !important; height: 34px !important; padding: 0 6px !important; gap: 5px !important; }` +
+                ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: 0 !important; } .bubble-sub-button-${7 + i} ha-icon { --mdc-icon-size: 16px; } }` +
+                // Never scroll the label: it always fits the button.
+                ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container, .bubble-sub-button-${7 + i} .bubble-sub-button-name-container * { overflow: visible !important; text-overflow: clip !important; animation: none !important; transform: none !important; max-width: none !important; }`
             )
             .join("") +
           " @media (max-width: 520px) { .bubble-button-card-container { height: 118px !important; } }"
@@ -2749,7 +2751,7 @@ class PivitElanStrategy extends HTMLElement {
         // Left → right (Bubble lays sub-buttons out in order at the right end): audio, TV, lock, fan, lights, temperature.
         if (audio.length) icon(audio[0], "mdi:speaker", hash + "-audio", [anyIn(audio, ["playing"])], WHITE);
         if (tvs.length) icon(tvs[0], "mdi:television", hash + "-tv", [anyIn(tvs, ["on", "playing", "paused", "buffering"])], WHITE);
-        if (rlocks.length) icon(rlocks[0], "mdi:lock-open-variant", hash + "-locks", [anyIn(rlocks, UNLOCKED)], WHITE);
+        if (rlocks.length) icon(rlocks[0], "mdi:lock-open-variant", hash + "-locks", [anyIn(rlocks, UNLOCKED)], "#f2c12e"); // gold padlock, as on the lock buttons
         if (fans.length) icon(fans[0], "mdi:ceiling-fan", hash + "-fans", [anyIn(fans, ["on"])], WHITE);
         if (lights.length && !poolBodies.length) icon(lights[0], "mdi:lightbulb-group", hash + "-lights", [anyIn(lights, ["on"])], WHITE);
         if (poolBodies.length) {

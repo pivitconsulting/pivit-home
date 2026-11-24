@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.96 — 2026-11-23
+
+- Pool / Spa panel buttons in narrow panels: 104px with 12px labels that never scroll.
+- PivIT ELAN Rooms tiles: the unlocked-door icon is the gold padlock used on the lock buttons.
+
 ## 1.1.95 — 2026-11-23
 
 - Pool / Spa panel buttons: content centred; smaller in narrow panels (Pool pop-up) so the current temperature isn't covered.
