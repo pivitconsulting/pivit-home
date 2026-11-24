@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.109 — 2026-11-24
+
+- ELAN room pop-ups: the ELAN TV remote (touchpad, volume, apps) at the bottom for each Android TV / Google TV in the room.
+
 ## 1.1.108 — 2026-11-24
 
 - TV touchpad label: centred for real (`.bubble-name` is a flex box; justify-content centre).

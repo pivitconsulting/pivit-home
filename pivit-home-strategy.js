@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.108";
+const VERSION = "1.1.109";
 
 const DEFAULTS = {
   title: "Home",
@@ -2599,7 +2599,12 @@ class PivitElanStrategy extends HTMLElement {
         c.card_type === "media-player" && c.entity && ((hass.entities || {})[c.entity] || {}).platform === "cast"
           ? { ...c, show_power_button: false, styles: ((c.styles || "") + " .bubble-power-button, .power-button { display: none !important; }").trim() }
           : c;
-      pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...pp.cards.filter(isTv).map(noPower)];
+      // …and the ELAN remote for each Android TV / Google TV in the room at the very bottom.
+      const roomRemotes = Object.values(hass.entities || {})
+        .filter((e) => e.entity_id.startsWith("remote.") && e.platform === "androidtv_remote" && !e.hidden && hass.states[e.entity_id])
+        .filter((e) => (e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id) === r.id)
+        .map((e) => e.entity_id);
+      pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...pp.cards.filter(isTv).map(noPower), ...roomRemotes.map((id) => elanTvRemote(id))];
     }
     // Rooms without a thermostat of their own get the one that covers them in their pop-up: room_thermostats (e.g.
     // Kitchen → Living Room's), else floor_thermostats (e.g. upstairs bedrooms).
