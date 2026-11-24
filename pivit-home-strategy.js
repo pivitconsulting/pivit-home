@@ -80,6 +80,7 @@ const domainOf = (id) => id.split(".")[0];
 
 class PivitHomeStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
+    installRecentHelper();
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
     cfg.intercoms = enrichIntercoms(cfg.intercoms, hass);
     NAMES = cfg.entity_names || {};
@@ -2443,6 +2444,7 @@ function installRecentHelper() {
 
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
+    installRecentHelper();
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
     cfg.intercoms = enrichIntercoms(cfg.intercoms, hass);
     NAMES = cfg.entity_names || {};
