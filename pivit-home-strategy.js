@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.68";
+const VERSION = "1.1.69";
 
 const DEFAULTS = {
   title: "Home",
@@ -1538,14 +1538,24 @@ function elanRow({ name, icon, sub, value, label, tap, extra = {} }) {
 // Vertical centring hook: the card's vertical-stack (menu or page content) is centred in the window by a top margin on
 // its grid cell; with sticky, it also stays there while the page scrolls (menu). Re-measured on resize and whenever the
 // stack changes height (e.g. Home alert chips appearing). HA's view container breaks position: fixed, hence margin.
-const elanCenterHook = (flag, sticky) =>
+const elanCenterHook = (flag, sticky, visTopSel) =>
   " ${(card." + flag + " || (card." + flag + " = 1, (function pin(tries) {" +
   " var up = function (n) { return n.parentElement || (n.parentNode && n.parentNode.host) || null; };" +
   " var n = card, stack = null; for (var i = 0; i < 40 && n; i++) { n = up(n); if (n && n.tagName === 'HUI-VERTICAL-STACK-CARD') { stack = n; break; } }" +
   " var item = stack; while (item && up(item) && getComputedStyle(up(item)).display !== 'grid') item = up(item);" +
   " if (!item || !stack.getBoundingClientRect().height) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
+  " var hdrEl = null; for (var m = card, j = 0; j < 60 && m; j++) { m = up(m); if (m && m.tagName === 'HUI-ROOT') { hdrEl = m.shadowRoot && m.shadowRoot.querySelector('.header'); break; } }" +
   " var place = function () { var h = stack.getBoundingClientRect().height; if (!h) return; item.style.marginTop = '0px';" +
-  " var top0 = item.getBoundingClientRect().top + (window.scrollY || 0); var want = Math.max(0, (window.innerHeight - h) / 2);" +
+  // Centre in the visible area: below Home Assistant's header bar when it shows (admins), the whole window when hidden.
+  " var hb = hdrEl ? hdrEl.getBoundingClientRect() : null; var areaTop = hb && hb.height && getComputedStyle(hdrEl).display !== 'none' ? Math.max(0, hb.bottom) : 0;" +
+  // visTopSel: centre from where the visible content starts (e.g. the Home clock card has empty space above "HOME").
+  " var off = 0; " + (visTopSel
+    ? "var vt = card.querySelector(" + JSON.stringify(visTopSel) + ") || card.getRootNode().querySelector(" + JSON.stringify(visTopSel) + "); var st0 = stack.getBoundingClientRect().top;" +
+      // Visible bottom: the lowest drawn element in the stack (alert chips can spill past their card's box).
+      " var bot = stack.getBoundingClientRect().bottom; (function walk(r) { r.querySelectorAll('*').forEach(function (e) { var b = e.getBoundingClientRect(); if (b.height && b.width && b.bottom > bot && b.bottom < st0 + 3000) bot = b.bottom; if (e.shadowRoot) walk(e.shadowRoot); }); })(stack.shadowRoot || stack);" +
+      " if (vt) { off = Math.max(0, vt.getBoundingClientRect().top - st0); } h = bot - st0 - off;"
+    : "") +
+  " var top0 = item.getBoundingClientRect().top + (window.scrollY || 0) + off; var want = areaTop + Math.max(0, (window.innerHeight - areaTop - h) / 2);" +
   " item.style.alignSelf = 'start';" + (sticky ? " item.style.position = 'sticky'; item.style.top = want + 'px'; item.style.zIndex = '2';" : "") +
   " item.style.marginTop = Math.max(0, want - top0) + 'px'; };" +
   " place(); setTimeout(place, 800); window.addEventListener('resize', place); if (window.ResizeObserver) new ResizeObserver(place).observe(stack); })(0)), '')}";
@@ -2437,7 +2447,7 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-button-card-container::after { content: \"${new Date().toLocaleDateString([], { weekday: 'long' }) + ' · ' + new Date().toLocaleDateString([], { month: 'long', day: 'numeric' })" + wx + "}\";" +
             " position: absolute; left: 0; right: 0; bottom: 8%; text-align: center; font-size: 18px; opacity: .7; }" +
             // Home content (clock, date, alert chips) centred vertically in the window, like the menu.
-            elanCenterHook("__pvHomeC", false) +
+            elanCenterHook("__pvHomeC", false, ".bubble-name-container") +
             // Phones: shorter hero and smaller clock so the alert chips underneath stay on screen above the bottom bar.
             " @media (max-width: 999px) { .bubble-button-card-container { height: 36vh !important; min-height: 250px; } .bubble-name { font-size: 22px !important; }" +
             " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }",

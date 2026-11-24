@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.69 — 2026-11-23
+
+- PivIT ELAN centring fixed: menu and Home content are centred in the visible area below Home Assistant's header bar when it shows (admins), or the whole window when it's hidden (kiosk). Home centres on what's visible — from "HOME" down to the last alert chip — not the clock card's empty top.
+
 ## 1.1.68 — 2026-11-23
 
 - PivIT ELAN Home: the clock, date and alert chips are centred vertically in the window (same method as the menu; re-centres as chips come and go). Shared `elanCenterHook` for both.
