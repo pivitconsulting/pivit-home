@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.86";
+const VERSION = "1.1.87";
 
 const DEFAULTS = {
   title: "Home",
@@ -1606,7 +1606,11 @@ function elanPool(hass, cards, bodies) {
     const temp = ids.find((id) => domainOf(id) === "sensor" && new RegExp(`(^|_)${key}_temp`).test(id)) ||
       Object.keys(hass.states).find((id) => domainOf(id) === "sensor" && new RegExp(`_${key}_temp$`).test(id));
     const heater = ids.find((id) => domainOf(id) === "switch" && new RegExp(`${key}_heater`).test(id));
-    used.add(b.entity); if (temp) used.add(temp); if (heater) used.add(heater);
+    // The body's mode switch (pool pump → Pool Mode, spa pump → Spa Mode) sits in its panel beside Heater.
+    const mode = ids.find((id) => domainOf(id) === "switch" && new RegExp(`${key}_pump`).test(id));
+    used.add(b.entity); if (temp) used.add(temp); if (heater) used.add(heater); if (mode) used.add(mode);
+    const modeOn = mode ? "(hass.states['" + mode + "'] && hass.states['" + mode + "'].state === 'on')" : "false";
+    const hIdx = mode ? 2 : 1; // heater sub-button position
     const title = key === "spa" ? "Spa" : "Pool";
     const tempExpr = temp
       ? "((s) => s && !isNaN(parseFloat(s.state)) ? Math.round(parseFloat(s.state)) + '°' : '--')(hass.states['" + temp + "'])"
@@ -1621,6 +1625,9 @@ function elanPool(hass, cards, bodies) {
       grid_options: { columns: "full", rows: 2 },
       ...action({ action: "more-info" }),
       sub_button: [
+        ...(mode
+          ? [{ entity: mode, name: `${title} Mode`, icon: "mdi:pump", show_name: true, show_icon: true, show_background: true, tap_action: { action: "toggle" } }]
+          : []),
         ...(heater
           ? [{ entity: heater, name: "Heater", icon: "mdi:fire", show_name: true, show_icon: true, show_background: true, tap_action: { action: "toggle" } }]
           : []),
@@ -1636,11 +1643,15 @@ function elanPool(hass, cards, bodies) {
         // Phones: keep the − / + setpoint controls (they win over the row style's phone rule); the water temperature
         // moves into the subtitle to make room.
         " @media (max-width: 520px) { .bubble-temperature-container, .bubble-target-temperature-container { display: flex !important; }" +
-        " .bubble-buttons-container::before { content: none !important; } .bubble-sub-button-1 .bubble-sub-button-name-container { display: none !important; }" +
+        " .bubble-buttons-container::before { content: none !important; } .bubble-sub-button .bubble-sub-button-name-container { display: none !important; }" +
         " .bubble-name-container::after { content: \"${" + tempExpr + " + ' · ' + (" + heaterOn + " ? 'heating' : 'heater off')}\" !important; } }" +
         (heater
-          ? " .bubble-sub-button-1 { background: ${" + heaterOn + " ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
-            " .bubble-sub-button-1 ha-icon { color: ${" + heaterOn + " ? '#fff' : '#f5a442'} !important; }"
+          ? ` .bubble-sub-button-${hIdx} { background: \${` + heaterOn + ` ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }` +
+            ` .bubble-sub-button-${hIdx} ha-icon { color: \${` + heaterOn + ` ? '#fff' : '#f5a442'} !important; }`
+          : "") +
+        (mode
+          ? " .bubble-sub-button-1 { background: ${" + modeOn + " ? '" + ELAN_ACCENT + "' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
+            " .bubble-sub-button-1 ha-icon { color: ${" + modeOn + " ? '#fff' : '#9cc5f5'} !important; }"
           : ""),
     });
   }

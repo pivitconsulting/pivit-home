@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.87 — 2026-11-23
+
+- PivIT ELAN Pool: Pool Mode and Spa Mode (the pool / spa pump switches) are buttons inside the Pool and Spa panels beside Heater (blue when on), no longer in the button grid.
+
 ## 1.1.86 — 2026-11-23
 
 - PivIT ELAN Pool (page and Pool pop-up): "All Pool Off" row at the top, like Media's All Zones Off — turns off every pump, light, feature and heater on the card that's on; shows how many are on.
