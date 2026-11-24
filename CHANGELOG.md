@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.75 — 2026-11-23
+
+- PivIT ELAN pop-ups: ceiling fans get OFF / LOW / MED / HIGH buttons instead of a speed slider (speeds from the fan's step count — 7 speeds: low 2, medium 4, high 7); the nearest speed lights up; tap the name to toggle.
+
 ## 1.1.74 — 2026-11-23
 
 - PivIT ELAN pop-up titles: taller line box so descenders (the g in "Living Room") aren't clipped.

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.74";
+const VERSION = "1.1.75";
 
 const DEFAULTS = {
   title: "Home",
@@ -1743,6 +1743,46 @@ function elanThermostat(id, name) {
     });
   return { type: "vertical-stack", cards, grid_options: { columns: "full" } };
 }
+// Ceiling fans on ELAN: a row with OFF / LOW / MED / HIGH instead of a speed slider. Speeds come from the fan's step
+// count (e.g. 7 speeds → low 2, medium 4, high 7); the button nearest the current speed lights up. Tap the name to toggle.
+function elanFanCard(id, name) {
+  const st = ELAN_HASS && ELAN_HASS.states[id];
+  const label = name || NAMES[id] || (st && st.attributes.friendly_name) || id;
+  const step = (st && st.attributes.percentage_step) || 100 / 3;
+  const n = Math.max(1, Math.round(100 / step));
+  const pct = (k) => Math.min(100, Math.round(k * step * 100) / 100);
+  const speeds = n >= 3 ? [["Low", pct(Math.max(1, Math.round(n * 0.3)))], ["Med", pct(Math.round(n * 0.57))], ["High", 100]] : [["Low", pct(1)], ["High", 100]];
+  const P = "((hass.states['" + id + "'] || {}).state === 'on' ? ((hass.states['" + id + "'] || { attributes: {} }).attributes.percentage || 0) : 0)";
+  // Which button is lit: off when off; otherwise the speed with the nearest percentage.
+  const lit = (i) =>
+    i === 0
+      ? "(" + P + " === 0)"
+      : "(" + P + " > 0 && " + JSON.stringify(speeds.map((x) => x[1])) + ".reduce((b, v, j, a) => Math.abs(v - " + P + ") < Math.abs(a[b] - " + P + ") ? j : b, 0) === " + (i - 1) + ")";
+  const subs = [
+    { name: "Off", show_name: true, show_icon: false, show_background: true, tap_action: { action: "perform-action", perform_action: "fan.turn_off", target: { entity_id: id } } },
+    ...speeds.map(([nm, v]) => ({ name: nm, show_name: true, show_icon: false, show_background: true, tap_action: { action: "perform-action", perform_action: "fan.set_percentage", target: { entity_id: id }, data: { percentage: v } } })),
+  ];
+  return {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    entity: id,
+    name: label,
+    icon: "mdi:ceiling-fan",
+    show_state: false,
+    grid_options: { columns: "full" },
+    sub_button: subs,
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-sub-button-container { gap: 6px !important; margin-right: 8px !important; }" +
+      " .bubble-sub-button { width: 64px !important; height: 36px !important; justify-content: center !important; border-radius: 4px !important; border: 1px solid rgba(255,255,255,.12); }" +
+      " .bubble-sub-button .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; color: #f2f5fa !important; opacity: 1 !important; }" +
+      " @media (max-width: 520px) { .bubble-sub-button { width: 46px !important; } .bubble-sub-button .bubble-sub-button-name-container { font-size: 10px !important; letter-spacing: .03em; } }" +
+      subs.map((_, i) => ` .bubble-sub-button-${i + 1} { background: \${${lit(i)} ? '${i === 0 ? "rgba(255,255,255,.28)" : ELAN_ACCENT}' : 'rgba(255,255,255,.06)'} !important; }`).join("") +
+      " .bubble-icon { color: ${(hass.states['" + id + "'] || {}).state === 'on' ? '" + ELAN_ACCENT + "' : '#e9eef7'} !important; }",
+    ...action({ action: "toggle" }),
+  };
+}
 function elanCards(cards) {
   return (cards || []).map((c) => {
     if (!c || typeof c !== "object") return c;
@@ -1751,6 +1791,7 @@ function elanCards(cards) {
       out.use_art_colors = false; // ELAN palette, not album colours
       out.action = out.action || { tap_action: { action: "none" } }; // already in the room's pop-up: no grey media dialog
     }
+    if (out.entity && domainOf(out.entity) === "fan" && ["custom:bubble-card", "tile"].includes(out.type)) return elanFanCard(out.entity, out.name);
     if (out.type === "thermostat" && out.entity) return elanThermostat(out.entity, out.name);
     if (out.type === "custom:bubble-card" && out.card_type === "climate" && out.entity && !/pool|spa/i.test(out.entity)) return elanThermostat(out.entity, out.name);
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
