@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.120";
+const VERSION = "1.1.121";
 
 const DEFAULTS = {
   title: "Home",
@@ -2056,9 +2056,12 @@ function ledSyncPopup(src, label) {
     tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
   };
   const colorBtn = ([name, rgb]) => btn(name, "mdi:circle", 3,
-    " .bubble-button-card-container { height: 46px !important; } .bubble-main-icon-container { background: transparent !important; }" +
-    " .bubble-icon { color: rgb(" + rgb.join(",") + ") !important; --mdc-icon-size: 22px; filter: drop-shadow(0 0 4px rgba(" + rgb.join(",") + ",.8)); }" +
-    " .bubble-name { font-size: 12px !important; letter-spacing: .06em; text-transform: uppercase; }",
+    // The whole tile is the color, name centered (no icon — narrow tiles cut names off).
+    " .bubble-button-card-container { height: 46px !important; background: linear-gradient(135deg, rgba(" + rgb.join(",") + ",.75), rgba(" + rgb.join(",") + ",.35)) !important;" +
+    " border: 1px solid rgba(" + rgb.join(",") + ",.9) !important; } .bubble-main-icon-container { display: none !important; }" +
+    " .bubble-name-container { margin: 0 !important; width: 100% !important; align-items: center !important; } .bubble-name { justify-content: center !important; text-align: center; width: 100%;" +
+    " font-size: 12px !important; letter-spacing: .06em; text-transform: uppercase; color: #fff !important; text-shadow: 0 1px 3px rgba(0,0,0,.7); }" +
+    " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }",
     apply(JSON.stringify([rgb]), 100));
   const presetBtn = ([name, icon, colors, bri]) => {
     const grad = colors.map((c) => (Array.isArray(c) ? "rgb(" + c.join(",") + ")" : c.color_temp_kelvin < 4000 ? "#ffc27a" : "#eef4ff"));
