@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.99";
+const VERSION = "1.1.100";
 
 const DEFAULTS = {
   title: "Home",
@@ -3275,7 +3275,7 @@ class PivitElanStrategy extends HTMLElement {
         camTitle.styles +=
           " .bubble-sub-button-container { position: absolute !important; right: 0; top: 50%; transform: translateY(-50%); }" +
           " .bubble-sub-button-1 { height: 34px !important; padding: 0 14px !important; gap: 8px !important; border-radius: 4px !important; background: rgba(255,255,255,.08) !important; border: 1px solid rgba(255,255,255,.35); }" +
-          " .bubble-sub-button-1 ha-icon { color: #f2c12e !important; --mdc-icon-size: 18px; }" +
+          " .bubble-sub-button-1 ha-icon { color: #fff !important; --mdc-icon-size: 18px; }" +
           " .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; }" +
           " @media (max-width: 520px) { .bubble-sub-button-1 .bubble-sub-button-name-container { display: none !important; } .bubble-sub-button-1 { padding: 0 10px !important; } }";
       }

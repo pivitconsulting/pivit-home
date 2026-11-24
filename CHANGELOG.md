@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.100 — 2026-11-24
+
+- PivIT ELAN Cameras: the EVENTS button's icon is white, matching its text.
+
 ## 1.1.99 — 2026-11-24
 
 - Recent-detection icons (camera tiles, room motion, Home detections chip) ignore a mass reset — when many detection sensors change at the same moment (integration reload / restart), they're not treated as recent, so every icon no longer lights at once.
