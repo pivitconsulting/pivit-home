@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.102";
+const VERSION = "1.1.103";
 
 const DEFAULTS = {
   title: "Home",
@@ -2548,7 +2548,8 @@ class PivitElanStrategy extends HTMLElement {
         .filter((e) => (e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id) === r.id)
         .map((e) => e.entity_id);
       if (!pp || !remotes.length || JSON.stringify(pp.cards || []).includes('"Remote"')) continue;
-      pp.cards = [...(pp.cards || []), ...remotes.map((id) => elanTvRemote(id))];
+      // Keep the TV's now-playing card; the ELAN remote replaces the PivIT Home power button and d-pad.
+      pp.cards = [...(pp.cards || []).filter((c) => c.card_type === "media-player"), ...remotes.map((id) => elanTvRemote(id))];
     }
     // Rooms without a thermostat of their own get the one that covers them in their pop-up: room_thermostats (e.g.
     // Kitchen → Living Room's), else floor_thermostats (e.g. upstairs bedrooms).

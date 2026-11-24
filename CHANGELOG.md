@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.103 — 2026-11-24
+
+- ELAN TV pop-ups with an Android TV remote: the PivIT Home power button and d-pad are replaced by the ELAN remote (the now-playing card stays), so there's one remote.
+
 ## 1.1.102 — 2026-11-24
 
 - ELAN TV remote: app quick-launch row — Hulu, Netflix, Prime Video, Disney+ (in that order), each a button in the service's brand colour with its name.
