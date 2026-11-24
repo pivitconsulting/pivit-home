@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.78";
+const VERSION = "1.1.79";
 
 const DEFAULTS = {
   title: "Home",
@@ -2998,7 +2998,7 @@ class PivitElanStrategy extends HTMLElement {
           ...popupShell("#camera-events", "Camera Events", "mdi:filmstrip-box-multiple", [
             { type: "custom:pivit-events-card", cameras: ctx.cameras.filter((id) => (hass.entities[id] || {}).platform === "unifiprotect").map((id) => ({ name: camName(id), match: protectName(id) })), grid_options: { columns: "full" } },
           ]),
-          width_desktop: "1100px",
+          width_desktop: "900px",
         });
       views.push(view("video", "Cameras", { wide: [camTitle, ...eventsButton, grid(2)], narrow: [camTitle, ...eventsButton, grid(1)] }, camPopups));
     }
@@ -3130,7 +3130,7 @@ class PivitEventsCard extends HTMLElement {
       }
       const all = (await Promise.all(jobs)).flat();
       const items = all.map((e) => {
-        const m = (e.title || "").match(/^(\d+\/\d+\/\d+)\s+(\d+:\d+):\d+\s+(\d+s)?\s*(.*)$/);
+        const m = (e.title || "").match(/^(\d+\/\d+\/\d+)\s+(\d+:\d+):\d+\s+((?:\d+h\s*)?(?:\d+m\s*)?\d+s)?\s*(.*)$/);
         const desc = m ? m[4].replace(/^(Object Detection|Ring Event|Smart Detection)\s*-?\s*/i, "") : e.title;
         return { id: e.media_content_id, thumb: e.thumbnail, cam: e.cam, kind: PivitEventsCard._kind(e.title), when: m ? `${m[1]} ${m[2]}` : "", desc, sort: e.title || "" };
       });

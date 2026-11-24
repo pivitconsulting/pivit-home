@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.79 — 2026-11-23
+
+- Camera Events: pop-up 900px wide (1100px overflowed iPad-landscape windows); descriptions of clips over a minute no longer start with "1m 5s Object Detection".
+
 ## 1.1.78 — 2026-11-23
 
 - PivIT ELAN Cameras: the Events row is now an EVENTS button at the right end of the "Cameras" title line (gold icon; icon only on phones).
