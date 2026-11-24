@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.92 — 2026-11-23
+
+- PivIT ELAN Scenes: `alarm_code: <alarm panel>` on a scene — RUN opens a keypad pop-up (the alarm keypad) with a RUN button that calls the script with the code as its `code` field, then closes. The code isn't stored.
+
 ## 1.1.91 — 2026-11-23
 
 - PivIT ELAN Rooms tiles: status icons are white (only the temperature is coloured).

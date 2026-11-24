@@ -58,7 +58,7 @@ All options are optional and go under `strategy:`.
 | `elan_rooms` | `true` | PivIT ELAN: show the Rooms page (Savant-style room tiles) below Climate |
 | `camera_events` | `true` | PivIT ELAN: Camera Events list and per-camera event strips (UniFi Protect clips) |
 | `elan_room_order` | `[]` | PivIT ELAN: Rooms page order (room ids or names); unlisted rooms follow |
-| `elan_scenes` | `[]` | PivIT ELAN: Scenes page (below Rooms) — `[{ entity: script.x, name, icon, description }]`; tap or RUN asks to confirm, then runs the script |
+| `elan_scenes` | `[]` | PivIT ELAN: Scenes page (below Rooms) — `[{ entity: script.x, name, icon, description, alarm_code }]`; tap or RUN asks to confirm, then runs the script. With `alarm_code: <alarm panel>`, RUN opens a keypad pop-up instead and passes the code to the script as `code` |
 | `camera_order` | `[]` | Camera entity_ids shown first, in this order, on the camera pages; the rest follow |
 | `exclude_platforms` | network, NAS, UPS, Supervisor, backup, iBeacon, mobile app | Integrations whose entities are left out of rooms |
 | `room_domains` | climate, media_player, cover, light, fan, switch, lock, vacuum | Entity types shown in rooms |

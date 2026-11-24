@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.91";
+const VERSION = "1.1.92";
 
 const DEFAULTS = {
   title: "Home",
@@ -1981,7 +1981,9 @@ function elanClimateRow(id, name, hash, opts = {}) {
 // ELAN alarm controls for the Home Security pop-up: ARM HOME / ARM AWAY / DISARM as ELAN segmented buttons with gold
 // icons (current mode filled blue, like LOCK / UNLOCK), and — when the alarm needs a code — an ELAN keypad. The code
 // typed on the keypad is held in the browser only until a button is tapped, then sent with that command and cleared.
-function elanAlarmCards(hass, id) {
+// opts.run = { service: "script.bed_time", label: "Run Bed Time" }: instead of Arm / Disarm, the keypad feeds a RUN
+// button that calls the service with { code } (e.g. a scene script that arms the alarm), then closes the pop-up.
+function elanAlarmCards(hass, id, opts = {}) {
   const st = hass.states[id];
   const feat = (st && st.attributes.supported_features) || 0;
   const needsCode = !!(st && st.attributes.code_format);
@@ -2034,7 +2036,34 @@ function elanAlarmCards(hass, id) {
     tap_action: none,
     button_action: { tap_action: none },
   };
-  if (!needsCode) return [segCard];
+  if (opts.run) {
+    const runHook =
+      "${(card.__pvC || (card.__pvC = 1, card.addEventListener('click', function () {" +
+      " var A = " + store + "; var code = A[" + JSON.stringify(id) + "] || '';" +
+      (needsCode ? " if (!code) { var kp = A[" + JSON.stringify(id + ":pad") + "]; if (kp) kp('Enter code first'); return; }" : "") +
+      " card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+      " { action: 'perform-action', perform_action: " + JSON.stringify(opts.run.service) + ", data: { code: code } } } } }));" +
+      " A[" + JSON.stringify(id) + "] = ''; var pad = A[" + JSON.stringify(id + ":pad") + "]; if (pad) pad('');" +
+      " history.replaceState(null, '', location.pathname); window.dispatchEvent(new Event('location-changed'));" +
+      " })), '')}";
+    const runCard = {
+      type: "custom:bubble-card",
+      card_type: "button",
+      button_type: "name",
+      name: opts.run.label || "Run",
+      icon: "mdi:play",
+      grid_options: { columns: "full" },
+      styles:
+        ELAN_ROW_STYLE +
+        ` .bubble-button-card-container { background: ${ELAN_ACCENT} !important; height: 60px !important; } .bubble-main-icon-container { box-shadow: none !important; }` +
+        " .bubble-icon { color: #f2c12e !important; } .bubble-name { font-size: 16px !important; letter-spacing: .12em; text-transform: uppercase; font-weight: 400 !important; }" +
+        " " + runHook,
+      tap_action: none,
+      button_action: { tap_action: none },
+    };
+    segCard.__pvRun = runCard;
+  }
+  if (!needsCode) return [segCard.__pvRun || segCard];
   const keys = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "⌫", "0", "C"];
   const padHook =
     "${(card.__pvC || (card.__pvC = 1, (function () {" +
@@ -2073,6 +2102,7 @@ function elanAlarmCards(hass, id) {
     tap_action: none,
     button_action: { tap_action: none },
   };
+  if (segCard.__pvRun) return [padCard, segCard.__pvRun];
   return [segCard, padCard];
 }
 
@@ -2778,10 +2808,19 @@ class PivitElanStrategy extends HTMLElement {
     }
     // SCENES — a large row per scene script: icon, name, what it does; tap → confirm → run. "Running…" while it runs.
     if (items.some((i) => i.path === "scenes")) {
+      const scenePopups = [];
       const rows = scenes.map((sc) => {
         const st = hass.states[sc.entity];
         const name = sc.name || NAMES[sc.entity] || st.attributes.friendly_name || sc.entity;
         const desc = (sc.description || "").replace(/"/g, "'");
+        // alarm_code: <alarm panel> — the scene arms that alarm, so RUN opens a keypad pop-up; the code goes to the
+        // script as its `code` field (it isn't stored anywhere).
+        let runTap = { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: sc.entity }, confirmation: { text: `Run ${name}?` } };
+        if (sc.alarm_code && hass.states[sc.alarm_code]) {
+          const hashP = "#scene-" + slug(sc.entity.split(".")[1]);
+          scenePopups.push(popupShell(hashP, name, sc.icon || "mdi:script-text-outline", elanAlarmCards(hass, sc.alarm_code, { run: { service: sc.entity, label: `Run ${name}` } })));
+          runTap = { action: "navigate", navigation_path: hashP };
+        }
         return {
           type: "custom:bubble-card",
           card_type: "button",
@@ -2791,8 +2830,7 @@ class PivitElanStrategy extends HTMLElement {
           icon: sc.icon || st.attributes.icon || "mdi:script-text-outline",
           show_state: false,
           grid_options: { columns: "full" },
-          sub_button: [{ name: "Run", icon: "mdi:play", show_name: true, show_icon: true, show_background: true,
-            tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: sc.entity }, confirmation: { text: `Run ${name}?` } } }],
+          sub_button: [{ name: "Run", icon: "mdi:play", show_name: true, show_icon: true, show_background: true, tap_action: runTap }],
           styles:
             ELAN_ROW_STYLE +
             " .bubble-button-card-container { height: 92px !important; } .bubble-icon { --mdc-icon-size: 34px; }" +
@@ -2801,11 +2839,11 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-sub-button-1 { height: 40px !important; padding: 0 18px !important; gap: 8px !important; border-radius: 4px !important; border: 1px solid rgba(255,255,255,.35);" +
             " background: ${(hass.states['" + sc.entity + "'] || {}).state === 'on' ? '" + ELAN_ACCENT + "' : 'rgba(255,255,255,.08)'} !important; }" +
             " .bubble-sub-button-1 ha-icon { color: #f2c12e !important; } .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; }",
-          tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: sc.entity }, confirmation: { text: `Run ${name}?` } },
-          button_action: { tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: sc.entity }, confirmation: { text: `Run ${name}?` } } },
+          tap_action: runTap,
+          button_action: { tap_action: runTap },
         };
       });
-      views.push(view("scenes", "Scenes", [elanTitle("Scenes"), ...rows]));
+      views.push(view("scenes", "Scenes", [elanTitle("Scenes"), ...rows], scenePopups));
     }
     // LIGHTING — rooms with the number of devices on; shades follow (ELAN keeps shades under lighting).
     if (items.some((i) => i.path === "lighting")) {
