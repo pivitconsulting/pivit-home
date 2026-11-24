@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.94 — 2026-11-23
+
+- Pool readings in narrow buttons (Pool pop-up): icon hidden, name wraps, so "Outside Temp" fits beside the value.
+
 ## 1.1.93 — 2026-11-23
 
 - PivIT ELAN Pool / Spa: the Mode and Heater buttons sit inside the Pool and Spa panels under the name, in place of the status text (`elanClimateRow` option `buttons`).

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.93";
+const VERSION = "1.1.94";
 
 const DEFAULTS = {
   title: "Home",
@@ -1689,6 +1689,10 @@ function elanPool(hass, cards, bodies) {
               " .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { display: none !important; } .bubble-sub-button-1 { width: auto !important; padding: 0 10px 0 4px !important; pointer-events: none; }" +
               " .bubble-sub-button-1::after { content: \"${" + val + "}\"; font-size: 26px; font-weight: 300; color: #f2f5fa; }" +
               " @media (max-width: 520px) { .bubble-sub-button-1::after { font-size: 20px; } }" +
+              // Narrow (three across in a pop-up): no icon, the name wraps, a slightly smaller value.
+              " .bubble-button-card-container { container-type: inline-size; } @container (max-width: 240px) { .bubble-main-icon-container { display: none !important; }" +
+              " .bubble-name-container { margin-left: 10px !important; min-width: 0 !important; } .bubble-name { white-space: normal !important; line-height: 1.15 !important; }" +
+              " .bubble-name .scrolling-container { animation: none !important; transform: none !important; } .bubble-sub-button-1::after { font-size: 22px; } }" +
               " @media (max-width: 520px) { .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; } .bubble-name { font-size: 13px !important; } }",
             tap_action: { action: "none" },
             button_action: { tap_action: { action: "none" } },
