@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.88";
+const VERSION = "1.1.89";
 
 const DEFAULTS = {
   title: "Home",
@@ -2421,8 +2421,8 @@ class PivitElanStrategy extends HTMLElement {
       const count = (ids, states) => "(" + JSON.stringify(ids) + ".filter((e) => hass.states[e] && " + JSON.stringify(states) + ".includes(hass.states[e].state)).length)";
       const toPage = (path) => go(`${base}/${path}`);
       const chip = (icon, text, colour, tap, visibility, showExpr) => chips.push({ icon, text, colour, tap, visibility, showExpr });
-      // Alarm: shown in the clock card, between the time and the date (see the HOME card below).
-      for (const id of [])
+      // Alarm: first, on its own centred line just below the date (a zero-height line break follows it).
+      for (const id of ctx.alarms)
         chip(
           "mdi:shield-lock-outline",
           "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : s === 'triggered' ? 'ALARM' : s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '')(" + st(id) + ")",
@@ -2431,6 +2431,7 @@ class PivitElanStrategy extends HTMLElement {
           go(`#security-${slug(id.split(".")[1])}`),
           null
         );
+      if (ctx.alarms.length) chips.push({ icon: "mdi:circle-small", text: "''", colour: "'transparent'", tap: { action: "none" }, visibility: null, lineBreak: true });
       // Doors / windows open (gate sensors have their own chip).
       const gateSensors = intercoms.map((ic) => ic.status_sensor).filter(Boolean);
       const contacts = Object.keys(hass.states).filter((e) => {
@@ -2535,6 +2536,7 @@ class PivitElanStrategy extends HTMLElement {
               .map(
                 (c, i) =>
                   ` .bubble-sub-button-${i + 1} ha-icon { color: \${${c.colour}} !important; --mdc-icon-size: 18px; order: 0; flex-shrink: 0; }` +
+                  (c.lineBreak ? ` .bubble-sub-button-${i + 1} { flex-basis: 100% !important; width: 100% !important; height: 0 !important; min-height: 0 !important; padding: 0 !important; margin: -4px 0 !important; border: 0 !important; background: none !important; overflow: hidden !important; }` : "") +
                   (c.showExpr ? ` .bubble-sub-button-${i + 1} { display: \${${c.showExpr} ? 'flex' : 'none'} !important; }` : "") +
                   ` .bubble-sub-button-${i + 1}::after { content: "\${${c.text}}"; font-size: 14px; white-space: normal; overflow-wrap: anywhere; text-align: left; line-height: 1.3; padding: 6px 0; min-width: 0; color: #f2f5fa; order: 1; }`
               )
@@ -2547,32 +2549,6 @@ class PivitElanStrategy extends HTMLElement {
     // Arm / disarm pop-up for an alarm panel (Security page and, from the alarm chip, the Home screen).
     const alarmPopup = (id) =>
       popupShell(`#security-${slug(id.split(".")[1])}`, NAMES[id] || "Home Security", "mdi:shield-lock-outline", [...elanAlarmCards(hass, id)]);
-    // Home alarm chip(s) in the clock card, centred between the time and the date: shield icon + state ("Disarmed",
-    // "Armed Away"; red while armed or triggered). Tap opens the arm / disarm pop-up on the Home screen. A small hook
-    // measures the clock's bottom and the date line's top and places the chip half-way.
-    const ast = (id) => "(hass.states['" + id + "'] ? hass.states['" + id + "'].state : '')";
-    const alarmChipSubs = ctx.alarms.map((id) => ({ icon: "mdi:shield-lock-outline", show_icon: true, show_name: false, show_background: true, tap_action: go(`#security-${slug(id.split(".")[1])}`) }));
-    const alarmChipStyles = ctx.alarms.length
-      ? " .bubble-sub-button-container { position: absolute !important; left: 0; right: 0; top: var(--pv-chip-top, 66%); display: flex !important; justify-content: center !important; gap: 8px !important; margin: 0 !important; width: 100% !important; z-index: 2; }" +
-        " .bubble-sub-button { width: auto !important; height: 34px !important; padding: 0 14px 0 10px !important; gap: 8px !important; border-radius: 4px !important; flex-direction: row !important; align-items: center !important;" +
-        ` background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.14); }` +
-        ctx.alarms
-          .map(
-            (id, i) =>
-              ` .bubble-sub-button-${i + 1} ha-icon { color: \${${ast(id)}.startsWith('armed') || ${ast(id)} === 'triggered' ? '${ELAN_HEAT}' : '#f2f5fa'} !important; --mdc-icon-size: 18px; }` +
-              ` .bubble-sub-button-${i + 1}::after { content: "\${((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : s === 'triggered' ? 'ALARM' : s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '')(${ast(id)})}"; font-size: 14px; color: #f2f5fa; white-space: nowrap; }`
-          )
-          .join("") +
-        // Place the chips half-way between the bottom of the time and the top of the date line (the date is the card's
-        // ::after, 8% (phones 4%) above the bottom, ~1.3 lines tall).
-        " ${(card.__pvChip || (card.__pvChip = 1, (function pin(tries) { var root = card.getRootNode ? card.getRootNode() : card; var box = (card.querySelector && card.querySelector('.bubble-button-card-container')) || root.querySelector('.bubble-button-card-container');" +
-        " var nm = (card.querySelector && card.querySelector('.bubble-name-container')) || root.querySelector('.bubble-name-container'); var subs = (card.querySelector && card.querySelector('.bubble-sub-button-container')) || root.querySelector('.bubble-sub-button-container');" +
-        " if (!box || !nm || !subs || !box.getBoundingClientRect().height) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
-        " var place = function () { var b = box.getBoundingClientRect(), n = nm.getBoundingClientRect(); if (!b.height) return; var cs = getComputedStyle(box, '::after');" +
-        " var fs = parseFloat(cs.fontSize) || 18; var bottomPct = parseFloat(cs.bottom) || b.height * 0.08; var dateTop = b.height - bottomPct - fs * 1.3 + fs * 0.3; var cfs = parseFloat(getComputedStyle(nm, '::after').fontSize) || 84; var clockBottom = n.bottom - b.top - cfs * 0.24;" +
-        " var chipH = subs.getBoundingClientRect().height || 34; box.style.setProperty('--pv-chip-top', Math.max(clockBottom, (clockBottom + dateTop) / 2 - chipH / 2) + 'px'); };" +
-        " place(); setTimeout(place, 600); window.addEventListener('resize', place); if (window.ResizeObserver) new ResizeObserver(place).observe(box); })(0)), '')}"
-      : "";
     // HOME — big thin clock and date in the middle (as on the ELAN home screen), weather underneath.
     const wx = ctx.weather
       ? " + ' · ' + Math.round((hass.states['" + ctx.weather + "'] || { attributes: {} }).attributes.temperature) + '° ' + " + titleCase("hass.states['" + ctx.weather + "'] && hass.states['" + ctx.weather + "'].state.replace('partlycloudy', 'partly cloudy')")
@@ -2599,9 +2575,7 @@ class PivitElanStrategy extends HTMLElement {
             elanCenterHook("__pvHomeC", false, ".bubble-name-container") +
             // Phones: shorter hero and smaller clock so the alert chips underneath stay on screen above the bottom bar.
             " @media (max-width: 999px) { .bubble-button-card-container { height: 36vh !important; min-height: 250px; } .bubble-name { font-size: 22px !important; }" +
-            " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }" +
-            alarmChipStyles,
-          sub_button: alarmChipSubs,
+            " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }",
         },
         ...homeAlerts(),
       ], ctx.alarms.map((id) => alarmPopup(id)))
@@ -2699,6 +2673,11 @@ class PivitElanStrategy extends HTMLElement {
         const climate = ft === "none" ? null : roomClimates(r, hass)[0] || (ft && hass.states[ft] ? ft : null);
         const subs = [];
         const styles = [];
+        // A room with a pool page (Pool): pump / spa / light icons while on, and the water temperature — the spa's while
+        // its heater runs (red), else the pool's (red while the pool heater runs).
+        const pv = extra.find((v) => slug(v.title || v.path) === slug(r.name));
+        const pent = pv ? (pv.sections || []).flatMap((x) => x.cards || []).map((c) => c.entity).filter((e) => e && hass.states[e]) : [];
+        const poolBodies = pent.filter((e) => domainOf(e) === "climate" && /pool|spa/i.test(e));
         const icon = (entity, ic, tap, vis, colour) => {
           subs.push({ entity, icon: ic, show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: go(tap), visibility: vis });
           styles.push(` .bubble-sub-button-${subs.length} ha-icon, .bubble-sub-button-${subs.length} .bubble-sub-button-icon { color: ${colour} !important; --mdc-icon-size: 22px; }`);
@@ -2708,8 +2687,32 @@ class PivitElanStrategy extends HTMLElement {
         if (tvs.length) icon(tvs[0], "mdi:television", hash + "-tv", [anyIn(tvs, ["on", "playing", "paused", "buffering"])], ELAN_ACCENT);
         if (rlocks.length) icon(rlocks[0], "mdi:lock-open-variant", hash + "-locks", [anyIn(rlocks, UNLOCKED)], ELAN_HEAT);
         if (fans.length) icon(fans[0], "mdi:ceiling-fan", hash + "-fans", [anyIn(fans, ["on"])], ELAN_ACCENT);
-        if (lights.length) icon(lights[0], "mdi:lightbulb-group", hash + "-lights", [anyIn(lights, ["on"])], "#f5c518");
-        if (climate) {
+        if (lights.length && !poolBodies.length) icon(lights[0], "mdi:lightbulb-group", hash + "-lights", [anyIn(lights, ["on"])], "#f5c518");
+        if (poolBodies.length) {
+          const find = (re, dom) => pent.find((e) => domainOf(e) === dom && re.test(e));
+          const poolPump = find(/pool_pump/, "switch"), spaPump = find(/spa_pump/, "switch");
+          const pLights = pent.filter((e) => domainOf(e) === "light");
+          if (poolPump) icon(poolPump, "mdi:pump", hash, [anyIn([poolPump], ["on"])], ELAN_ACCENT);
+          if (spaPump) icon(spaPump, "mdi:hot-tub", hash, [anyIn([spaPump], ["on"])], ELAN_ACCENT);
+          if (pLights.length) icon(pLights[0], "mdi:lightbulb-group", hash, [anyIn(pLights, ["on"])], "#f5c518");
+          const tempOf = (key) => {
+            const sen = find(new RegExp(`${key}_temp`), "sensor") || Object.keys(hass.states).find((e) => domainOf(e) === "sensor" && new RegExp(`_${key}_temp$`).test(e));
+            const cl = poolBodies.find((e) => new RegExp(key).test(e));
+            return sen
+              ? "((s) => s && !isNaN(parseFloat(s.state)) ? Math.round(parseFloat(s.state)) + '°' : '')(hass.states['" + sen + "'])"
+              : "((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '')(hass.states['" + cl + "'])";
+          };
+          const on = (e) => (e ? "((hass.states['" + e + "'] || {}).state === 'on')" : "false");
+          const poolHeat = on(find(/pool_heater/, "switch")), spaHeat = on(find(/spa_heater/, "switch"));
+          subs.push({ entity: poolBodies[0], icon: "mdi:thermometer", show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: go(hash) });
+          const n = subs.length;
+          styles.push(
+            ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { display: none !important; }` +
+              ` .bubble-sub-button-${n} { width: auto !important; min-width: 52px; padding: 0 4px 0 8px !important; justify-content: flex-end !important; }` +
+              ` .bubble-sub-button-${n}::after { content: "\${${spaHeat} ? ${tempOf("spa")} : ${tempOf("pool")}}"; font-size: 22px; font-weight: 300;` +
+              ` color: \${${spaHeat} || ${poolHeat} ? '${ELAN_HEAT}' : '#f2f5fa'} !important; }`
+          );
+        } else if (climate) {
           // A sub-button needs something visible or Bubble hides it: keep an icon, hide it, and draw the rounded temperature.
           subs.push({ entity: climate, icon: "mdi:thermometer", show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: go(thermostatHash(climate)) });
           const n = subs.length;

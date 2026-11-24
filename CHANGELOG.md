@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.89 — 2026-11-23
+
+- PivIT ELAN Home: the alarm chip is back with the alerts, alone on its own centred line just below the date.
+- PivIT ELAN Rooms: the Pool tile shows a pump icon while Pool Mode is on, a hot-tub icon while Spa Mode is on, a light icon while pool / spa lights are on; the temperature is the spa's while the spa heater runs, else the pool's, red while a heater runs.
+
 ## 1.1.88 — 2026-11-23
 
 - Home alarm chip: centred on the visible digits and date text (ignores the clock line's empty space below the digits).
