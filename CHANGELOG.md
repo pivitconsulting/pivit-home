@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.110 — 2026-11-24
+
+- ELAN room pop-ups (instead of 1.1.109's inline remote): rooms with an Android TV / Google TV get one TV row at the bottom — status (Off / the app that's open) and a power button; the power button toggles the TV, anywhere else opens the TV's remote pop-up.
+
 ## 1.1.109 — 2026-11-24
 
 - ELAN room pop-ups: the ELAN TV remote (touchpad, volume, apps) at the bottom for each Android TV / Google TV in the room.

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.109";
+const VERSION = "1.1.110";
 
 const DEFAULTS = {
   title: "Home",
@@ -1852,6 +1852,37 @@ const TV_APPS = [
   ["Prime Video", "#00a8e1", "#ffffff", "https://app.primevideo.com"],
   ["Disney+", "#113ccf", "#ffffff", "https://www.disneyplus.com"],
 ];
+// One-line TV row (room pop-ups): name, status — "Off", or the app that's open — and a power button. The power button
+// toggles the TV; anywhere else opens the TV's remote pop-up.
+const TV_APP_NAMES = { netflix: "Netflix", hulu: "Hulu", amazon: "Prime Video", primevideo: "Prime Video", disney: "Disney+", youtube: "YouTube",
+  "launcher": "Home", "tvlauncher": "Home", plex: "Plex", hbo: "Max", max: "Max", spotify: "Spotify", peacock: "Peacock", paramount: "Paramount+", appletv: "Apple TV", tcl: "TV" };
+function elanTvRow(remoteId, name, hash) {
+  const status =
+    "((s) => !s || s.state !== 'on' ? 'Off' : ((a) => { a = (a || '').toLowerCase(); var m = " + JSON.stringify(TV_APP_NAMES) + ";" +
+    " for (var k in m) if (a.indexOf(k) >= 0) return m[k]; return 'On'; })(s.attributes.current_activity))(hass.states['" + remoteId + "'])";
+  const on = "((hass.states['" + remoteId + "'] || {}).state === 'on')";
+  return {
+    type: "custom:bubble-card",
+    card_type: "button",
+    button_type: "name",
+    entity: remoteId,
+    name,
+    icon: "mdi:television",
+    show_state: false,
+    grid_options: { columns: "full" },
+    sub_button: [{ icon: "mdi:power", show_icon: true, show_background: true, tap_action: { action: "toggle" } }],
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-icon { color: ${" + on + " ? '" + ELAN_ACCENT + "' : '#e9eef7'} !important; }" +
+      " .bubble-name-container::after { content: \"${" + status + "}\"; display: block; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; opacity: .65; margin-top: 2px; }" +
+      " .bubble-sub-button-1 { width: 44px !important; height: 38px !important; border-radius: 6px !important; justify-content: center !important;" +
+      " background: ${" + on + " ? '" + ELAN_ACCENT + "' : 'rgba(255,255,255,.08)'} !important; border: 1px solid rgba(255,255,255,.14); }" +
+      " .bubble-sub-button-1 ha-icon { color: #fff !important; --mdc-icon-size: 20px; }",
+    tap_action: { action: "navigate", navigation_path: hash },
+    button_action: { tap_action: { action: "navigate", navigation_path: hash } },
+  };
+}
+
 function elanTvRemote(remoteId) {
   const cmd = (c) => ({ action: "perform-action", perform_action: "remote.send_command", target: { entity_id: remoteId }, data: { command: c } });
   const on = "((hass.states['" + remoteId + "'] || {}).state === 'on')";
@@ -2599,12 +2630,16 @@ class PivitElanStrategy extends HTMLElement {
         c.card_type === "media-player" && c.entity && ((hass.entities || {})[c.entity] || {}).platform === "cast"
           ? { ...c, show_power_button: false, styles: ((c.styles || "") + " .bubble-power-button, .power-button { display: none !important; }").trim() }
           : c;
-      // …and the ELAN remote for each Android TV / Google TV in the room at the very bottom.
+      // Rooms with an Android TV / Google TV remote: one TV row instead — status (Off / the app that's open) and a power
+      // button; tap the power button to turn the TV on or off, anywhere else for the remote pop-up.
       const roomRemotes = Object.values(hass.entities || {})
         .filter((e) => e.entity_id.startsWith("remote.") && e.platform === "androidtv_remote" && !e.hidden && hass.states[e.entity_id])
         .filter((e) => (e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id) === r.id)
         .map((e) => e.entity_id);
-      pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...pp.cards.filter(isTv).map(noPower), ...roomRemotes.map((id) => elanTvRemote(id))];
+      const tvRows = roomRemotes.length
+        ? roomRemotes.map((id) => elanTvRow(id, roomRemotes.length > 1 ? (hass.states[id].attributes.friendly_name || "TV") : `${r.name} TV`, "#" + slug(r.name) + "-tv"))
+        : pp.cards.filter(isTv).map(noPower);
+      pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...tvRows];
     }
     // Rooms without a thermostat of their own get the one that covers them in their pop-up: room_thermostats (e.g.
     // Kitchen → Living Room's), else floor_thermostats (e.g. upstairs bedrooms).
