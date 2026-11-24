@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.101";
+const VERSION = "1.1.102";
 
 const DEFAULTS = {
   title: "Home",
@@ -1845,11 +1845,12 @@ function elanFanCard(id, name) {
 }
 // ELAN TV remote for an Android TV / Google TV (androidtv_remote integration's remote.* entity): power, home, back,
 // input, menu; a D-pad with OK; volume down / mute / up; and app buttons (remote.turn_on with the app's link).
+// [name, brand colour, text colour, app link] — quick-launch buttons in this order (tv_apps overrides).
 const TV_APPS = [
-  ["Netflix", "mdi:netflix", "https://www.netflix.com/title"],
-  ["YouTube", "mdi:youtube", "https://www.youtube.com"],
-  ["Prime Video", "mdi:filmstrip", "https://app.primevideo.com"],
-  ["Disney+", "mdi:castle", "https://www.disneyplus.com"],
+  ["Hulu", "#1ce783", "#0b0c0f", "https://www.hulu.com"],
+  ["Netflix", "#e50914", "#ffffff", "https://www.netflix.com/title"],
+  ["Prime Video", "#00a8e1", "#ffffff", "https://app.primevideo.com"],
+  ["Disney+", "#113ccf", "#ffffff", "https://www.disneyplus.com"],
 ];
 function elanTvRemote(remoteId) {
   const cmd = (c) => ({ action: "perform-action", perform_action: "remote.send_command", target: { entity_id: remoteId }, data: { command: c } });
@@ -1900,8 +1901,20 @@ function elanTvRemote(remoteId) {
         key("Volume up", "mdi:volume-plus", cmd("VOLUME_UP")),
         key("Menu", "mdi:menu", cmd("MENU")),
       ] },
-      { type: "grid", columns: 2, square: false, cards: TV_APPS.map(([n, i, url]) =>
-        label(n, i, { action: "perform-action", perform_action: "remote.turn_on", target: { entity_id: remoteId }, data: { activity: url } })) },
+      elanSubhead("Apps"),
+      { type: "grid", columns: 4, square: false, cards: TV_APPS.map(([n, bg, fg, url]) => {
+        const tap = { action: "perform-action", perform_action: "remote.turn_on", target: { entity_id: remoteId }, data: { activity: url } };
+        return {
+          type: "custom:bubble-card", card_type: "button", button_type: "name", name: n, show_icon: false,
+          styles:
+            ".bubble-button-background { opacity: 0 !important; } .bubble-main-icon-container { display: none !important; }" +
+            ` .bubble-button-card-container { background: ${bg} !important; border-radius: 6px !important; height: 56px !important; border: 0 !important; }` +
+            " .bubble-button-card-container:active { filter: brightness(1.2); } .bubble-button-card { justify-content: center !important; }" +
+            ` .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { color: ${fg} !important; font-size: 15px !important; font-weight: 700 !important; letter-spacing: .02em; text-align: center; white-space: normal !important; line-height: 1.1 !important; }` +
+            " @media (max-width: 520px) { .bubble-name { font-size: 12px !important; } }",
+          tap_action: tap, button_action: { tap_action: tap },
+        };
+      }) },
     ],
   };
 }
