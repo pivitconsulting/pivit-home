@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.112";
+const VERSION = "1.1.113";
 
 const DEFAULTS = {
   title: "Home",
@@ -3165,7 +3165,8 @@ class PivitElanStrategy extends HTMLElement {
               " .bubble-button-card-container { height: 64px !important; border-radius: 6px !important; border: 1px solid rgba(255,255,255,.12);" +
               " background: ${" + run + " ? 'linear-gradient(120deg,#ff2d75,#a34bff 50%,#2f7fe0)' : '" + ELAN_ROW_BG + "'} !important; }" +
               " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: ${" + run + " ? '#fff' : '#f2c12e'} !important; --mdc-icon-size: 24px; }" +
-              " .bubble-name { font-size: 15px !important; font-weight: 500 !important; color: #fff !important; }" +
+              " .bubble-name-container { min-width: 0 !important; } .bubble-name { font-size: 15px !important; font-weight: 500 !important; color: #fff !important; white-space: normal !important; line-height: 1.15 !important; overflow: visible !important; }" +
+              " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }" +
               " .bubble-name-container::after { content: \"${" + run + " ? 'Partying…' : ''}\"; display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }",
             tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: id } },
             button_action: { tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: id } } },

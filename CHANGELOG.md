@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.113 — 2026-11-24
+
+- Party mode buttons: names wrap instead of scrolling ("Rainbow Wave").
+
 ## 1.1.112 — 2026-11-24
 
 - PivIT ELAN Lighting: LET'S PARTY button at the right end of the title line (rainbow while a party runs) when `script.pivit_party_*` scripts exist — opens a pop-up of party modes (lit with 'Partying…' while running) and Stop the Party.
