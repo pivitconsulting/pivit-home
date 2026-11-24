@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.75";
+const VERSION = "1.1.76";
 
 const DEFAULTS = {
   title: "Home",
@@ -1717,6 +1717,8 @@ const ELAN_SLIDER_STYLE =
 // Home Assistant's own thermostat card shows decimals (e.g. "Currently 70.9 °F"); on ELAN every thermostat in a pop-up
 // becomes the ELAN climate row (whole degrees, ▲ / ▼) plus mode buttons (no system-fan control: left on Auto).
 let ELAN_HASS = null;
+const ELAN_THERMO_CARDS = new WeakSet(); // cards made by elanThermostat / elanFanCard (for ordering in pop-ups)
+const ELAN_FAN_CARDS = new WeakSet();
 function elanThermostat(id, name) {
   const st = ELAN_HASS && ELAN_HASS.states[id];
   const label = name || NAMES[id] || (st && st.attributes.friendly_name) || "Thermostat";
@@ -1741,7 +1743,9 @@ function elanThermostat(id, name) {
         ...action({ action: "perform-action", perform_action: "climate.set_hvac_mode", target: { entity_id: id }, data: { hvac_mode: m } }),
       })),
     });
-  return { type: "vertical-stack", cards, grid_options: { columns: "full" } };
+  const out = { type: "vertical-stack", cards, grid_options: { columns: "full" } };
+  ELAN_THERMO_CARDS.add(out);
+  return out;
 }
 // Ceiling fans on ELAN: a row with OFF / LOW / MED / HIGH instead of a speed slider. Speeds come from the fan's step
 // count (e.g. 7 speeds → low 2, medium 4, high 7); the button nearest the current speed lights up. Tap the name to toggle.
@@ -1762,7 +1766,7 @@ function elanFanCard(id, name) {
     { name: "Off", show_name: true, show_icon: false, show_background: true, tap_action: { action: "perform-action", perform_action: "fan.turn_off", target: { entity_id: id } } },
     ...speeds.map(([nm, v]) => ({ name: nm, show_name: true, show_icon: false, show_background: true, tap_action: { action: "perform-action", perform_action: "fan.set_percentage", target: { entity_id: id }, data: { percentage: v } } })),
   ];
-  return {
+  const card = {
     type: "custom:bubble-card",
     card_type: "button",
     button_type: "name",
@@ -1782,6 +1786,8 @@ function elanFanCard(id, name) {
       " .bubble-icon { color: ${(hass.states['" + id + "'] || {}).state === 'on' ? '" + ELAN_ACCENT + "' : '#e9eef7'} !important; }",
     ...action({ action: "toggle" }),
   };
+  ELAN_FAN_CARDS.add(card);
+  return card;
 }
 function elanCards(cards) {
   return (cards || []).map((c) => {
@@ -1806,7 +1812,16 @@ function elanPopup(pp) {
   const lockIcons = (pp.sub_button || [])
     .map((sb, i) => (/^mdi:lock(-open-variant)?$/.test(sb.icon || "") ? ` .bubble-sub-button-${i + 1} ha-icon, .bubble-sub-button-${i + 1} .bubble-sub-button-icon { color: #f2c12e !important; }` : ""))
     .join("");
-  return { ...pp, cards: elanCards(pp.cards), bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE + lockIcons).trim() };
+  // Ceiling fans sit just below the thermostat.
+  let cards = elanCards(pp.cards);
+  const fans = cards.filter((c) => ELAN_FAN_CARDS.has(c));
+  const lastThermo = cards.map((c) => ELAN_THERMO_CARDS.has(c)).lastIndexOf(true);
+  if (fans.length && lastThermo >= 0) {
+    const rest = cards.filter((c) => !ELAN_FAN_CARDS.has(c));
+    const at = rest.map((c) => ELAN_THERMO_CARDS.has(c)).lastIndexOf(true) + 1;
+    cards = [...rest.slice(0, at), ...fans, ...rest.slice(at)];
+  }
+  return { ...pp, cards, bg_color: "#161b36", bg_opacity: "94", styles: ((pp.styles || "") + " " + ELAN_POPUP_STYLE + lockIcons).trim() };
 }
 
 // ELAN climate row (as on the ELAN climate screen): name, big current temperature, a setpoint block — cool (navy) over
@@ -1894,6 +1909,9 @@ function elanClimateRow(id, name, hash) {
       box(2) + box(3) +
       ` .bubble-sub-button-2 { grid-column: 2; grid-row: 1; background: ${ELAN_COOL_BOX} !important; }` +
       ` .bubble-sub-button-3 { grid-column: 2; grid-row: 2; background: ${ELAN_HEAT_BOX} !important; }` +
+      // Setpoint text always white (pop-ups otherwise inherit a dark text colour).
+      " .bubble-sub-button-2, .bubble-sub-button-3, .bubble-sub-button-2::after, .bubble-sub-button-3::after, .bubble-sub-button-3::before { color: #fff !important; }" +
+      " @media (max-width: 1400px) { .bubble-sub-button-1 { padding: 0 12px !important; } .bubble-sub-button-1::before { font-size: 46px !important; } }" +
       " .bubble-sub-button-2::after { content: var(--pv-v, \"${" + fmt(A + ".target_temp_high") + "}\"); font-size: 25px; font-weight: 300; }" +
       " .bubble-sub-button-3::after { content: var(--pv-v, \"${" + DUAL + " ? " + fmt(A + ".target_temp_low") + " : (" + ST + " === 'off' ? '' : " + fmt(A + ".temperature") + ")}\"); font-size: 25px; font-weight: 300; }" +
       " .bubble-sub-button-3::before { content: \"${" + DUAL + " ? '' : " + MODE + "}\"; font-size: 19px; font-weight: 300; }" +
@@ -2256,6 +2274,13 @@ class PivitElanStrategy extends HTMLElement {
     const savant = roomsView(cfg, ctx, { type: "markdown", content: " " });
     const popups = savant.sections.flatMap((sec) => sec.cards).filter((c) => c.card_type === "pop-up");
     const popupsWhere = (test) => popups.filter((pp) => test(pp.hash || ""));
+    // Rooms without a thermostat of their own get their floor's (floor_thermostats, e.g. upstairs bedrooms) in their pop-up.
+    for (const r of ctx.rooms) {
+      const ft = (cfg.floor_thermostats || {})[r.floor];
+      const pp = popups.find((x) => x.hash === "#" + slug(r.name));
+      if (!pp || !ft || ft === "none" || !hass.states[ft] || roomClimates(r, hass).length || JSON.stringify(pp.cards || []).includes('"' + ft + '"')) continue;
+      pp.cards = [{ type: "thermostat", entity: ft, grid_options: { columns: "full" } }, ...(pp.cards || [])];
+    }
 
     // What this home has.
     const lightRooms = ctx.rooms.filter((r) => roomLights(r).length);
@@ -2692,6 +2717,7 @@ class PivitElanStrategy extends HTMLElement {
           },
         ];
         for (const id of loads) {
+          if (domainOf(id) === "fan") { content.push(elanFanCard(id, shortLabel(r, hass, id))); continue; }
           const c = entityCard(hass, id, { half: "full" });
           c.name = shortLabel(r, hass, id);
           c.grid_options = { columns: "full" };

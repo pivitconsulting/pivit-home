@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.76 — 2026-11-23
+
+- PivIT ELAN: ceiling fans on the Lighting room pages use the OFF / LOW / MED / HIGH row.
+- PivIT ELAN pop-ups: ceiling fans move to just below the thermostat; rooms without their own thermostat get their floor's (`floor_thermostats`, e.g. the upstairs bedrooms).
+- PivIT ELAN climate rows: setpoint numbers always white (pop-ups showed them dark); slightly smaller current temperature under 1400px wide so long names don't crowd it.
+
 ## 1.1.75 — 2026-11-23
 
 - PivIT ELAN pop-ups: ceiling fans get OFF / LOW / MED / HIGH buttons instead of a speed slider (speeds from the fan's step count — 7 speeds: low 2, medium 4, high 7); the nearest speed lights up; tap the name to toggle.
