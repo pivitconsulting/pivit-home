@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.106";
+const VERSION = "1.1.107";
 
 const DEFAULTS = {
   title: "Home",
@@ -1906,7 +1906,9 @@ function elanTvRemote(remoteId) {
       " .bubble-button-card-container { height: 230px !important; border-radius: 10px !important; border: 1px solid rgba(255,255,255,.14);" +
       " background: var(--pv-tp, radial-gradient(circle at 50% 45%, rgba(255,255,255,.10), rgba(255,255,255,.03) 70%)) !important; transition: background .15s; cursor: pointer; }" +
       " .bubble-button-card { justify-content: center !important; align-items: flex-end !important; padding-bottom: 14px !important; }" +
-      " .bubble-name-container { margin: 0 !important; width: 100% !important; align-items: center !important; } .bubble-name { width: 100%; text-align: center; font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; opacity: .45; }" +
+      " .bubble-content-container { width: 100% !important; justify-content: center !important; flex: 1 1 auto !important; }" +
+      " .bubble-name-container { margin: 0 !important; width: 100% !important; flex: 1 1 auto !important; align-items: center !important; justify-content: center !important; text-align: center !important; }" +
+      " .bubble-name { width: 100%; text-align: center !important; justify-content: center; font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; opacity: .45; }" +
       " " + tpHook,
     tap_action: { action: "none" },
     button_action: { tap_action: { action: "none" } },

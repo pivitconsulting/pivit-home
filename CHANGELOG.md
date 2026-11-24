@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.107 — 2026-11-24
+
+- TV touchpad: hint label centred (content container stretched to the full width).
+
 ## 1.1.106 — 2026-11-24
 
 - ELAN TV pop-ups: the Chromecast now-playing row shows only while something is casting, without its power button (turning a Chromecast "on" starts Home Assistant's own cast app — the HA logo on the TV); power is on the remote.
