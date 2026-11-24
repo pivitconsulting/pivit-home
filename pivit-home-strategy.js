@@ -3275,7 +3275,7 @@ class PivitElanStrategy extends HTMLElement {
             shadePopups.push(elanShadePopup(hass, id, label(id)));
           }
       }
-      views.push(view("lighting", "Lighting", content, [...popupsWhere((h) => h.endsWith("-lights")), ...shadePopups, ...partyPopups]));
+      views.push(view("lighting", "Lighting", content, [...popupsWhere((h) => h.endsWith("-lights")), ...shadePopups, ...partyPopups, ...ELAN_LEDS.map((id) => ledSyncPopup(id, ledLabel))]));
     }
 
     // LIGHTING ROOM PAGES — "◀ Room ▶" switcher, a wide slider per dimmer, on/off loads, the room's scenes,
