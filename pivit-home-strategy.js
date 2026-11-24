@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.116";
+const VERSION = "1.1.117";
 
 const DEFAULTS = {
   title: "Home",
@@ -3423,6 +3423,29 @@ class PivitElanStrategy extends HTMLElement {
           " if (a) return t(a); const z = p.find((s) => s.state === 'paused' && s.attributes.media_title); if (z) return 'Paused · ' + t(z);" +
           " if (p.some((s) => ['on', 'idle'].includes(s.state) && " + JSON.stringify(m.tvs) + ".includes(s.entity_id))) return 'TV'; return 'Off'; })())";
         const zoneHash = "#" + slug(r.name) + (m.audio.length ? "-audio" : "-tv");
+        // TV button inside the row (rooms with a TV): the TV's status — "Off", or the app that's open — and a tap opens
+        // the room's TV pop-up (the ELAN remote).
+        const tvSub = [];
+        let tvStyle = "";
+        if (m.tvs.length) {
+          const remotes = Object.values(hass.entities || {})
+            .filter((e) => e.entity_id.startsWith("remote.") && e.platform === "androidtv_remote" && !e.hidden && hass.states[e.entity_id])
+            .filter((e) => (e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id) === r.id)
+            .map((e) => e.entity_id);
+          const tvOn = remotes.length
+            ? "(" + JSON.stringify(remotes) + ".some((e) => (hass.states[e] || {}).state === 'on'))"
+            : "(" + JSON.stringify(m.tvs) + ".some((e) => ['on', 'playing', 'paused', 'idle', 'buffering'].includes((hass.states[e] || {}).state)))";
+          const tvStatus = remotes.length
+            ? "((s) => !s || s.state !== 'on' ? 'Off' : ((a) => { a = (a || '').toLowerCase(); var m = " + JSON.stringify(TV_APP_NAMES) + ";" +
+              " for (var k in m) if (a.indexOf(k) >= 0) return m[k]; return 'On'; })(s.attributes.current_activity))(" + JSON.stringify(remotes) + ".map((e) => hass.states[e]).find((s) => s && s.state === 'on') || hass.states['" + remotes[0] + "'])"
+            : "((s) => !s ? 'Off' : ['on', 'playing', 'paused', 'idle', 'buffering'].includes(s.state) ? ((s.attributes.app_name || 'On') + '') : 'Off')(" + JSON.stringify(m.tvs) + ".map((e) => hass.states[e]).find((s) => s && s.state !== 'off') || hass.states['" + m.tvs[0] + "'])";
+          tvSub.push({ icon: "mdi:television", show_icon: true, show_background: true, tap_action: go("#" + slug(r.name) + "-tv") });
+          tvStyle =
+            " .bubble-sub-button-1 { width: auto !important; min-width: 64px; height: 34px !important; padding: 0 10px !important; gap: 6px; border-radius: 6px !important; justify-content: center !important;" +
+            " background: ${" + tvOn + " ? '" + ELAN_ACCENT + "' : 'rgba(255,255,255,.08)'} !important; border: 1px solid rgba(255,255,255,.14); }" +
+            " .bubble-sub-button-1 ha-icon { color: #fff !important; --mdc-icon-size: 18px; }" +
+            " .bubble-sub-button-1::after { content: \"${" + tvStatus + "}\"; color: #fff; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; white-space: nowrap; }";
+        }
         content.push({
           type: "custom:bubble-card",
           card_type: "button",
@@ -3432,14 +3455,14 @@ class PivitElanStrategy extends HTMLElement {
           icon: r.icon,
           show_state: false,
           grid_options: { columns: "full" },
-          sub_button: [{ icon: "mdi:chevron-right", show_background: false, tap_action: go(zoneHash) }],
+          sub_button: [...tvSub, { icon: "mdi:chevron-right", show_background: false, tap_action: go(zoneHash) }],
           // Volume bar works as before (drag); a tap — on the icon, the name or anywhere without dragging — opens the zone's player.
           tap_to_slide: false,
           tap_action: go(zoneHash),
           button_action: { tap_action: go(zoneHash) },
           styles:
             ELAN_ROW_STYLE + elanSubtitle({ expr: src }) + " .bubble-range-fill { background: rgba(47,127,224,.22) !important; border-right: 2px solid #2f7fe0; }" +
-            " .bubble-state, .bubble-name-container::after { max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }",
+            " .bubble-state, .bubble-name-container::after { max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }" + tvStyle,
         });
       }
       views.push(view("media", "Media", content, popupsWhere((h) => h.endsWith("-audio") || h.endsWith("-tv"))));
