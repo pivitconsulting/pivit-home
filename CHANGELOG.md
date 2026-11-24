@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.78 — 2026-11-23
+
+- PivIT ELAN Cameras: the Events row is now an EVENTS button at the right end of the "Cameras" title line (gold icon; icon only on phones).
+
 ## 1.1.77 — 2026-11-23
 
 - PivIT ELAN pop-ups on phones: smaller title (clears All Off / lock), and button names wrap onto two lines instead of scrolling (e.g. Master Bedroom LEDs).
