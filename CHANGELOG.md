@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.119 — 2026-11-24
+
+- PivIT ELAN Media: the › arrows are gone from the zone rows (tapping the row still opens the player).
+
 ## 1.1.118 — 2026-11-24
 
 - PivIT ELAN Media: a zone grouped with another room's speaker (e.g. Kitchen joined to Living Room) reads "Linked to Living Room".

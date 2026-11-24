@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.118";
+const VERSION = "1.1.119";
 
 const DEFAULTS = {
   title: "Home",
@@ -3457,7 +3457,7 @@ class PivitElanStrategy extends HTMLElement {
           icon: r.icon,
           show_state: false,
           grid_options: { columns: "full" },
-          sub_button: [...tvSub, { icon: "mdi:chevron-right", show_background: false, tap_action: go(zoneHash) }],
+          sub_button: tvSub,
           // Volume bar works as before (drag); a tap — on the icon, the name or anywhere without dragging — opens the zone's player.
           tap_to_slide: false,
           tap_action: go(zoneHash),
