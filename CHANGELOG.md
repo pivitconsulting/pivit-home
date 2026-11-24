@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.114 — 2026-11-24
+
+- PivIT ELAN LED colour sync: colour LED rows (Lighting room pages, room pop-ups) get a Sync button (palette) — opens a picker of the other LEDs (All / Clear; tap to select), then Sync colour copies this LED's current colour and brightness (or off) to the selected ones.
+
 ## 1.1.113 — 2026-11-24
 
 - Party mode buttons: names wrap instead of scrolling ("Rainbow Wave").

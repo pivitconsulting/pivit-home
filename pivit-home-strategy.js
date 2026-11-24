@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.113";
+const VERSION = "1.1.114";
 
 const DEFAULTS = {
   title: "Home",
@@ -1980,6 +1980,66 @@ function elanTvRemote(remoteId) {
   };
 }
 
+// LED colour sync: a Sync button on colour LED rows opens "#led-sync-<led>" — pick other LEDs (All / Clear), then
+// Sync colour copies this LED's current colour and brightness to them. Selection lives in window.__pvSync.
+let ELAN_LEDS = []; // colour-capable, visible lights (set per generate)
+const ledSyncHash = (id) => "#led-sync-" + slug(id.split(".")[1]);
+const ledSyncSub = (id) => ({ icon: "mdi:palette-swatch-variant", show_icon: true, show_background: true, tap_action: { action: "navigate", navigation_path: ledSyncHash(id) } });
+const ledSyncStyle = (n) =>
+  ` .bubble-sub-button-${n} { width: 40px !important; height: 36px !important; border-radius: 6px !important; justify-content: center !important; background: rgba(255,255,255,.10) !important; border: 1px solid rgba(255,255,255,.14); }` +
+  ` .bubble-sub-button-${n} ha-icon { color: #fff !important; --mdc-icon-size: 19px; }`;
+function ledSyncPopup(src, label) {
+  const targets = ELAN_LEDS.filter((t) => t !== src);
+  const store = "(window.__pvSync = window.__pvSync || {})";
+  const K = JSON.stringify(src);
+  const swatch = "((s) => { if (!s || s.state !== 'on') return 'rgba(255,255,255,.08)'; var c = s.attributes.rgb_color; return c ? 'rgb(' + c.join(',') + ')' : 'rgba(255,255,255,.3)'; })(hass.states['" + src + "'])";
+  const row = (t) => ({
+    type: "custom:bubble-card", card_type: "button", button_type: "name", name: label(t), icon: "mdi:led-strip-variant", grid_options: { columns: 6 },
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-button-card-container { background: var(--pv-pick, " + ELAN_ROW_BG + ") !important; } .bubble-icon { color: var(--pv-pick-i, #9aa6bf) !important; }" +
+      " .bubble-name-container::after { content: var(--pv-pick-t, 'Tap to add'); display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }" +
+      " ${(card.__pvC || (card.__pvC = 1, (function () { var A = " + store + "; var sel = A[" + K + "] = A[" + K + "] || {};" +
+      " var paint = function () { var on = !!(A[" + K + "] || {})[" + JSON.stringify(t) + "]; card.style.setProperty('--pv-pick', on ? 'rgba(47,127,224,.55)' : '" + ELAN_ROW_BG + "');" +
+      " card.style.setProperty('--pv-pick-i', on ? '#fff' : '#9aa6bf'); card.style.setProperty('--pv-pick-t', on ? '\"Selected\"' : '\"Tap to add\"'); };" +
+      " (A.__paint = A.__paint || []).push(paint); paint();" +
+      " card.addEventListener('click', function () { var S = A[" + K + "] = A[" + K + "] || {}; S[" + JSON.stringify(t) + "] = !S[" + JSON.stringify(t) + "]; paint(); });" +
+      " })()), '')}",
+    tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
+  });
+  const allClear = (name, icon, all) => ({
+    type: "custom:bubble-card", card_type: "button", button_type: "name", name, icon, grid_options: { columns: 6 },
+    styles:
+      ELAN_ROW_STYLE + " .bubble-button-card-container { height: 46px !important; } .bubble-name { font-size: 13px !important; letter-spacing: .1em; text-transform: uppercase; }" +
+      " ${(card.__pvC || (card.__pvC = 1, card.addEventListener('click', function () { var A = " + store + "; var S = A[" + K + "] = {};" +
+      (all ? " " + JSON.stringify(targets) + ".forEach(function (t) { S[t] = true; });" : "") +
+      " (A.__paint || []).forEach(function (f) { try { f(); } catch (e) {} }); })), '')}",
+    tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
+  });
+  const go = {
+    type: "custom:bubble-card", card_type: "button", button_type: "name", name: "Sync colour", icon: "mdi:palette-swatch-variant", grid_options: { columns: "full" },
+    styles:
+      ELAN_ROW_STYLE +
+      " .bubble-button-card-container { height: 60px !important; background: " + ELAN_ACCENT + " !important; } .bubble-icon { color: #fff !important; }" +
+      " .bubble-name { font-size: 16px !important; letter-spacing: .12em; text-transform: uppercase; }" +
+      " ${(card.__pvH = hass, card.__pvC || (card.__pvC = 1, card.addEventListener('click', function () { var A = " + store + "; var S = A[" + K + "] || {};" +
+      " var ids = Object.keys(S).filter(function (k) { return S[k]; }); var s = card.__pvH.states[" + K + "]; if (!ids.length || !s) return;" +
+      " var a = s.attributes; var data = s.state !== 'on' ? null : a.color_mode === 'color_temp' && a.color_temp_kelvin ? { color_temp_kelvin: a.color_temp_kelvin, brightness: a.brightness || 255 } : a.hs_color ? { hs_color: a.hs_color, brightness: a.brightness || 255 } : { brightness: a.brightness || 255 };" +
+      " card.dispatchEvent(new CustomEvent('hass-action', { bubbles: true, composed: true, detail: { action: 'tap', config: { tap_action:" +
+      " data ? { action: 'perform-action', perform_action: 'light.turn_on', target: { entity_id: ids }, data: data } : { action: 'perform-action', perform_action: 'light.turn_off', target: { entity_id: ids } } } } }));" +
+      " A[" + K + "] = {}; (A.__paint || []).forEach(function (f) { try { f(); } catch (e) {} });" +
+      " history.replaceState(null, '', location.pathname); window.dispatchEvent(new Event('location-changed')); })), '')}",
+    tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
+  };
+  const head = {
+    type: "custom:bubble-card", card_type: "button", button_type: "name", entity: src, name: label(src), icon: "mdi:palette", show_state: true, grid_options: { columns: "full" },
+    styles: ELAN_ROW_STYLE + " .bubble-icon { color: #fff !important; } .bubble-main-icon-container { background: ${" + swatch + "} !important; border-radius: 50% !important; }" +
+      " .bubble-name-container::after { content: 'Copy this colour to…'; display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }",
+    tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
+  };
+  return popupShell(ledSyncHash(src), "Sync colour", "mdi:palette-swatch-variant", [head, allClear("All", "mdi:checkbox-multiple-marked-outline", true), allClear("Clear", "mdi:checkbox-multiple-blank-outline", false), ...targets.map(row), go]);
+}
+
 function elanCards(cards) {
   return (cards || []).map((c) => {
     if (!c || typeof c !== "object") return c;
@@ -1994,6 +2054,10 @@ function elanCards(cards) {
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
       out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
     if (out.type === "custom:bubble-card" && out.card_type === "button") out.styles = ((out.styles || "") + ELAN_PHONE_NAME_STYLE).trim();
+    if (out.type === "custom:bubble-card" && out.card_type === "button" && out.entity && ELAN_LEDS.includes(out.entity) && !(out.sub_button || []).some((b) => b.icon === "mdi:palette-swatch-variant")) {
+      out.sub_button = [...(out.sub_button || []), ledSyncSub(out.entity)];
+      out.styles = (out.styles || "") + ledSyncStyle(out.sub_button.length);
+    }
     if (Array.isArray(out.cards)) out.cards = elanCards(out.cards);
     if (out.card && typeof out.card === "object") out.card = elanCards([out.card])[0];
     return out;
@@ -2594,6 +2658,16 @@ class PivitElanStrategy extends HTMLElement {
     installRecentHelper();
     elanIdle(base, cfg, hass);
     ELAN_HASS = hass;
+    ELAN_LEDS = ctx.rooms.flatMap((r) => r.entities).filter((id) => {
+      const st = hass.states[id];
+      return domainOf(id) === "light" && st && (st.attributes.supported_color_modes || []).some((m) => ["hs", "rgb", "rgbw", "rgbww", "xy"].includes(m));
+    });
+    // "Kitchen Cabinet LEDs", "Living Room Fireplace LEDs"… (room + short name, unless the name already starts with the room).
+    const ledLabel = (id) => {
+      const rr = ctx.rooms.find((x) => x.entities.includes(id));
+      const short = rr ? shortLabel(rr, hass, id) : label(id);
+      return rr && !short.toLowerCase().startsWith(rr.name.toLowerCase()) ? `${rr.name} ${short}` : short;
+    };
     const label = (id) => NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
     const go = (h) => ({ action: "navigate", navigation_path: h });
 
@@ -3094,7 +3168,7 @@ class PivitElanStrategy extends HTMLElement {
           "rooms",
           "Rooms",
           { wide: [elanTitle("Rooms"), grid(2)], narrow: [elanTitle("Rooms"), grid(1)] },
-          [...need].map((h) => byHash[h]).filter((pp) => !intercoms.some((ic) => intercomHash(ic) === pp.hash))
+          [...[...need].map((h) => byHash[h]).filter((pp) => !intercoms.some((ic) => intercomHash(ic) === pp.hash)), ...ELAN_LEDS.map((id) => ledSyncPopup(id, ledLabel))]
         )
       );
     }
@@ -3230,6 +3304,7 @@ class PivitElanStrategy extends HTMLElement {
               " .bubble-name-container { margin: 0 auto !important; align-items: center !important; } .bubble-name { font-size: 24px !important; font-weight: 300 !important; line-height: 1.35 !important; overflow: visible !important; }",
           },
         ];
+        const syncPopups = [];
         for (const id of loads) {
           if (domainOf(id) === "fan") { content.push(elanFanCard(id, shortLabel(r, hass, id))); continue; }
           const c = entityCard(hass, id, { half: "full" });
@@ -3243,6 +3318,11 @@ class PivitElanStrategy extends HTMLElement {
           if (hasEffects(hass, id)) {
             c.sub_button = [...(c.sub_button || []), effectSubButton(id)];
             c.styles += effectStyles(id, c.sub_button.length);
+          }
+          if (ELAN_LEDS.includes(id)) {
+            c.sub_button = [...(c.sub_button || []), ledSyncSub(id)];
+            c.styles += ledSyncStyle(c.sub_button.length);
+            syncPopups.push(ledSyncPopup(id, ledLabel));
           }
           content.push(c);
         }
@@ -3282,7 +3362,7 @@ class PivitElanStrategy extends HTMLElement {
             " pointer-events: ${" + JSON.stringify(loads) + ".some((e) => hass.states[e] && ['on', 'open', 'opening'].includes(hass.states[e].state)) ? 'auto' : 'none'} !important; }",
           ...off.actions,
         });
-        views.push(view(`lighting-${slug(r.name)}`, r.name, content, [], "lighting"));
+        views.push(view(`lighting-${slug(r.name)}`, r.name, content, syncPopups, "lighting"));
       });
 
     // MEDIA — "All Zones Off", what's playing, then every zone with its source and a volume bar (› opens the zone).
