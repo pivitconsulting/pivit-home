@@ -2592,7 +2592,12 @@ class PivitElanStrategy extends HTMLElement {
       if (!pp || !pp.cards) continue;
       const { tvs } = roomMediaSplit(r, hass);
       const isTv = (c) => (c.entity && tvs.includes(c.entity)) || (c.entity_id && tvs.includes(c.entity_id)) || JSON.stringify(c).includes('"#' + slug(r.name) + '-tv"');
-      pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...pp.cards.filter(isTv)];
+      // Chromecast TV rows: no power button ("turning on" a Chromecast starts Home Assistant's cast app, not the TV).
+      const noPower = (c) =>
+        c.card_type === "media-player" && c.entity && ((hass.entities || {})[c.entity] || {}).platform === "cast"
+          ? { ...c, show_power_button: false, styles: ((c.styles || "") + " .bubble-power-button, .power-button { display: none !important; }").trim() }
+          : c;
+      pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...pp.cards.filter(isTv).map(noPower)];
     }
     // Rooms without a thermostat of their own get the one that covers them in their pop-up: room_thermostats (e.g.
     // Kitchen → Living Room's), else floor_thermostats (e.g. upstairs bedrooms).
