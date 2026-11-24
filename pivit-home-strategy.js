@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.81";
+const VERSION = "1.1.82";
 
 const DEFAULTS = {
   title: "Home",
@@ -2383,7 +2383,8 @@ class PivitElanStrategy extends HTMLElement {
           "mdi:shield-lock-outline",
           "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : s === 'triggered' ? 'ALARM' : s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '')(" + st(id) + ")",
           "(" + st(id) + ".startsWith('armed') || " + st(id) + " === 'triggered' ? '" + ELAN_HEAT + "' : '#f2f5fa')",
-          toPage("security"),
+          // Straight to the arm / disarm pop-up (on the Security page).
+          go(`${base}/security#security-${slug(id.split(".")[1])}`),
           null
         );
       // Doors / windows open (gate sensors have their own chip).

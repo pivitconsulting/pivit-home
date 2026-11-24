@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.82 — 2026-11-23
+
+- PivIT ELAN Home: the alarm chip opens the arm / disarm pop-up directly.
+
 ## 1.1.81 — 2026-11-23
 
 - PivIT ELAN Irrigation: running zones show at the top of the list; the rest keep their order.
