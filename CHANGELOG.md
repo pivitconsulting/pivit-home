@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.80 — 2026-11-23
+
+- PivIT ELAN: new Scenes page below Rooms (`elan_scenes` option) — a large row per scene script with what it does and a RUN button; runs after a confirmation, shows "Running…" while it runs.
+
 ## 1.1.79 — 2026-11-23
 
 - Camera Events: pop-up 900px wide (1100px overflowed iPad-landscape windows); descriptions of clips over a minute no longer start with "1m 5s Object Detection".

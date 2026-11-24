@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.79";
+const VERSION = "1.1.80";
 
 const DEFAULTS = {
   title: "Home",
@@ -2306,6 +2306,9 @@ class PivitElanStrategy extends HTMLElement {
     if (climateZones.length) items.push({ name: "Climate", icon: "mdi:thermometer", path: "climate" });
     const roomTiles = (savant.sections.find((sec) => (sec.cards || []).some((c) => c.type === "heading" && c.heading === "Rooms")) || { cards: [] }).cards.filter((c) => c.type !== "heading");
     if (roomTiles.length && cfg.elan_rooms !== false) items.push({ name: "Rooms", icon: "mdi:floor-plan", path: "rooms" });
+    // Scenes: one-tap house scripts (elan_scenes: [{ entity: script.x, name, icon, description }]).
+    const scenes = (cfg.elan_scenes || []).map((x) => (typeof x === "string" ? { entity: x } : x)).filter((x) => x.entity && hass.states[x.entity]);
+    if (scenes.length) items.push({ name: "Scenes", icon: "mdi:palette-swatch-outline", path: "scenes" });
     if (lightRooms.length || shadeRooms.length) items.push({ name: "Lighting", icon: "mdi:lightbulb-outline", path: "lighting" });
     if (mediaRooms.length) items.push({ name: "Media", icon: "mdi:play-circle-outline", path: "media" });
     for (const sm of summaries) items.push({ name: /sprinkl/i.test(sm.name) ? "Irrigation" : sm.name, icon: /sprinkl/i.test(sm.name) ? "mdi:water-outline" : sm.icon || "mdi:dots-grid", path: slug(sm.name) });
@@ -2313,7 +2316,9 @@ class PivitElanStrategy extends HTMLElement {
     for (const v of extra) items.push({ name: v.title, icon: v.icon || "mdi:view-dashboard", path: v.path });
     if ((cfg.elan_order || []).length) {
       // Pages missing from elan_order go last, except Rooms, which follows Climate unless placed explicitly.
-      const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); if (i < 0 && pth === "rooms" && cfg.elan_order.includes("climate")) return cfg.elan_order.indexOf("climate") + 0.5; return i < 0 ? 999 : i; };
+      const rank = (pth) => { const i = cfg.elan_order.indexOf(pth); if (i < 0 && pth === "rooms" && cfg.elan_order.includes("climate")) return cfg.elan_order.indexOf("climate") + 0.5;
+        if (i < 0 && pth === "scenes") return cfg.elan_order.includes("rooms") ? cfg.elan_order.indexOf("rooms") + 0.5 : cfg.elan_order.includes("climate") ? cfg.elan_order.indexOf("climate") + 0.6 : 999;
+        return i < 0 ? 999 : i; };
       items.sort((a, b) => rank(a.path) - rank(b.path));
     }
     // Below 1000px the ELAN menu becomes a bar of square icon buttons along the bottom (every page fits, even on phones).
@@ -2677,6 +2682,37 @@ class PivitElanStrategy extends HTMLElement {
           [...need].map((h) => byHash[h]).filter((pp) => !intercoms.some((ic) => intercomHash(ic) === pp.hash))
         )
       );
+    }
+    // SCENES — a large row per scene script: icon, name, what it does; tap → confirm → run. "Running…" while it runs.
+    if (items.some((i) => i.path === "scenes")) {
+      const rows = scenes.map((sc) => {
+        const st = hass.states[sc.entity];
+        const name = sc.name || NAMES[sc.entity] || st.attributes.friendly_name || sc.entity;
+        const desc = (sc.description || "").replace(/"/g, "'");
+        return {
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          entity: sc.entity,
+          name,
+          icon: sc.icon || st.attributes.icon || "mdi:script-text-outline",
+          show_state: false,
+          grid_options: { columns: "full" },
+          sub_button: [{ name: "Run", icon: "mdi:play", show_name: true, show_icon: true, show_background: true,
+            tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: sc.entity }, confirmation: { text: `Run ${name}?` } } }],
+          styles:
+            ELAN_ROW_STYLE +
+            " .bubble-button-card-container { height: 92px !important; } .bubble-icon { --mdc-icon-size: 34px; }" +
+            " .bubble-name { font-size: 24px !important; }" +
+            " .bubble-name-container::after { content: \"${(hass.states['" + sc.entity + "'] || {}).state === 'on' ? 'Running…' : " + JSON.stringify(desc) + "}\"; display: block; font-size: 12px; letter-spacing: .04em; opacity: .65; margin-top: 3px; white-space: normal; line-height: 1.35; }" +
+            " .bubble-sub-button-1 { height: 40px !important; padding: 0 18px !important; gap: 8px !important; border-radius: 4px !important; border: 1px solid rgba(255,255,255,.35);" +
+            " background: ${(hass.states['" + sc.entity + "'] || {}).state === 'on' ? '" + ELAN_ACCENT + "' : 'rgba(255,255,255,.08)'} !important; }" +
+            " .bubble-sub-button-1 ha-icon { color: #f2c12e !important; } .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; }",
+          tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: sc.entity }, confirmation: { text: `Run ${name}?` } },
+          button_action: { tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: sc.entity }, confirmation: { text: `Run ${name}?` } } },
+        };
+      });
+      views.push(view("scenes", "Scenes", [elanTitle("Scenes"), ...rows]));
     }
     // LIGHTING — rooms with the number of devices on; shades follow (ELAN keeps shades under lighting).
     if (items.some((i) => i.path === "lighting")) {
