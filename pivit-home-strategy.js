@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.94";
+const VERSION = "1.1.95";
 
 const DEFAULTS = {
   title: "Home",
@@ -1931,17 +1931,20 @@ function elanClimateRow(id, name, hash, opts = {}) {
   const buttonsCss =
     (opts.buttons
         ? // Name at the top-left, the toggles under it (absolute, inside the card); the temperature block stays on the right.
-          " .bubble-button-card-container { position: relative !important; height: 124px !important; } .bubble-sub-button-container { position: static !important; }" +
+          " .bubble-button-card-container { position: relative !important; height: 124px !important; container-type: inline-size; } .bubble-sub-button-container { position: static !important; }" +
           " .bubble-name-container { align-self: flex-start !important; margin-top: 16px !important; }" +
           opts.buttons
             .map(
               (b, i) =>
                 ` .bubble-sub-button-${7 + i} { position: absolute !important; left: ${16 + i * 128}px; bottom: 14px; width: 120px !important; height: 38px !important; padding: 0 10px !important; gap: 6px !important;` +
-                ` border-radius: 4px !important; justify-content: flex-start !important; grid-column: auto !important; grid-row: auto !important; border: 1px solid rgba(255,255,255,.12);` +
+                ` border-radius: 4px !important; justify-content: center !important; grid-column: auto !important; grid-row: auto !important; border: 1px solid rgba(255,255,255,.12);` +
                 ` background: \${${b.on} ? '${b.onBg}' : 'rgba(255,255,255,.08)'} !important; }` +
                 ` .bubble-sub-button-${7 + i} ha-icon, .bubble-sub-button-${7 + i} .bubble-sub-button-icon { color: \${${b.on} ? '#fff' : '${b.offIcon}'} !important; --mdc-icon-size: 18px; display: inline-flex !important; }` +
                 ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { display: block !important; font-size: 12px !important; letter-spacing: .04em; color: #fff !important; opacity: 1 !important; white-space: nowrap; }` +
-                ` @media (max-width: 520px) { .bubble-sub-button-${7 + i} { left: ${10 + i * 104}px; width: 98px !important; } .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; } }`
+                ` @media (max-width: 520px) { .bubble-sub-button-${7 + i} { left: ${10 + i * 104}px; width: 98px !important; } .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; } }` +
+                // Narrow panels (e.g. the Pool pop-up): smaller buttons so the current temperature has room.
+                ` @container (max-width: 600px) { .bubble-sub-button-${7 + i} { left: ${12 + i * 96}px; width: 90px !important; height: 34px !important; padding: 0 6px !important; gap: 4px !important; }` +
+                ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 11px !important; letter-spacing: 0 !important; } .bubble-sub-button-${7 + i} ha-icon { --mdc-icon-size: 15px; } }`
             )
             .join("") +
           " @media (max-width: 520px) { .bubble-button-card-container { height: 118px !important; } }"

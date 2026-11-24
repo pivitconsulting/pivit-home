@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.95 — 2026-11-23
+
+- Pool / Spa panel buttons: content centred; smaller in narrow panels (Pool pop-up) so the current temperature isn't covered.
+
 ## 1.1.94 — 2026-11-23
 
 - Pool readings in narrow buttons (Pool pop-up): icon hidden, name wraps, so "Outside Temp" fits beside the value.
