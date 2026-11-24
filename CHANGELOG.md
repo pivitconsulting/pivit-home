@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.81 — 2026-11-23
+
+- PivIT ELAN Irrigation: running zones show at the top of the list; the rest keep their order.
+- PivIT ELAN Security: unlocked doors show right below Lock All; locked ones keep their order. (Each row has a conditional copy at the top; the normal copy hides while it's running / unlocked.)
+
 ## 1.1.80 — 2026-11-23
 
 - PivIT ELAN: new Scenes page below Rooms (`elan_scenes` option) — a large row per scene script with what it does and a RUN button; runs after a confirmation, shows "Running…" while it runs.

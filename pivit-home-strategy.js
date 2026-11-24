@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.80";
+const VERSION = "1.1.81";
 
 const DEFAULTS = {
   title: "Home",
@@ -2576,8 +2576,12 @@ class PivitElanStrategy extends HTMLElement {
         );
       // Locks: each door says Locked / Unlocked in words and colour, with one button for the opposite action.
       if (locks.length > 1) content.push(elanLocksSummary(locks));
+      // Unlocked doors jump to just below Lock All (a copy shown only while unlocked); the normal list hides them meanwhile.
+      const isUnl = (id) => [{ condition: "state", entity: id, state: UNLOCKED_STATES }];
+      const isLk = (id) => [{ condition: "state", entity: id, state_not: UNLOCKED_STATES }];
+      for (const id of locks) content.push({ ...elanLockRow(hass, id, label(id), go(`#lock-${slug(id.split(".")[1])}`)), visibility: isUnl(id) });
       for (const id of locks) {
-        content.push(elanLockRow(hass, id, label(id), go(`#lock-${slug(id.split(".")[1])}`)));
+        content.push({ ...elanLockRow(hass, id, label(id), go(`#lock-${slug(id.split(".")[1])}`)), visibility: isLk(id) });
         securityPopups.push(elanLockPopup(hass, id, label(id)));
       }
       views.push(view("security", "Security", content, securityPopups));
@@ -2879,10 +2883,13 @@ class PivitElanStrategy extends HTMLElement {
       for (const pp of sm.popups || []) if (pp.entity) byEntity[pp.entity] = pp.hash;
       const title = /sprinkl/i.test(sm.name) ? "Irrigation" : sm.name;
       const content = [elanTitle(title)];
+      // Running zones show at the top (a copy visible only while on); the normal list hides them meanwhile.
+      const onStates = sm.on_states || ["on"];
+      const zoneRows = [];
       for (const id of sm.entities || []) {
         if (!hass.states[id]) continue;
         const card = (sm.cards || []).find((c) => c.entity === id) || {};
-        content.push(
+        zoneRows.push([id,
           elanRow({
             name: card.name || label(id),
             icon: card.icon || sm.icon || "mdi:sprinkler-variant",
@@ -2890,9 +2897,11 @@ class PivitElanStrategy extends HTMLElement {
             value: "(hass.states['" + id + "'] && hass.states['" + id + "'].state === 'on' ? 'Running' : 'Off')",
             tap: byEntity[id] ? go(byEntity[id]) : { action: "more-info" },
             extra: byEntity[id] ? {} : { entity: id },
-          })
+          })]
         );
       }
+      for (const [id, row] of zoneRows) content.push({ ...row, visibility: [{ condition: "state", entity: id, state: onStates }] });
+      for (const [id, row] of zoneRows) content.push({ ...row, visibility: [{ condition: "state", entity: id, state_not: onStates }] });
       views.push(view(path, title, content, sm.popups || []));
     }
 
