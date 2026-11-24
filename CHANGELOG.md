@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.70 — 2026-11-23
+
+- PivIT ELAN Rooms: tiles rebuilt as one row — room icon and name on the left; temperature (whole degrees) at the far right with the active icons to its left (lights, fans, unlocked door in red, TV, audio playing). Motion / open-door alerts removed. Fixes the temperature not showing (Bubble hid the sub-button when it had nothing of its own to show).
+
 ## 1.1.69 — 2026-11-23
 
 - PivIT ELAN centring fixed: menu and Home content are centred in the visible area below Home Assistant's header bar when it shows (admins), or the whole window when it's hidden (kiosk). Home centres on what's visible — from "HOME" down to the last alert chip — not the clock card's empty top.

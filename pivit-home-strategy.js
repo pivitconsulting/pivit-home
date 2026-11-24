@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.69";
+const VERSION = "1.1.70";
 
 const DEFAULTS = {
   title: "Home",
@@ -2526,57 +2526,76 @@ class PivitElanStrategy extends HTMLElement {
     // tap a tile for the room pop-up, tap an icon for that pop-up (lights, fans, locks, TV, audio, thermostat…).
     // Pop-ups: every Savant pop-up the tiles link to, and the ones those link to in turn.
     if (items.some((i) => i.path === "rooms")) {
+      // ELAN room tiles: one row — room icon and name on the left; on the right, the temperature at the far end and,
+      // to its left, an icon for each thing that is on (lights, fans, TV, audio playing, a door unlocked). Tap the
+      // tile for the room pop-up, an icon for its pop-up (as on the PivIT Home dashboard). No motion / open alerts.
+      const anyIn = (ids, states) => ({ condition: "or", conditions: ids.map((e) => ({ condition: "state", entity: e, state: states })) });
+      const roomByName = Object.fromEntries(ctx.rooms.map((r) => [r.name, r]));
+      const UNLOCKED = ["unlocked", "open", "opening", "unlocking", "jammed"];
+      const roomTileElan = (t) => {
+        const r = roomByName[t.name];
+        if (!r) return null;
+        const hash = "#" + slug(r.name);
+        const { tvs, audio } = roomMediaSplit(r, hass);
+        const lights = roomLights(r).filter((e) => hass.states[e]);
+        const fans = roomFans(r).filter((e) => hass.states[e]);
+        const rlocks = r.entities.filter((id) => domainOf(id) === "lock" && (!cfg.room_lock_platforms || cfg.room_lock_platforms.includes(((hass.entities || {})[id] || {}).platform)));
+        const ft = (cfg.room_thermostats || {})[r.id] ?? (cfg.floor_thermostats || {})[r.floor];
+        const climate = ft === "none" ? null : roomClimates(r, hass)[0] || (ft && hass.states[ft] ? ft : null);
+        const subs = [];
+        const styles = [];
+        const icon = (entity, ic, tap, vis, colour) => {
+          subs.push({ entity, icon: ic, show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: go(tap), visibility: vis });
+          styles.push(` .bubble-sub-button-${subs.length} ha-icon, .bubble-sub-button-${subs.length} .bubble-sub-button-icon { color: ${colour} !important; --mdc-icon-size: 22px; }`);
+        };
+        // Left → right (Bubble lays sub-buttons out in order at the right end): audio, TV, lock, fan, lights, temperature.
+        if (audio.length) icon(audio[0], "mdi:speaker", hash + "-audio", [anyIn(audio, ["playing"])], ELAN_ACCENT);
+        if (tvs.length) icon(tvs[0], "mdi:television", hash + "-tv", [anyIn(tvs, ["on", "playing", "paused", "buffering"])], ELAN_ACCENT);
+        if (rlocks.length) icon(rlocks[0], "mdi:lock-open-variant", hash + "-locks", [anyIn(rlocks, UNLOCKED)], ELAN_HEAT);
+        if (fans.length) icon(fans[0], "mdi:ceiling-fan", hash + "-fans", [anyIn(fans, ["on"])], ELAN_ACCENT);
+        if (lights.length) icon(lights[0], "mdi:lightbulb-group", hash + "-lights", [anyIn(lights, ["on"])], "#f5c518");
+        if (climate) {
+          // A sub-button needs something visible or Bubble hides it: keep an icon, hide it, and draw the rounded temperature.
+          subs.push({ entity: climate, icon: "mdi:thermometer", show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: go(thermostatHash(climate)) });
+          const n = subs.length;
+          styles.push(
+            ` .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} .bubble-sub-button-icon { display: none !important; }` +
+              ` .bubble-sub-button-${n} { width: auto !important; min-width: 52px; padding: 0 4px 0 8px !important; justify-content: flex-end !important; }` +
+              ` .bubble-sub-button-${n}::after { content: "\${((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '')(hass.states['${climate}'])}"; font-size: 22px; font-weight: 300; color: #f2f5fa; }`
+          );
+        }
+        return {
+          type: "custom:bubble-card",
+          card_type: "button",
+          button_type: "name",
+          name: r.name,
+          icon: t.icon,
+          sub_button: subs,
+          styles:
+            ELAN_ROW_STYLE +
+            " .bubble-sub-button-container { position: static !important; display: flex !important; flex-direction: row !important; align-items: center !important; gap: 6px !important; margin-left: auto !important; margin-right: 10px !important; height: 100% !important; }" +
+            " .bubble-sub-button { height: 36px !important; min-width: 32px; }" +
+            styles.join(""),
+          tap_action: go(hash),
+          button_action: { tap_action: go(hash) },
+        };
+      };
+      // Order: elan_room_order (room ids or names), the rest after.
+      const ro = (cfg.elan_room_order || []).map((x) => slug(x));
+      const rRank = (t) => { const r = roomByName[t.name]; const i = r ? Math.max(ro.indexOf(slug(r.id)), ro.indexOf(slug(r.name))) : -1; return i < 0 ? 999 : i; };
+      const tiles = roomTiles.slice().sort((a, b) => rRank(a) - rRank(b)).map(roomTileElan).filter(Boolean);
+      // Pop-ups: every Savant pop-up the tiles link to, and the ones those link to in turn.
       const byHash = {};
       for (const pp of popups) byHash[pp.hash] = pp;
       const need = new Set();
       const scan = (o) => (JSON.stringify(o).match(/"navigation_path":"(#[^"]+)"/g) || []).map((m) => m.slice(19, -1));
-      const queue = scan(roomTiles);
+      const queue = scan(tiles);
       while (queue.length) {
         const h = queue.shift();
         if (need.has(h) || !byHash[h]) continue;
         need.add(h);
         queue.push(...scan(byHash[h]));
       }
-      const ROOM_TILE_STYLE =
-        ` .bubble-button-card-container { background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.06); border-radius: 6px !important; }` +
-        " .bubble-button-background { opacity: .35 !important; } .bubble-main-icon-container { background: transparent !important; }" +
-        " .bubble-name { font-size: 19px !important; font-weight: 300 !important; line-height: 1.35 !important; }";
-      // Cleaner tiles: each icon shows only while something it stands for is on — lights / fans on, TV on, audio
-      // playing, a door unlocked (the "all locked" icon is dropped); temperature and the motion / open alerts stay.
-      const anyIn = (ids, states) => ({ condition: "or", conditions: ids.map((e) => ({ condition: "state", entity: e, state: states })) });
-      const NEVER = [{ condition: "state", entity: "sun.sun", state: "__never__" }];
-      const roomByName = Object.fromEntries(ctx.rooms.map((r) => [r.name, r]));
-      const onlyActive = (t) => {
-        const r = roomByName[t.name];
-        if (!r) return t;
-        const { tvs, audio } = roomMediaSplit(r, hass);
-        const subs = (t.sub_button || []).map((sb) => {
-          const h = (sb.tap_action && sb.tap_action.navigation_path) || "";
-          let vis = null;
-          if (h.endsWith("-lights")) vis = [anyIn(roomLights(r), ["on"])];
-          else if (h.endsWith("-fans")) vis = [anyIn(roomFans(r), ["on"])];
-          else if (h.endsWith("-tv")) vis = [anyIn(tvs, ["on", "playing", "paused", "buffering"])];
-          else if (h.endsWith("-audio")) vis = [anyIn(audio, ["playing"])];
-          else if (h.endsWith("-locks") && sb.icon === "mdi:door-closed-lock") vis = NEVER;
-          return vis ? { ...sb, visibility: vis } : sb;
-        });
-        // Temperature in whole degrees (the attribute text would show e.g. "70.9 °F").
-        let extraStyle = "";
-        subs.forEach((sb, i) => {
-          if (sb.attribute === "current_temperature" && sb.entity) {
-            subs[i] = { ...sb, show_attribute: false, show_name: false, show_state: false };
-            extraStyle += ` .bubble-sub-button-${i + 1}::after { content: "\${((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '')(hass.states['${sb.entity}'])}"; font-size: 14px; }`;
-          }
-        });
-        return { ...t, sub_button: subs, styles: (t.styles || "") + extraStyle };
-      };
-      // Order: elan_room_order (room ids or names), the rest after.
-      const ro = (cfg.elan_room_order || []).map((x) => slug(x));
-      const rRank = (t) => { const r = roomByName[t.name]; const i = r ? Math.max(ro.indexOf(slug(r.id)), ro.indexOf(slug(r.name))) : -1; return i < 0 ? 999 : i; };
-      const tiles = roomTiles
-        .slice()
-        .sort((a, b) => rRank(a) - rRank(b))
-        .map((t) => onlyActive({ ...t, grid_options: undefined, styles: ((t.styles || "") + ROOM_TILE_STYLE).trim() }));
       const grid = (columns) => ({ type: "grid", columns, square: false, cards: tiles });
       views.push(
         view(
