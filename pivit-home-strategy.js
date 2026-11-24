@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.121";
+const VERSION = "1.1.122";
 
 const DEFAULTS = {
   title: "Home",
@@ -3290,14 +3290,14 @@ class PivitElanStrategy extends HTMLElement {
     }
     // LIGHTING — rooms with the number of devices on; shades follow (ELAN keeps shades under lighting).
     if (items.some((i) => i.path === "lighting")) {
-      // LET'S PARTY (when the PivIT party scripts exist): a button at the right end of the title line that opens the party
+      // PARTY MODE (when the PivIT party scripts exist): a button at the right end of the title line that opens the party
       // modes — each a LED light show (script.pivit_party_*), lit while running — and Stop the Party (restores the LEDs).
       const partyModes = Object.keys(hass.states).filter((e) => /^script\.pivit_party_/.test(e) && e !== "script.pivit_party_stop");
       const partyOn = "((hass.states['input_boolean.pivit_party'] || {}).state === 'on')";
       const lightTitle = elanTitle("Lighting");
       const partyPopups = [];
       if (partyModes.length && hass.states["script.pivit_party_stop"]) {
-        lightTitle.sub_button = [{ name: "Let's Party", icon: "mdi:party-popper", show_name: true, show_icon: true, show_background: true, tap_action: go("#party") }];
+        lightTitle.sub_button = [{ name: "Party Mode", icon: "mdi:party-popper", show_name: true, show_icon: true, show_background: true, tap_action: go("#party") }];
         lightTitle.styles +=
           " .bubble-sub-button-container { position: absolute !important; right: 0; top: 50%; transform: translateY(-50%); }" +
           " .bubble-sub-button-1 { height: 34px !important; padding: 0 14px !important; gap: 8px !important; border-radius: 4px !important; border: 1px solid rgba(255,255,255,.35);" +
@@ -3333,7 +3333,7 @@ class PivitElanStrategy extends HTMLElement {
           tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: "script.pivit_party_stop" } },
           button_action: { tap_action: { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: "script.pivit_party_stop" } } },
         };
-        partyPopups.push(popupShell("#party", "Let's Party", "mdi:party-popper", [
+        partyPopups.push(popupShell("#party", "Party Mode", "mdi:party-popper", [
           { type: "grid", columns: 3, square: false, grid_options: { columns: "full" }, cards: partyModes.map(modeBtn) },
           stopBtn,
         ]));

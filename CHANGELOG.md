@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.122 — 2026-11-24
+
+- Lighting: the LET'S PARTY button and pop-up are now PARTY MODE.
+
 ## 1.1.121 — 2026-11-24
 
 - LED Color: solid color tiles are filled with their color and the name is centered (names no longer cut off).
