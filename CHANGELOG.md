@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.86 — 2026-11-23
+
+- PivIT ELAN Pool (page and Pool pop-up): "All Pool Off" row at the top, like Media's All Zones Off — turns off every pump, light, feature and heater on the card that's on; shows how many are on.
+- PivIT ELAN Home: the alarm chip moved into the clock card, centred between the time and the date (placed by measuring both); it still opens the arm / disarm pop-up.
+
 ## 1.1.85 — 2026-11-23
 
 - Narrow effect-light buttons: name wraps instead of scrolling ("Pool Lights" in the Pool pop-up).

@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.85";
+const VERSION = "1.1.86";
 
 const DEFAULTS = {
   title: "Home",
@@ -1644,6 +1644,16 @@ function elanPool(hass, cards, bodies) {
           : ""),
     });
   }
+  // "All Pool Off" (like Media's All Zones Off): turns off every pump, light, feature and heater on the card that is on.
+  const offIds = [...new Set(cards.map((c) => c.entity).filter((e) => e && ["switch", "light", "fan", "input_boolean"].includes(domainOf(e))))];
+  if (offIds.length) {
+    const off = liveBulk(offIds, ["on"], "homeassistant.turn_off", { confirm: false });
+    out.unshift({
+      type: "custom:bubble-card", card_type: "button", button_type: "name", name: "All Pool Off", icon: "mdi:power", grid_options: { columns: "full" },
+      styles: ELAN_ROW_STYLE + " .bubble-name-container::after { content: \"${" + JSON.stringify(offIds) + ".filter((e) => (hass.states[e] || {}).state === 'on').length ? " + JSON.stringify(offIds) + ".filter((e) => (hass.states[e] || {}).state === 'on').length + ' on' : 'All off'}\"; display: block; font-size: 11px; letter-spacing: .09em; text-transform: uppercase; opacity: .6; } " + off.hook,
+      ...off.actions,
+    });
+  }
   // Toggles: pumps, lights, features.
   const toggles = cards.filter((c) => c.entity && ["switch", "light", "fan", "input_boolean", "sensor"].includes(domainOf(c.entity)) && !used.has(c.entity));
   toggles.forEach((c) => used.add(c.entity));
@@ -2400,8 +2410,8 @@ class PivitElanStrategy extends HTMLElement {
       const count = (ids, states) => "(" + JSON.stringify(ids) + ".filter((e) => hass.states[e] && " + JSON.stringify(states) + ".includes(hass.states[e].state)).length)";
       const toPage = (path) => go(`${base}/${path}`);
       const chip = (icon, text, colour, tap, visibility, showExpr) => chips.push({ icon, text, colour, tap, visibility, showExpr });
-      // Alarm: always shown; red while armed or triggered.
-      for (const id of ctx.alarms)
+      // Alarm: shown in the clock card, between the time and the date (see the HOME card below).
+      for (const id of [])
         chip(
           "mdi:shield-lock-outline",
           "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : s === 'triggered' ? 'ALARM' : s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '')(" + st(id) + ")",
@@ -2526,6 +2536,32 @@ class PivitElanStrategy extends HTMLElement {
     // Arm / disarm pop-up for an alarm panel (Security page and, from the alarm chip, the Home screen).
     const alarmPopup = (id) =>
       popupShell(`#security-${slug(id.split(".")[1])}`, NAMES[id] || "Home Security", "mdi:shield-lock-outline", [...elanAlarmCards(hass, id)]);
+    // Home alarm chip(s) in the clock card, centred between the time and the date: shield icon + state ("Disarmed",
+    // "Armed Away"; red while armed or triggered). Tap opens the arm / disarm pop-up on the Home screen. A small hook
+    // measures the clock's bottom and the date line's top and places the chip half-way.
+    const ast = (id) => "(hass.states['" + id + "'] ? hass.states['" + id + "'].state : '')";
+    const alarmChipSubs = ctx.alarms.map((id) => ({ icon: "mdi:shield-lock-outline", show_icon: true, show_name: false, show_background: true, tap_action: go(`#security-${slug(id.split(".")[1])}`) }));
+    const alarmChipStyles = ctx.alarms.length
+      ? " .bubble-sub-button-container { position: absolute !important; left: 0; right: 0; top: var(--pv-chip-top, 66%); display: flex !important; justify-content: center !important; gap: 8px !important; margin: 0 !important; width: 100% !important; z-index: 2; }" +
+        " .bubble-sub-button { width: auto !important; height: 34px !important; padding: 0 14px 0 10px !important; gap: 8px !important; border-radius: 4px !important; flex-direction: row !important; align-items: center !important;" +
+        ` background: ${ELAN_ROW_BG} !important; border: 1px solid rgba(255,255,255,.14); }` +
+        ctx.alarms
+          .map(
+            (id, i) =>
+              ` .bubble-sub-button-${i + 1} ha-icon { color: \${${ast(id)}.startsWith('armed') || ${ast(id)} === 'triggered' ? '${ELAN_HEAT}' : '#f2f5fa'} !important; --mdc-icon-size: 18px; }` +
+              ` .bubble-sub-button-${i + 1}::after { content: "\${((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : s === 'triggered' ? 'ALARM' : s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '')(${ast(id)})}"; font-size: 14px; color: #f2f5fa; white-space: nowrap; }`
+          )
+          .join("") +
+        // Place the chips half-way between the bottom of the time and the top of the date line (the date is the card's
+        // ::after, 8% (phones 4%) above the bottom, ~1.3 lines tall).
+        " ${(card.__pvChip || (card.__pvChip = 1, (function pin(tries) { var root = card.getRootNode ? card.getRootNode() : card; var box = (card.querySelector && card.querySelector('.bubble-button-card-container')) || root.querySelector('.bubble-button-card-container');" +
+        " var nm = (card.querySelector && card.querySelector('.bubble-name-container')) || root.querySelector('.bubble-name-container'); var subs = (card.querySelector && card.querySelector('.bubble-sub-button-container')) || root.querySelector('.bubble-sub-button-container');" +
+        " if (!box || !nm || !subs || !box.getBoundingClientRect().height) { if (tries < 30) setTimeout(function () { pin(tries + 1); }, 300); return; }" +
+        " var place = function () { var b = box.getBoundingClientRect(), n = nm.getBoundingClientRect(); if (!b.height) return; var cs = getComputedStyle(box, '::after');" +
+        " var fs = parseFloat(cs.fontSize) || 18; var bottomPct = parseFloat(cs.bottom) || b.height * 0.08; var dateTop = b.height - bottomPct - fs * 1.3; var clockBottom = n.bottom - b.top;" +
+        " var chipH = subs.getBoundingClientRect().height || 34; box.style.setProperty('--pv-chip-top', Math.max(clockBottom, (clockBottom + dateTop) / 2 - chipH / 2) + 'px'); };" +
+        " place(); setTimeout(place, 600); window.addEventListener('resize', place); if (window.ResizeObserver) new ResizeObserver(place).observe(box); })(0)), '')}"
+      : "";
     // HOME — big thin clock and date in the middle (as on the ELAN home screen), weather underneath.
     const wx = ctx.weather
       ? " + ' · ' + Math.round((hass.states['" + ctx.weather + "'] || { attributes: {} }).attributes.temperature) + '° ' + " + titleCase("hass.states['" + ctx.weather + "'] && hass.states['" + ctx.weather + "'].state.replace('partlycloudy', 'partly cloudy')")
@@ -2552,7 +2588,9 @@ class PivitElanStrategy extends HTMLElement {
             elanCenterHook("__pvHomeC", false, ".bubble-name-container") +
             // Phones: shorter hero and smaller clock so the alert chips underneath stay on screen above the bottom bar.
             " @media (max-width: 999px) { .bubble-button-card-container { height: 36vh !important; min-height: 250px; } .bubble-name { font-size: 22px !important; }" +
-            " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }",
+            " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }" +
+            alarmChipStyles,
+          sub_button: alarmChipSubs,
         },
         ...homeAlerts(),
       ], ctx.alarms.map((id) => alarmPopup(id)))
