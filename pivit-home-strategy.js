@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.98";
+const VERSION = "1.1.99";
 
 const DEFAULTS = {
   title: "Home",
@@ -404,7 +404,7 @@ function roomTile(room, hass, span, statusSensors = [], locks = [], floorClimate
   const OPEN_ICON = { door: "mdi:door-open", window: "mdi:window-open-variant", garage_door: "mdi:garage-open", opening: "mdi:square-rounded-outline" };
   const alerts = []; // [subIdx, showExpr]
   const recentMotion =
-    "(" + JSON.stringify(motionIds) + ".some((e) => { const s = hass.states[e]; return s && (s.state === 'on' || Date.now() - new Date(s.last_changed).getTime() < 300000); }))";
+    "(" + JSON.stringify(motionIds) + ".some((e) => window.__pvRecent ? window.__pvRecent(hass, e) : (hass.states[e] || {}).state === 'on'))";
   if (motionIds.length) {
     subs.push({ entity: motionIds[0], icon: "mdi:motion-sensor", show_icon: true, show_state: false, show_background: false, tap_action: go(hash + "-activity") });
     alerts.push([subs.length, recentMotion]);
@@ -2421,6 +2421,26 @@ function elanIdle(base, cfg, hass) {
   } catch (e) { /* not in a browser */ }
 }
 
+// "Recent detection" test used by camera tiles, room tiles and the Home chip: on now, or turned off within the last
+// 5 minutes — but not when many detection sensors changed at the same moment (an integration reload or a restart
+// resets them all), which would otherwise light every icon at once.
+function installRecentHelper() {
+  try {
+    if (window.__pvRecent) return;
+    const RE = /^binary_sensor\..*_(motion|person_detected|vehicle_detected|animal_detected|package_detected|occupancy)$/;
+    let cacheHass = null, cache = null;
+    window.__pvRecent = (hass, id, ms = 300000) => {
+      const s = hass && hass.states[id];
+      if (!s) return false;
+      if (s.state === "on") return true;
+      const t = new Date(s.last_changed).getTime();
+      if (s.state !== "off" || Date.now() - t >= ms) return false;
+      if (cacheHass !== hass) { cacheHass = hass; cache = Object.keys(hass.states).filter((e) => RE.test(e)).map((e) => new Date(hass.states[e].last_changed).getTime()); }
+      return cache.filter((x) => Math.abs(x - t) < 3000).length <= 6;
+    };
+  } catch (e) { /* not in a browser */ }
+}
+
 class PivitElanStrategy extends HTMLElement {
   static async generate(userConfig, hass) {
     const cfg = { ...DEFAULTS, ...(userConfig || {}) };
@@ -2432,6 +2452,7 @@ class PivitElanStrategy extends HTMLElement {
     const base = ctx.basePath;
     const bg = cfg.elan_background || ELAN_BACKGROUND;
     elanDialogTheme(base);
+    installRecentHelper();
     elanIdle(base, cfg, hass);
     ELAN_HASS = hass;
     const label = (id) => NAMES[id] || (hass.states[id] && hass.states[id].attributes.friendly_name) || id;
@@ -2619,7 +2640,7 @@ class PivitElanStrategy extends HTMLElement {
         }
         if (dets.length) {
           const recent =
-            "(" + JSON.stringify(dets) + ".map((d) => [d, hass.states[d[0]]]).filter((x) => x[1] && (x[1].state === 'on' || Date.now() - new Date(x[1].last_changed).getTime() < 300000))" +
+            "(" + JSON.stringify(dets) + ".map((d) => [d, hass.states[d[0]]]).filter((x) => x[1] && (window.__pvRecent ? window.__pvRecent(hass, x[0][0]) : x[1].state === 'on'))" +
             ".sort((a, b) => new Date(b[1].last_changed) - new Date(a[1].last_changed)))";
           chip(
             "mdi:cctv",
@@ -3176,7 +3197,7 @@ class PivitElanStrategy extends HTMLElement {
               .map(
                 (d, i) =>
                   // Shown if detected now or ended within 5 minutes (last_changed of the "off" state).
-                  ` .bubble-sub-button-${i + 1} { display: \${((s) => s && (s.state === 'on' || (s.state === 'off' && Date.now() - new Date(s.last_changed).getTime() < 300000)) ? 'flex' : 'none')(hass.states['${d.entity}'])} !important; }` +
+                  ` .bubble-sub-button-${i + 1} { display: \${(window.__pvRecent ? window.__pvRecent(hass, '${d.entity}') : (hass.states['${d.entity}'] || {}).state === 'on') ? 'flex' : 'none'} !important; }` +
                   ` .bubble-sub-button-${i + 1} ha-icon { --mdc-icon-size: 18px; color: \${hass.states['${d.entity}'] && hass.states['${d.entity}'].state === 'on' ? '#f2c12e' : '#ffffff'} !important; }`
               )
               .join(""),

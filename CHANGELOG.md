@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.99 — 2026-11-24
+
+- Recent-detection icons (camera tiles, room motion, Home detections chip) ignore a mass reset — when many detection sensors change at the same moment (integration reload / restart), they're not treated as recent, so every icon no longer lights at once.
+
 ## 1.1.98 — 2026-11-24
 
 - Night clock: the wake tap is swallowed completely (down, up and click) and the clock fades out just after, so it can't press anything underneath.
