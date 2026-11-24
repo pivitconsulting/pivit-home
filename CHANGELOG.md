@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.84 — 2026-11-23
+
+- PivIT ELAN room pop-ups: rooms without their own thermostat also get one from `room_thermostats` (Kitchen, Dining Room, Office → Living Room's), as well as `floor_thermostats`.
+- Lights with an effect drop-down drop their bulb icon when the button is narrow (e.g. three across in the Pool pop-up) so the name fits.
+
 ## 1.1.83 — 2026-11-23
 
 - PivIT ELAN Home: the alarm chip opens the arm / disarm pop-up on top of the Home screen (no page change).

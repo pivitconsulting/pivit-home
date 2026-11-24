@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.83";
+const VERSION = "1.1.84";
 
 const DEFAULTS = {
   title: "Home",
@@ -1586,6 +1586,8 @@ const titleCase = (x) => "(((" + x + ") || '') + '').replace(/_/g, ' ').replace(
 const hasEffects = (hass, id) => domainOf(id) === "light" && hass.states[id] && (hass.states[id].attributes.effect_list || []).length > 0;
 const effectSubButton = (id) => ({ entity: id, select_attribute: "effect_list", icon: "mdi:palette", show_icon: true, show_name: false, show_state: false, show_attribute: false, show_arrow: true, show_background: true });
 const effectStyles = (id, n) =>
+  // Narrow buttons (e.g. three across in a pop-up): drop the bulb icon so the name has room beside the drop-down.
+  " .bubble-button-card-container { container-type: inline-size; } @container (max-width: 210px) { .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; } }" +
   ` .bubble-sub-button-${n} { background: rgba(255,255,255,.12) !important; border-radius: 4px !important; } .bubble-sub-button-${n} ha-icon, .bubble-sub-button-${n} ha-svg-icon { color: #f2f5fa !important; }` +
   " .bubble-state::after { content: \"${((s) => s && s.state === 'on' && s.attributes.effect ? ' · ' + s.attributes.effect : '')(hass.states['" + id + "'])}\"; }" +
   ` .bubble-sub-button-${n}, .bubble-dropdown-container, mwc-list, ha-list-item, mwc-list-item { --mdc-theme-surface: #1d2244; --mdc-theme-text-primary-on-background: #f2f5fa; --primary-text-color: #f2f5fa; --mdc-theme-primary: ${ELAN_ACCENT}; }`;
@@ -2300,9 +2302,10 @@ class PivitElanStrategy extends HTMLElement {
     const savant = roomsView(cfg, ctx, { type: "markdown", content: " " });
     const popups = savant.sections.flatMap((sec) => sec.cards).filter((c) => c.card_type === "pop-up");
     const popupsWhere = (test) => popups.filter((pp) => test(pp.hash || ""));
-    // Rooms without a thermostat of their own get their floor's (floor_thermostats, e.g. upstairs bedrooms) in their pop-up.
+    // Rooms without a thermostat of their own get the one that covers them in their pop-up: room_thermostats (e.g.
+    // Kitchen → Living Room's), else floor_thermostats (e.g. upstairs bedrooms).
     for (const r of ctx.rooms) {
-      const ft = (cfg.floor_thermostats || {})[r.floor];
+      const ft = (cfg.room_thermostats || {})[r.id] ?? (cfg.floor_thermostats || {})[r.floor];
       const pp = popups.find((x) => x.hash === "#" + slug(r.name));
       if (!pp || !ft || ft === "none" || !hass.states[ft] || roomClimates(r, hass).length || JSON.stringify(pp.cards || []).includes('"' + ft + '"')) continue;
       pp.cards = [{ type: "thermostat", entity: ft, grid_options: { columns: "full" } }, ...(pp.cards || [])];
