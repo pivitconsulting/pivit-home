@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.108 — 2026-11-24
+
+- TV touchpad label: centred for real (`.bubble-name` is a flex box; justify-content centre).
+
 ## 1.1.107 — 2026-11-24
 
 - TV touchpad: hint label centred (content container stretched to the full width).

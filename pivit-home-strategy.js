@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.107";
+const VERSION = "1.1.108";
 
 const DEFAULTS = {
   title: "Home",
@@ -1908,7 +1908,7 @@ function elanTvRemote(remoteId) {
       " .bubble-button-card { justify-content: center !important; align-items: flex-end !important; padding-bottom: 14px !important; }" +
       " .bubble-content-container { width: 100% !important; justify-content: center !important; flex: 1 1 auto !important; }" +
       " .bubble-name-container { margin: 0 !important; width: 100% !important; flex: 1 1 auto !important; align-items: center !important; justify-content: center !important; text-align: center !important; }" +
-      " .bubble-name { width: 100%; text-align: center !important; justify-content: center; font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; opacity: .45; }" +
+      " .bubble-name { width: 100%; text-align: center !important; justify-content: center !important; font-size: 12px !important; letter-spacing: .1em; text-transform: uppercase; opacity: .45; }" +
       " " + tpHook,
     tap_action: { action: "none" },
     button_action: { tap_action: { action: "none" } },
