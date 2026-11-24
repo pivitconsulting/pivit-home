@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.114";
+const VERSION = "1.1.115";
 
 const DEFAULTS = {
   title: "Home",
@@ -1998,6 +1998,8 @@ function ledSyncPopup(src, label) {
     styles:
       ELAN_ROW_STYLE +
       " .bubble-button-card-container { background: var(--pv-pick, " + ELAN_ROW_BG + ") !important; } .bubble-icon { color: var(--pv-pick-i, #9aa6bf) !important; }" +
+      " .bubble-name-container { min-width: 0 !important; } .bubble-name { font-size: 15px !important; white-space: normal !important; line-height: 1.15 !important; overflow: visible !important; }" +
+      " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }" +
       " .bubble-name-container::after { content: var(--pv-pick-t, 'Tap to add'); display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }" +
       " ${(card.__pvC || (card.__pvC = 1, (function () { var A = " + store + "; var sel = A[" + K + "] = A[" + K + "] || {};" +
       " var paint = function () { var on = !!(A[" + K + "] || {})[" + JSON.stringify(t) + "]; card.style.setProperty('--pv-pick', on ? 'rgba(47,127,224,.55)' : '" + ELAN_ROW_BG + "');" +
@@ -2033,7 +2035,7 @@ function ledSyncPopup(src, label) {
   };
   const head = {
     type: "custom:bubble-card", card_type: "button", button_type: "name", entity: src, name: label(src), icon: "mdi:palette", show_state: true, grid_options: { columns: "full" },
-    styles: ELAN_ROW_STYLE + " .bubble-icon { color: #fff !important; } .bubble-main-icon-container { background: ${" + swatch + "} !important; border-radius: 50% !important; }" +
+    styles: "/*pv-nosync*/" + ELAN_ROW_STYLE + " .bubble-icon { color: #fff !important; } .bubble-main-icon-container { background: ${" + swatch + "} !important; border-radius: 50% !important; }" +
       " .bubble-name-container::after { content: 'Copy this colour to…'; display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; }",
     tap_action: { action: "none" }, button_action: { tap_action: { action: "none" } },
   };
@@ -2054,7 +2056,7 @@ function elanCards(cards) {
     if (out.type === "custom:bubble-card" && out.card_type === "button" && out.button_type === "slider")
       out.styles = ((out.styles || "") + ELAN_SLIDER_STYLE).trim();
     if (out.type === "custom:bubble-card" && out.card_type === "button") out.styles = ((out.styles || "") + ELAN_PHONE_NAME_STYLE).trim();
-    if (out.type === "custom:bubble-card" && out.card_type === "button" && out.entity && ELAN_LEDS.includes(out.entity) && !(out.sub_button || []).some((b) => b.icon === "mdi:palette-swatch-variant")) {
+    if (out.type === "custom:bubble-card" && out.card_type === "button" && out.entity && ELAN_LEDS.includes(out.entity) && !(out.styles || "").includes("/*pv-nosync*/") && !(out.sub_button || []).some((b) => b.icon === "mdi:palette-swatch-variant")) {
       out.sub_button = [...(out.sub_button || []), ledSyncSub(out.entity)];
       out.styles = (out.styles || "") + ledSyncStyle(out.sub_button.length);
     }
