@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.73";
+const VERSION = "1.1.74";
 
 const DEFAULTS = {
   title: "Home",
@@ -1708,7 +1708,9 @@ const ELAN_POPUP_STYLE =
   ELAN_CARD_VARS.replace('--card-background-color: #1d2244;', '') + ' }' +
   // The panel itself: ELAN night-sky navy (Bubble would otherwise paint it with the row colour → grey).
   " .bubble-pop-up-background { background: linear-gradient(175deg, rgba(42,47,92,.97) 0%, rgba(23,26,51,.97) 55%, rgba(13,15,30,.97) 100%) !important; }" +
-  " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; }";
+  " .bubble-header-container .bubble-name { font-weight: 300 !important; font-size: 19px !important; line-height: 1.35 !important; height: auto !important; padding-bottom: 1px; }" +
+  // Bubble's 18px line box clips descenders (g, y) at 19px: give the title room.
+  " .bubble-header-container .bubble-name-container { line-height: 1.35 !important; height: auto !important; }";
 // Sliders inside pop-ups fill with ELAN blue (not the bulb's own colour), like the ELAN rows.
 const ELAN_SLIDER_STYLE =
   ` .bubble-range-fill { background: rgba(47,127,224,.35) !important; border-right: 2px solid ${ELAN_ACCENT}; opacity: 1 !important; }`;

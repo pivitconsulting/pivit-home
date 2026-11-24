@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.74 — 2026-11-23
+
+- PivIT ELAN pop-up titles: taller line box so descenders (the g in "Living Room") aren't clipped.
+
 ## 1.1.73 — 2026-11-23
 
 - PivIT ELAN thermostat pop-ups: removed the system fan-mode (air handler blower) row — it stays on Auto.
