@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.111 — 2026-11-24
+
+- ELAN TV remote: volume row is now Mute, Volume down, Volume up, Menu.
+
 ## 1.1.110 — 2026-11-24
 
 - ELAN room pop-ups (instead of 1.1.109's inline remote): rooms with an Android TV / Google TV get one TV row at the bottom — status (Off / the app that's open) and a power button; the power button toggles the TV, anywhere else opens the TV's remote pop-up.

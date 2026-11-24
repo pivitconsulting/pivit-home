@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.110";
+const VERSION = "1.1.111";
 
 const DEFAULTS = {
   title: "Home",
@@ -1957,8 +1957,8 @@ function elanTvRemote(remoteId) {
       ] },
       touchpad,
       { type: "grid", columns: 4, square: false, cards: [
-        key("Volume down", "mdi:volume-minus", cmd("VOLUME_DOWN")),
         key("Mute", "mdi:volume-mute", cmd("VOLUME_MUTE")),
+        key("Volume down", "mdi:volume-minus", cmd("VOLUME_DOWN")),
         key("Volume up", "mdi:volume-plus", cmd("VOLUME_UP")),
         key("Menu", "mdi:menu", cmd("MENU")),
       ] },
