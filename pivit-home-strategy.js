@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.90";
+const VERSION = "1.1.91";
 
 const DEFAULTS = {
   title: "Home",
@@ -1610,49 +1610,41 @@ function elanPool(hass, cards, bodies) {
     const mode = ids.find((id) => domainOf(id) === "switch" && new RegExp(`${key}_pump`).test(id));
     used.add(b.entity); if (temp) used.add(temp); if (heater) used.add(heater); if (mode) used.add(mode);
     const modeOn = mode ? "(hass.states['" + mode + "'] && hass.states['" + mode + "'].state === 'on')" : "false";
-    const hIdx = mode ? 2 : 1; // heater sub-button position
     const title = key === "spa" ? "Spa" : "Pool";
     const tempExpr = temp
       ? "((s) => s && !isNaN(parseFloat(s.state)) ? Math.round(parseFloat(s.state)) + '°' : '--')(hass.states['" + temp + "'])"
       : "((s) => s && s.attributes.current_temperature != null ? Math.round(s.attributes.current_temperature) + '°' : '--')(hass.states['" + b.entity + "'])";
     const heaterOn = heater ? "(hass.states['" + heater + "'] && hass.states['" + heater + "'].state === 'on')" : "false";
-    out.push({
+    // Two lines: the ELAN climate row (name and status; water temperature; red setpoint box with ▲ / ▼, as on the
+    // room thermostats) and, under it, the mode and heater buttons.
+    const status =
+      "[" + (mode ? "(" + modeOn + " ? '" + title + " mode on' : '" + title + " mode off')" : "''") + ", (" + heaterOn + " ? 'Heater on' : 'Heater off')].filter(Boolean).join(' · ')";
+    const btn = (entity, label, ic, onExpr, onBg, offIcon) => ({
       type: "custom:bubble-card",
-      card_type: "climate",
-      entity: b.entity,
-      name: title,
-      show_state: false,
-      grid_options: { columns: "full", rows: 2 },
-      ...action({ action: "more-info" }),
-      sub_button: [
-        ...(mode
-          ? [{ entity: mode, name: `${title} Mode`, icon: "mdi:pump", show_name: true, show_icon: true, show_background: true, tap_action: { action: "toggle" } }]
-          : []),
-        ...(heater
-          ? [{ entity: heater, name: "Heater", icon: "mdi:fire", show_name: true, show_icon: true, show_background: true, tap_action: { action: "toggle" } }]
-          : []),
-      ],
+      card_type: "button",
+      button_type: "name",
+      entity,
+      name: label,
+      icon: ic,
+      show_state: true,
       styles:
-        ELAN_ROW_STYLE +
-        " .bubble-color-background { opacity: 0 !important; }" +
-        " .bubble-high-temp-container, .bubble-low-temp-container, .bubble-target-temperature-container, .bubble-temperature-container { background: rgba(200,40,40,.6) !important; border-radius: 4px !important; }" +
-        " .bubble-climate-temp-display, .bubble-climate-temp-display * { color: #fff !important; }" +
-        " .bubble-name { font-size: 24px !important; }" +
-        elanSubtitle({ expr: "(" + heaterOn + " ? 'Heater on' : 'Heater off') + ' · set ' + ((hass.states['" + b.entity + "'] || { attributes: {} }).attributes.temperature || '--') + '°'" }) +
-        " .bubble-buttons-container::before { content: \"${" + tempExpr + "}\"; font-size: 46px; font-weight: 200; line-height: 1; margin-right: 18px; align-self: center; }" +
-        // Phones: keep the − / + setpoint controls (they win over the row style's phone rule); the water temperature
-        // moves into the subtitle to make room.
-        " @media (max-width: 520px) { .bubble-temperature-container, .bubble-target-temperature-container { display: flex !important; }" +
-        " .bubble-buttons-container::before { content: none !important; } .bubble-sub-button .bubble-sub-button-name-container { display: none !important; }" +
-        " .bubble-name-container::after { content: \"${" + tempExpr + " + ' · ' + (" + heaterOn + " ? 'heating' : 'heater off')}\" !important; } }" +
-        (heater
-          ? ` .bubble-sub-button-${hIdx} { background: \${` + heaterOn + ` ? 'rgba(200,40,40,.85)' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }` +
-            ` .bubble-sub-button-${hIdx} ha-icon { color: \${` + heaterOn + ` ? '#fff' : '#f5a442'} !important; }`
-          : "") +
-        (mode
-          ? " .bubble-sub-button-1 { background: ${" + modeOn + " ? '" + ELAN_ACCENT + "' : 'rgba(255,255,255,.08)'} !important; border-radius: 4px !important; }" +
-            " .bubble-sub-button-1 ha-icon { color: ${" + modeOn + " ? '#fff' : '#9cc5f5'} !important; }"
-          : ""),
+        ".bubble-button-background { opacity: 0 !important; }" +
+        " .bubble-button-card-container { background: ${" + onExpr + " ? '" + onBg + "' : '" + ELAN_ROW_BG + "'} !important; border: 1px solid rgba(255,255,255,.08); border-radius: 4px !important; }" +
+        " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: ${" + onExpr + " ? '#fff' : '" + offIcon + "'} !important; }" +
+        " .bubble-name { font-size: 15px !important; } .bubble-state { font-size: 11px !important; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }",
+      ...action({ action: "toggle" }),
+    });
+    const buttons = [
+      ...(mode ? [btn(mode, `${title} Mode`, "mdi:pump", modeOn, ELAN_ACCENT, "#9cc5f5")] : []),
+      ...(heater ? [btn(heater, "Heater", "mdi:fire", heaterOn, "rgba(200,40,40,.85)", "#f5a442")] : []),
+    ];
+    out.push({
+      type: "vertical-stack",
+      grid_options: { columns: "full" },
+      cards: [
+        elanClimateRow(b.entity, title, "", { cur: tempExpr, sub: status, alwaysSet: true, noChevron: true }),
+        ...(buttons.length ? [{ type: "grid", columns: buttons.length, square: false, cards: buttons }] : []),
+      ],
     });
   }
   // "All Pool Off" (like Media's All Zones Off): turns off every pump, light, feature and heater on the card that is on.
@@ -1878,16 +1870,18 @@ function elanPopup(pp) {
 // heat (dark red) when the zone has two setpoints, or one tall box with the mode ("Heat 60°") — grey ▲ / ▼, and a ›.
 // Tap the cool or heat box to choose which one the arrows change. Arrow taps are added up and sent as one
 // climate.set_temperature about 0.8 s after the last tap; the box shows the new value straight away.
-function elanClimateRow(id, name, hash) {
+// opts (pool / spa): cur — expression for the big current temperature (e.g. the water sensor); sub — subtitle expression;
+// alwaysSet — the setpoint box is always red and adjustable (the heater is switched separately); noChevron.
+function elanClimateRow(id, name, hash, opts = {}) {
   const S = "hass.states['" + id + "']";
   const A = "(" + S + " || { attributes: {} }).attributes";
   const ST = "(" + S + " ? " + S + ".state : 'off')";
   const DUAL = "(" + A + ".target_temp_low != null && " + A + ".target_temp_high != null)";
   const fmt = (x) => "((v) => v == null || isNaN(v) ? '--' : Math.round(v) + '°')(" + x + ")"; // whole degrees
   const MODE = "(({ heat: 'Heat', cool: 'Cool', heat_cool: 'Auto', auto: 'Auto', dry: 'Dry', fan_only: 'Fan', off: 'Off' })[" + ST + "] || '')";
-  const SINGLE_BG = "(" + ST + " === 'cool' ? '" + ELAN_COOL_BOX + "' : " + ST + " === 'heat' ? '" + ELAN_HEAT_BOX + "' : 'rgba(255,255,255,.12)')";
+  const SINGLE_BG = opts.alwaysSet ? "'" + ELAN_HEAT_BOX + "'" : "(" + ST + " === 'cool' ? '" + ELAN_COOL_BOX + "' : " + ST + " === 'heat' ? '" + ELAN_HEAT_BOX + "' : 'rgba(255,255,255,.12)')";
   const SEL = "(card.__pvSel || 'cool')";
-  const nav = { action: "navigate", navigation_path: hash };
+  const nav = hash ? { action: "navigate", navigation_path: hash } : { action: "none" };
   const none = { action: "none" };
   // card is the row's ha-card; its sub-buttons live in the Bubble Card shadow root around it.
   // Pending values stay on screen until the thermostat reports them (Daikin reports about once a minute) or 90 s pass.
@@ -1949,13 +1943,13 @@ function elanClimateRow(id, name, hash) {
       " .bubble-name { font-size: 22px !important; white-space: normal !important; overflow: visible !important; line-height: 1.2 !important; word-break: normal; }" +
       " .bubble-name .scrolling-container, .bubble-name .bubble-scroll-separator { animation: none !important; transform: none !important; }" +
       " @media (max-width: 1400px) { .bubble-name { font-size: 19px !important; } }" +
-      elanSubtitle({ expr: titleCase(A + ".hvac_action || " + ST) }) +
+      elanSubtitle({ expr: opts.sub || titleCase(A + ".hvac_action || " + ST) }) +
       " .bubble-sub-button-container { display: grid !important; grid-template-columns: auto 104px 58px 34px; grid-template-rows: 1fr 1fr; gap: 2px 0;" +
       " height: 98px !important; align-self: center; margin-right: 4px; }" +
       " .bubble-sub-button { height: auto !important; min-height: 0 !important; width: auto !important; min-width: 0 !important; margin: 0 !important; border-radius: 0 !important; padding: 0 !important; }" +
       " .bubble-sub-button-1 { grid-column: 1; grid-row: 1 / span 2; background: none !important; padding: 0 22px !important; pointer-events: none !important; display: flex !important; align-items: center !important; }" +
       " .bubble-sub-button-1 ha-icon, .bubble-sub-button-1 .bubble-sub-button-icon { display: none !important; }" +
-      " .bubble-sub-button-1::before { content: \"${" + fmt(A + ".current_temperature") + "}\"; font-size: 52px; font-weight: 300; }" +
+      " .bubble-sub-button-1::before { content: \"${" + (opts.cur || fmt(A + ".current_temperature")) + "}\"; font-size: 52px; font-weight: 300; }" +
       box(2) + box(3) +
       ` .bubble-sub-button-2 { grid-column: 2; grid-row: 1; background: ${ELAN_COOL_BOX} !important; }` +
       ` .bubble-sub-button-3 { grid-column: 2; grid-row: 2; background: ${ELAN_HEAT_BOX} !important; }` +
@@ -1963,8 +1957,8 @@ function elanClimateRow(id, name, hash) {
       " .bubble-sub-button-2, .bubble-sub-button-3, .bubble-sub-button-2::after, .bubble-sub-button-3::after, .bubble-sub-button-3::before { color: #fff !important; }" +
       " @media (max-width: 1400px) { .bubble-sub-button-1 { padding: 0 12px !important; } .bubble-sub-button-1::before { font-size: 46px !important; } }" +
       " .bubble-sub-button-2::after { content: var(--pv-v, \"${" + fmt(A + ".target_temp_high") + "}\"); font-size: 25px; font-weight: 300; }" +
-      " .bubble-sub-button-3::after { content: var(--pv-v, \"${" + DUAL + " ? " + fmt(A + ".target_temp_low") + " : (" + ST + " === 'off' ? '' : " + fmt(A + ".temperature") + ")}\"); font-size: 25px; font-weight: 300; }" +
-      " .bubble-sub-button-3::before { content: \"${" + DUAL + " ? '' : " + MODE + "}\"; font-size: 19px; font-weight: 300; }" +
+      " .bubble-sub-button-3::after { content: var(--pv-v, \"${" + DUAL + " ? " + fmt(A + ".target_temp_low") + " : (" + (opts.alwaysSet ? "false" : ST + " === 'off'") + " ? '' : " + fmt(A + ".temperature") + ")}\"); font-size: 25px; font-weight: 300; }" +
+      " .bubble-sub-button-3::before { content: \"${" + DUAL + " ? '' : " + (opts.alwaysSet ? "'Set'" : MODE) + "}\"; font-size: 19px; font-weight: 300; }" +
       " ${" + DUAL + " ? '' : '.bubble-sub-button-2 { display: none !important; } .bubble-sub-button-3 { grid-row: 1 / span 2 !important; background: ' + " + SINGLE_BG + " + ' !important; }'}" +
       " ${" + DUAL + " ? '.bubble-sub-button-' + (" + SEL + " === 'heat' ? 3 : 2) + ' { box-shadow: inset 0 0 0 2px rgba(255,255,255,.7); }' : ''}" +
       " .pv-sel { box-shadow: inset 0 0 0 2px rgba(255,255,255,.7) !important; }" +
@@ -1972,7 +1966,8 @@ function elanClimateRow(id, name, hash) {
       " .bubble-sub-button-4 ha-icon, .bubble-sub-button-5 ha-icon { --mdc-icon-size: 34px; color: #f2f5fa !important; }" +
       " .bubble-sub-button-6 { grid-column: 4; grid-row: 1 / span 2; background: none !important; display: flex !important; align-items: center !important; justify-content: center !important; }" +
       " .bubble-sub-button-4 { grid-column: 3; grid-row: 1; } .bubble-sub-button-5 { grid-column: 3; grid-row: 2; }" +
-      " ${" + ST + " === 'off' ? '.bubble-sub-button-4, .bubble-sub-button-5 { opacity: .35; pointer-events: none !important; }' : ''}" +
+      (opts.alwaysSet ? "" : " ${" + ST + " === 'off' ? '.bubble-sub-button-4, .bubble-sub-button-5 { opacity: .35; pointer-events: none !important; }' : ''}") +
+      (opts.noChevron ? " .bubble-sub-button-6 { display: none !important; } .bubble-sub-button-container { grid-template-columns: auto 104px 58px 0 !important; }" : "") +
       " @media (max-width: 520px) { .bubble-button-card-container { height: 80px !important; } .bubble-name { font-size: 16px !important; }" +
       " .bubble-sub-button-container { grid-template-columns: auto 62px 40px 0; height: 68px !important; } .bubble-sub-button-6 { display: none !important; }" +
       " .bubble-sub-button-1 { padding: 0 10px !important; } .bubble-sub-button-1::before { font-size: 28px !important; }" +
@@ -2678,23 +2673,24 @@ class PivitElanStrategy extends HTMLElement {
         const pv = extra.find((v) => slug(v.title || v.path) === slug(r.name));
         const pent = pv ? (pv.sections || []).flatMap((x) => x.cards || []).map((c) => c.entity).filter((e) => e && hass.states[e]) : [];
         const poolBodies = pent.filter((e) => domainOf(e) === "climate" && /pool|spa/i.test(e));
+        const WHITE = "#f2f5fa"; // status icons are white; only the temperature is coloured
         const icon = (entity, ic, tap, vis, colour) => {
           subs.push({ entity, icon: ic, show_icon: true, show_name: false, show_state: false, show_background: false, tap_action: go(tap), visibility: vis });
           styles.push(` .bubble-sub-button-${subs.length} ha-icon, .bubble-sub-button-${subs.length} .bubble-sub-button-icon { color: ${colour} !important; --mdc-icon-size: 22px; }`);
         };
         // Left → right (Bubble lays sub-buttons out in order at the right end): audio, TV, lock, fan, lights, temperature.
-        if (audio.length) icon(audio[0], "mdi:speaker", hash + "-audio", [anyIn(audio, ["playing"])], ELAN_ACCENT);
-        if (tvs.length) icon(tvs[0], "mdi:television", hash + "-tv", [anyIn(tvs, ["on", "playing", "paused", "buffering"])], ELAN_ACCENT);
-        if (rlocks.length) icon(rlocks[0], "mdi:lock-open-variant", hash + "-locks", [anyIn(rlocks, UNLOCKED)], ELAN_HEAT);
-        if (fans.length) icon(fans[0], "mdi:ceiling-fan", hash + "-fans", [anyIn(fans, ["on"])], ELAN_ACCENT);
-        if (lights.length && !poolBodies.length) icon(lights[0], "mdi:lightbulb-group", hash + "-lights", [anyIn(lights, ["on"])], "#f5c518");
+        if (audio.length) icon(audio[0], "mdi:speaker", hash + "-audio", [anyIn(audio, ["playing"])], WHITE);
+        if (tvs.length) icon(tvs[0], "mdi:television", hash + "-tv", [anyIn(tvs, ["on", "playing", "paused", "buffering"])], WHITE);
+        if (rlocks.length) icon(rlocks[0], "mdi:lock-open-variant", hash + "-locks", [anyIn(rlocks, UNLOCKED)], WHITE);
+        if (fans.length) icon(fans[0], "mdi:ceiling-fan", hash + "-fans", [anyIn(fans, ["on"])], WHITE);
+        if (lights.length && !poolBodies.length) icon(lights[0], "mdi:lightbulb-group", hash + "-lights", [anyIn(lights, ["on"])], WHITE);
         if (poolBodies.length) {
           const find = (re, dom) => pent.find((e) => domainOf(e) === dom && re.test(e));
           const poolPump = find(/pool_pump/, "switch"), spaPump = find(/spa_pump/, "switch");
           const pLights = pent.filter((e) => domainOf(e) === "light");
-          if (poolPump) icon(poolPump, "mdi:pump", hash, [anyIn([poolPump], ["on"])], ELAN_ACCENT);
-          if (spaPump) icon(spaPump, "mdi:hot-tub", hash, [anyIn([spaPump], ["on"])], ELAN_ACCENT);
-          if (pLights.length) icon(pLights[0], "mdi:lightbulb-group", hash, [anyIn(pLights, ["on"])], "#f5c518");
+          if (poolPump) icon(poolPump, "mdi:pump", hash, [anyIn([poolPump], ["on"])], WHITE);
+          if (spaPump) icon(spaPump, "mdi:hot-tub", hash, [anyIn([spaPump], ["on"])], WHITE);
+          if (pLights.length) icon(pLights[0], "mdi:lightbulb-group", hash, [anyIn(pLights, ["on"])], WHITE);
           const tempOf = (key) => {
             const sen = find(new RegExp(`${key}_temp`), "sensor") || Object.keys(hass.states).find((e) => domainOf(e) === "sensor" && new RegExp(`_${key}_temp$`).test(e));
             const cl = poolBodies.find((e) => new RegExp(key).test(e));

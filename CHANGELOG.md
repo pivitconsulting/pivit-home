@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.91 — 2026-11-23
+
+- PivIT ELAN Rooms tiles: status icons are white (only the temperature is coloured).
+- PivIT ELAN Pool / Spa (Pool page and Pool pop-up): two lines — the ELAN climate row (name and status, water temperature, red setpoint box with ▲ / ▼ like the room thermostats) and under it the Mode and Heater buttons. "Set 100°" dropped from the status (it's in the box). `elanClimateRow` gains options (cur, sub, alwaysSet, noChevron).
+
 ## 1.1.90 — 2026-11-23
 
 - PivIT ELAN Rooms tiles: the room name wraps instead of scrolling when several icons are showing.
