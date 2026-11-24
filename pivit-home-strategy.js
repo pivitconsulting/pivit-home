@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.82";
+const VERSION = "1.1.83";
 
 const DEFAULTS = {
   title: "Home",
@@ -1642,7 +1642,7 @@ function elanPool(hass, cards, bodies) {
     });
   }
   // Toggles: pumps, lights, features.
-  const toggles = cards.filter((c) => c.entity && ["switch", "light", "fan", "input_boolean"].includes(domainOf(c.entity)) && !used.has(c.entity));
+  const toggles = cards.filter((c) => c.entity && ["switch", "light", "fan", "input_boolean", "sensor"].includes(domainOf(c.entity)) && !used.has(c.entity));
   toggles.forEach((c) => used.add(c.entity));
   if (toggles.length)
     out.push({
@@ -1651,6 +1651,25 @@ function elanPool(hass, cards, bodies) {
       square: false,
       grid_options: { columns: "full" },
       cards: toggles.map((c) => {
+        // Readings (e.g. Air Temp): same size as the buttons, value in whole degrees, not tappable.
+        if (domainOf(c.entity) === "sensor") {
+          const val = "((s) => !s ? '--' : !isNaN(parseFloat(s.state)) && /°|temperature/.test((s.attributes.unit_of_measurement || '') + (s.attributes.device_class || '')) ? Math.round(parseFloat(s.state)) + '°' : s.state + (s.attributes.unit_of_measurement ? ' ' + s.attributes.unit_of_measurement : ''))(hass.states['" + c.entity + "'])";
+          return {
+            type: "custom:bubble-card",
+            card_type: "button",
+            button_type: "name",
+            name: nameOf(c),
+            icon: (ent(c.entity) && ent(c.entity).attributes.icon) || "mdi:thermometer",
+            styles:
+              ".bubble-button-background { opacity: 0 !important; }" +
+              " .bubble-button-card-container { background: " + ELAN_ROW_BG + " !important; border: 1px solid rgba(255,255,255,.08); border-radius: 4px !important; }" +
+              " .bubble-main-icon-container { background: transparent !important; } .bubble-icon { color: #f2f5fa !important; }" +
+              " .bubble-name { font-size: 15px !important; } .bubble-name-container::after { content: \"${" + val + "}\"; display: block; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; opacity: .75; }" +
+              " @media (max-width: 520px) { .bubble-main-icon-container { display: none !important; } .bubble-name-container { margin-left: 10px !important; } .bubble-name { font-size: 13px !important; } }",
+            tap_action: { action: "none" },
+            button_action: { tap_action: { action: "none" } },
+          };
+        }
         const on = "(hass.states['" + c.entity + "'] && hass.states['" + c.entity + "'].state === 'on')";
         const fx = hasEffects(hass, c.entity);
         return {
@@ -2383,8 +2402,8 @@ class PivitElanStrategy extends HTMLElement {
           "mdi:shield-lock-outline",
           "((s) => s.startsWith('armed_') ? 'Armed ' + s.slice(6).replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase()) : s === 'triggered' ? 'ALARM' : s ? s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ') : '')(" + st(id) + ")",
           "(" + st(id) + ".startsWith('armed') || " + st(id) + " === 'triggered' ? '" + ELAN_HEAT + "' : '#f2f5fa')",
-          // Straight to the arm / disarm pop-up (on the Security page).
-          go(`${base}/security#security-${slug(id.split(".")[1])}`),
+          // Opens the arm / disarm pop-up right on the Home screen.
+          go(`#security-${slug(id.split(".")[1])}`),
           null
         );
       // Doors / windows open (gate sensors have their own chip).
@@ -2500,6 +2519,9 @@ class PivitElanStrategy extends HTMLElement {
         },
       ];
     };
+    // Arm / disarm pop-up for an alarm panel (Security page and, from the alarm chip, the Home screen).
+    const alarmPopup = (id) =>
+      popupShell(`#security-${slug(id.split(".")[1])}`, NAMES[id] || "Home Security", "mdi:shield-lock-outline", [...elanAlarmCards(hass, id)]);
     // HOME — big thin clock and date in the middle (as on the ELAN home screen), weather underneath.
     const wx = ctx.weather
       ? " + ' · ' + Math.round((hass.states['" + ctx.weather + "'] || { attributes: {} }).attributes.temperature) + '° ' + " + titleCase("hass.states['" + ctx.weather + "'] && hass.states['" + ctx.weather + "'].state.replace('partlycloudy', 'partly cloudy')")
@@ -2529,7 +2551,7 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-name-container::after { font-size: 64px; } .bubble-button-card-container::after { font-size: 16px; bottom: 4%; } }",
         },
         ...homeAlerts(),
-      ])
+      ], ctx.alarms.map((id) => alarmPopup(id)))
     );
 
     // SECURITY — alarm, gate(s), garage doors, then every lock with LOCK / UNLOCK.
@@ -2677,6 +2699,17 @@ class PivitElanStrategy extends HTMLElement {
         if (need.has(h) || !byHash[h]) continue;
         need.add(h);
         queue.push(...scan(byHash[h]));
+      }
+      // A room with its own page (e.g. Pool): its pop-up shows that page's layout — pool / spa panels and buttons in
+      // the same order — plus the room's speakers, TVs, cameras and covers.
+      for (const v of extra) {
+        const pp = byHash["#" + slug(v.title || v.path)];
+        const pcards = (v.sections || []).flatMap((x) => x.cards || []);
+        const bodies = pcards.filter((c) => ["thermostat", "custom:bubble-card"].includes(c.type) && domainOf(c.entity || "") === "climate" && /pool|spa/i.test(c.entity + " " + (c.name || "")));
+        if (!pp || !bodies.length || pp.__pvPool) continue;
+        const keep = (pp.cards || []).filter((c) => c && (c.entity || c.entity_id) && ["media_player", "camera", "cover", "lock"].includes(domainOf(c.entity || c.entity_id)));
+        pp.cards = [...elanPool(hass, pcards.filter((c) => c.type !== "heading"), bodies), ...keep];
+        pp.__pvPool = 1;
       }
       const grid = (columns) => ({ type: "grid", columns, square: false, cards: tiles });
       views.push(

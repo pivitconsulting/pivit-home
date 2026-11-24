@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.83 — 2026-11-23
+
+- PivIT ELAN Home: the alarm chip opens the arm / disarm pop-up on top of the Home screen (no page change).
+- PivIT ELAN Pool page: readings (e.g. Air Temp) are buttons the same size as the others, in config order, whole degrees.
+- PivIT ELAN Rooms: a room with its own page (Pool) uses that page's layout in its pop-up — pool / spa panels and the same buttons in the same order — plus the room's speakers, TVs, cameras and covers.
+
 ## 1.1.82 — 2026-11-23
 
 - PivIT ELAN Home: the alarm chip opens the arm / disarm pop-up directly.
