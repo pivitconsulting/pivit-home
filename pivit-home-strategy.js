@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.125";
+const VERSION = "1.1.126";
 
 const DEFAULTS = {
   title: "Home",
@@ -2648,7 +2648,30 @@ function elanDialogTheme(base) {
       ha.shadowRoot.appendChild(st);
     }
     window.__pvElanBases = Array.from(new Set([...(window.__pvElanBases || []), base]));
-    const sync = () => { st.disabled = !window.__pvElanBases.some((b) => location.pathname === b || location.pathname.startsWith(b + "/")); };
+    // Light-mode devices (e.g. an iPhone on HA's default light theme): ELAN's own colours for the dashboard's text and
+    // the page behind it (no black text, no white strip in the phone's bottom safe area), only while ELAN is open.
+    const PANEL_VARS = {
+      "--primary-text-color": "#f2f5fa", "--secondary-text-color": "rgba(242,245,250,.65)", "--text-primary-color": "#f2f5fa",
+      "--primary-background-color": "#0b0d1a", "--secondary-background-color": "#171a33", "--card-background-color": "#1d2244",
+      "--app-header-background-color": "#171a33", "--app-header-text-color": "#f2f5fa", "--divider-color": "rgba(255,255,255,.12)",
+      "--state-icon-color": "#e9eef7", "--paper-item-icon-color": "#e9eef7",
+    };
+    const paint = (on) => {
+      try {
+        const main = ha.shadowRoot.querySelector("home-assistant-main");
+        const ppr = main && main.shadowRoot && main.shadowRoot.querySelector("partial-panel-resolver");
+        if (ppr) for (const [k, v] of Object.entries(PANEL_VARS)) on ? ppr.style.setProperty(k, v) : ppr.style.removeProperty(k);
+        for (const el of [document.documentElement, document.body]) on ? el.style.setProperty("background", "#0b0d1a") : el.style.removeProperty("background");
+        let m = document.querySelector('meta[name="theme-color"]');
+        if (on && m) { if (m.dataset.pvOrig == null) m.dataset.pvOrig = m.content; m.content = "#171a33"; } else if (m && m.dataset.pvOrig != null) { m.content = m.dataset.pvOrig; delete m.dataset.pvOrig; }
+      } catch (e) {}
+    };
+    const sync = () => {
+      const on = window.__pvElanBases.some((b) => location.pathname === b || location.pathname.startsWith(b + "/"));
+      st.disabled = !on;
+      paint(on);
+      if (on) setTimeout(() => paint(window.__pvElanBases.some((b) => location.pathname === b || location.pathname.startsWith(b + "/"))), 1500); // panel may mount late
+    };
     sync();
     if (!window.__pvElanDlgWatch) { window.__pvElanDlgWatch = 1; window.addEventListener("location-changed", () => setTimeout(sync, 0)); window.addEventListener("popstate", sync); }
   } catch (e) { /* not in a browser (e.g. config check) */ }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.126 — 2026-11-25
+
+- PivIT ELAN on light-theme devices (e.g. an iPhone on HA's default theme): while ELAN is open the dashboard gets ELAN's own text / background colours (no black text) and the page behind it is ELAN navy (no white strip in the phone's bottom safe area); the browser theme colour follows. Restored when leaving ELAN.
+
 ## 1.1.125 — 2026-11-24
 
 - Phones: Scenes rows get a smaller name/icon, wrapping description and a compact RUN button (the row grows to fit). Pool / Spa panels (and the Pool room pop-up) go to two lines — name and temperature / Set box on top, Mode and Heater buttons side by side across the bottom.
