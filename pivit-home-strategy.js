@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.123";
+const VERSION = "1.1.124";
 
 const DEFAULTS = {
   title: "Home",
@@ -2752,6 +2752,8 @@ class PivitElanStrategy extends HTMLElement {
     const savant = roomsView(cfg, ctx, { type: "markdown", content: " " });
     const popups = savant.sections.flatMap((sec) => sec.cards).filter((c) => c.card_type === "pop-up");
     const popupsWhere = (test) => popups.filter((pp) => test(pp.hash || ""));
+    // A TV's name in its room: "<Room> TV" when it's the only one, else its own name (e.g. "Basement TV", "Bar TV").
+    const tvName = (id, r, all) => (all.length > 1 ? (NAMES[id] || hass.states[id].attributes.friendly_name || "TV") : `${r.name} TV`);
     // TV pop-ups get an ELAN remote for each Android TV / Google TV remote in the room (androidtv_remote).
     for (const r of ctx.rooms) {
       const pp = popups.find((x) => x.hash === "#" + slug(r.name) + "-tv");
@@ -2768,7 +2770,15 @@ class PivitElanStrategy extends HTMLElement {
         styles: ((c.styles || "") + " .bubble-power-button, .power-button { display: none !important; }").trim(),
         visibility: [{ condition: "state", entity: c.entity, state: ["playing", "paused", "buffering"] }],
       });
-      pp.cards = [...(pp.cards || []).filter((c) => c.card_type === "media-player").map(playing), ...remotes.map((id) => elanTvRemote(id))];
+      const keep = (pp.cards || []).filter((c) => c.card_type === "media-player").map(playing);
+      if (remotes.length === 1) { pp.cards = [...keep, elanTvRemote(remotes[0])]; continue; }
+      // Several TVs in the room: the TV pop-up asks which one (each with its status and power button), and each TV
+      // gets its own remote pop-up ("#<room>-tv-1", "-2", …).
+      remotes.forEach((id, i) => {
+        const nm = tvName(id, r, remotes);
+        popups.push(popupShell(pp.hash + "-" + (i + 1), nm, "mdi:television", [elanTvRemote(id)]));
+      });
+      pp.cards = [...keep, elanSubhead("Pick a TV"), ...remotes.map((id, i) => elanTvRow(id, tvName(id, r, remotes), pp.hash + "-" + (i + 1)))];
     }
     // Room pop-ups: TV rows go to the bottom, below the audio.
     for (const r of ctx.rooms) {
@@ -2788,7 +2798,7 @@ class PivitElanStrategy extends HTMLElement {
         .filter((e) => (e.area_id || ((hass.devices || {})[e.device_id] || {}).area_id) === r.id)
         .map((e) => e.entity_id);
       const tvRows = roomRemotes.length
-        ? roomRemotes.map((id) => elanTvRow(id, roomRemotes.length > 1 ? (hass.states[id].attributes.friendly_name || "TV") : `${r.name} TV`, "#" + slug(r.name) + "-tv"))
+        ? roomRemotes.map((id, i) => elanTvRow(id, tvName(id, r, roomRemotes), "#" + slug(r.name) + "-tv" + (roomRemotes.length > 1 ? "-" + (i + 1) : "")))
         : pp.cards.filter(isTv).map(noPower);
       pp.cards = [...pp.cards.filter((c) => !isTv(c)), ...tvRows];
     }
@@ -3515,7 +3525,7 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-state, .bubble-name-container::after { max-width: 60vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }" + tvStyle,
         });
       }
-      views.push(view("media", "Media", content, popupsWhere((h) => h.endsWith("-audio") || h.endsWith("-tv"))));
+      views.push(view("media", "Media", content, popupsWhere((h) => h.endsWith("-audio") || /-tv(-\d+)?$/.test(h))));
     }
 
     // Summaries (e.g. Sprinklers → "Irrigation"): one row per zone, RUNNING / OFF, › opens the zone's own pop-up.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.124 — 2026-11-24
+
+- ELAN TVs: in rooms with more than one Android TV remote, the TV pop-up asks which TV ("Pick a TV" — each with its status and power button) and each TV has its own remote pop-up (#<room>-tv-1, -2…). Room pop-up TV rows open their TV's remote directly.
+
 ## 1.1.123 — 2026-11-24
 
 - ELAN TV remote: the Power key now calls remote.toggle on the TV's remote entity (the plain "toggle" action had no card entity, so it did nothing).
