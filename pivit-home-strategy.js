@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.122";
+const VERSION = "1.1.123";
 
 const DEFAULTS = {
   title: "Home",
@@ -1950,7 +1950,7 @@ function elanTvRemote(remoteId) {
     cards: [
       elanSubhead("Remote"),
       { type: "grid", columns: 4, square: false, cards: [
-        key("Power", "mdi:power", { action: "toggle", entity: remoteId }, " .bubble-icon { color: ${" + on + " ? '" + ELAN_ACCENT + "' : '#f2f5fa'} !important; }"),
+        key("Power", "mdi:power", { action: "perform-action", perform_action: "remote.toggle", target: { entity_id: remoteId } }, " .bubble-icon { color: ${" + on + " ? '" + ELAN_ACCENT + "' : '#f2f5fa'} !important; }"),
         key("Input", "mdi:import", cmd("TV_INPUT")),
         key("Home", "mdi:home-outline", cmd("HOME")),
         key("Back", "mdi:arrow-u-left-top", cmd("BACK")),

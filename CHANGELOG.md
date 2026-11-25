@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.123 — 2026-11-24
+
+- ELAN TV remote: the Power key now calls remote.toggle on the TV's remote entity (the plain "toggle" action had no card entity, so it did nothing).
+
 ## 1.1.122 — 2026-11-24
 
 - Lighting: the LET'S PARTY button and pop-up are now PARTY MODE.
