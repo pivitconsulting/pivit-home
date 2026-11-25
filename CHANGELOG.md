@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.125 — 2026-11-24
+
+- Phones: Scenes rows get a smaller name/icon, wrapping description and a compact RUN button (the row grows to fit). Pool / Spa panels (and the Pool room pop-up) go to two lines — name and temperature / Set box on top, Mode and Heater buttons side by side across the bottom.
+
 ## 1.1.124 — 2026-11-24
 
 - ELAN TVs: in rooms with more than one Android TV remote, the TV pop-up asks which TV ("Pick a TV" — each with its status and power button) and each TV has its own remote pop-up (#<room>-tv-1, -2…). Room pop-up TV rows open their TV's remote directly.

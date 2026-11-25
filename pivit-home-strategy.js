@@ -13,7 +13,7 @@
  * Every option is optional; see README.md.
  */
 
-const VERSION = "1.1.124";
+const VERSION = "1.1.125";
 
 const DEFAULTS = {
   title: "Home",
@@ -2201,7 +2201,12 @@ function elanClimateRow(id, name, hash, opts = {}) {
                 ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container, .bubble-sub-button-${7 + i} .bubble-sub-button-name-container * { overflow: visible !important; text-overflow: clip !important; animation: none !important; transform: none !important; max-width: none !important; }`
             )
             .join("") +
-          " @media (max-width: 520px) { .bubble-button-card-container { height: 118px !important; } }"
+          // Phones: two lines — name + temperature / Set box on top, the buttons side by side across the bottom.
+          " @media (max-width: 520px) { .bubble-button-card-container { height: 132px !important; }" +
+          " .bubble-sub-button-container { align-self: flex-start !important; margin-top: 8px !important; height: 62px !important; }" +
+          " .bubble-name-container { margin-top: 0 !important; align-self: flex-start !important; height: 78px; display: flex !important; flex-direction: column; justify-content: center; }" +
+          opts.buttons.map((b, i) => ` .bubble-sub-button-${7 + i} { left: ${i ? "calc(50% + 4px)" : "10px"} !important; width: calc(50% - 14px) !important; height: 38px !important; bottom: 10px !important; }` +
+            ` .bubble-sub-button-${7 + i} .bubble-sub-button-name-container { font-size: 12px !important; }`).join("") + " }"
         : "");
   const box = (n) =>
     ` .bubble-sub-button-${n} { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; line-height: 1.1;` +
@@ -3291,7 +3296,13 @@ class PivitElanStrategy extends HTMLElement {
             " .bubble-name-container::after { content: \"${(hass.states['" + sc.entity + "'] || {}).state === 'on' ? 'Running…' : " + JSON.stringify(desc) + "}\"; display: block; font-size: 12px; letter-spacing: .04em; opacity: .65; margin-top: 3px; white-space: normal; line-height: 1.35; }" +
             " .bubble-sub-button-1 { height: 40px !important; padding: 0 18px !important; gap: 8px !important; border-radius: 4px !important; border: 1px solid rgba(255,255,255,.35);" +
             " background: ${(hass.states['" + sc.entity + "'] || {}).state === 'on' ? '" + ELAN_ACCENT + "' : 'rgba(255,255,255,.08)'} !important; }" +
-            " .bubble-sub-button-1 ha-icon { color: #f2c12e !important; } .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; }",
+            " .bubble-sub-button-1 ha-icon { color: #f2c12e !important; } .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 12px !important; letter-spacing: .12em; text-transform: uppercase; color: #fff !important; }" +
+            // Phones: smaller name and icon, the description wraps, a compact RUN button.
+            " @media (max-width: 520px) { .bubble-button-card-container { height: auto !important; min-height: 96px; } .bubble-button-card { padding: 12px 0 !important; }" +
+            " .bubble-icon { --mdc-icon-size: 26px; } .bubble-name { font-size: 18px !important; } .bubble-name-container { min-width: 0 !important; flex: 1 1 auto !important; margin-right: 8px !important; }" +
+            " .bubble-name-container::after { font-size: 11px !important; line-height: 1.3; }" +
+            " .bubble-sub-button-1 { height: 36px !important; padding: 0 10px !important; gap: 4px !important; flex-shrink: 0; }" +
+            " .bubble-sub-button-1 * , .bubble-sub-button-1 .bubble-sub-button-name-container { font-size: 11px !important; } .bubble-sub-button-1 ha-icon { --mdc-icon-size: 16px; } }",
           tap_action: runTap,
           button_action: { tap_action: runTap },
         };
